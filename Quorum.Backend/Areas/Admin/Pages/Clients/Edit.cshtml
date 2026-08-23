@@ -1,0 +1,546 @@
+@page "{id:int}"
+@model Quorum.Backend.Areas.Admin.Pages.Clients.EditModel
+@{
+    ViewData["Title"] = $"Edycja Klienta: {Model.Input.ClientId}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a asp-page="/Index">Admin</a></li>
+                <li class="breadcrumb-item"><a asp-page="Index">Klienci</a></li>
+                <li class="breadcrumb-item active">@Model.Input.ClientId</li>
+            </ol>
+        </nav>
+        <h2 class="h4 mb-0"><i class="bi bi-pencil-square me-2 text-primary"></i>Edycja Klienta: <span class="font-monospace text-primary">@Model.Input.ClientId</span></h2>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-page="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Powrót do listy
+        </a>
+    </div>
+</div>
+
+<form method="post">
+    <input type="hidden" asp-for="Input.Id" />
+    
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-4"></div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-bottom p-0">
+            <ul class="nav nav-tabs card-header-tabs m-0 px-3 pt-2" id="clientTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-semibold" id="tab-basics" data-bs-toggle="tab" data-bs-target="#basics" type="button" role="tab">
+                        <i class="bi bi-info-circle me-1 text-primary"></i> Podstawowe
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-secrets" data-bs-toggle="tab" data-bs-target="#secrets" type="button" role="tab">
+                        <i class="bi bi-key me-1 text-warning"></i> Sekrety &amp; Uwierzytelnianie
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-flows" data-bs-toggle="tab" data-bs-target="#flows" type="button" role="tab">
+                        <i class="bi bi-diagram-3 me-1 text-info"></i> Przepływy &amp; PKCE
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-urls" data-bs-toggle="tab" data-bs-target="#urls" type="button" role="tab">
+                        <i class="bi bi-link-45deg me-1 text-success"></i> URIs &amp; Wylogowanie
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-scopes" data-bs-toggle="tab" data-bs-target="#scopes" type="button" role="tab">
+                        <i class="bi bi-shield-check me-1 text-danger"></i> Scopes &amp; Zgody
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-tokens" data-bs-toggle="tab" data-bs-target="#tokens" type="button" role="tab">
+                        <i class="bi bi-clock-history me-1 text-secondary"></i> Tokeny &amp; Ważność
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="tab-claims" data-bs-toggle="tab" data-bs-target="#claims" type="button" role="tab">
+                        <i class="bi bi-person-badge me-1 text-dark"></i> Claims &amp; Dostawcy
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="tab-content" id="clientTabsContent">
+                
+                <!-- 1. PODSTAWOWE -->
+                <div class="tab-pane fade show active" id="basics" role="tabpanel">
+                    <h5 class="fw-bold mb-3 text-secondary">Główna tożsamość aplikacji</h5>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Input.ClientId" class="form-label fw-semibold small">Client ID <span class="text-danger">*</span></label>
+                            <input asp-for="Input.ClientId" class="form-control font-monospace" />
+                            <div class="form-text">Unikalny identyfikator aplikacji klienckiej (np. <code>spa-client</code>, <code>backend-service</code>).</div>
+                            <span asp-validation-for="Input.ClientId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Input.ClientName" class="form-label fw-semibold small">Nazwa Wyświetlana <span class="text-danger">*</span></label>
+                            <input asp-for="Input.ClientName" class="form-control" />
+                            <div class="form-text">Czytelna nazwa aplikacji prezentowana użytkownikowi na ekranie zgody (Consent).</div>
+                            <span asp-validation-for="Input.ClientName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Input.Description" class="form-label fw-semibold small">Opis Klienta</label>
+                            <input asp-for="Input.Description" class="form-control" placeholder="np. Aplikacja mobilna dla klientów indywidualnych" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="Input.ProtocolType" class="form-label fw-semibold small">Typ Protokołu</label>
+                            <input asp-for="Input.ProtocolType" class="form-control" />
+                            <div class="form-text">Domyślnie: <code>oidc</code> (OpenID Connect / OAuth 2.0).</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="Input.ClientUri" class="form-label fw-semibold small">Strona Główna Klienta (ClientUri)</label>
+                            <input asp-for="Input.ClientUri" class="form-control" placeholder="https://myapp.example.com" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="Input.LogoUri" class="form-label fw-semibold small">Adres URL Logo (LogoUri)</label>
+                            <input asp-for="Input.LogoUri" class="form-control" placeholder="https://myapp.example.com/logo.png" />
+                        </div>
+
+                        <div class="col-12 mt-4">
+                            <div class="p-3 bg-light rounded-3 border">
+                                <div class="form-check form-switch mb-2">
+                                    <input asp-for="Input.Enabled" class="form-check-input" type="checkbox" id="enabledSwitch" />
+                                    <label class="form-check-label fw-semibold" for="enabledSwitch">Klient Aktywny (Enabled)</label>
+                                    <div class="text-muted small">Wyłączenie zablokuje wszelkie próby logowania i wydawania tokenów dla tego klienta.</div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input asp-for="Input.EnableLocalLogin" class="form-check-input" type="checkbox" id="enableLocalLoginSwitch" />
+                                    <label class="form-check-label fw-semibold" for="enableLocalLoginSwitch">Zezwalaj na Logowanie Lokalne (EnableLocalLogin)</label>
+                                    <div class="text-muted small">Pozwala użytkownikom logować się loginem i hasłem z ASP.NET Core Identity.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. SEKRETY & UWIERZYTELNIANIE -->
+                <div class="tab-pane fade" id="secrets" role="tabpanel">
+                    <h5 class="fw-bold mb-3 text-secondary">Uwierzytelnianie Klienta &amp; Sekrety</h5>
+
+                    <div class="mb-4 p-3 bg-light rounded-3 border">
+                        <div class="form-check form-switch">
+                            <input asp-for="Input.RequireClientSecret" class="form-check-input" type="checkbox" id="requireSecretSwitch" />
+                            <label class="form-check-label fw-semibold" for="requireSecretSwitch">Wymagaj Sekretu Klienta (RequireClientSecret)</label>
+                            <div class="text-muted small">
+                                Dla klientów publicznych (np. SPA React/Angular, aplikacje mobilne z PKCE) to pole powinno mieć wartość <code>false</code>. 
+                                Jeśli klient nie ma zdefiniowanych żadnych sekretów, Open.IdentityServer uznaje <code>RequireClientSecret = false</code>.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista istniejących sekretów -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold small text-uppercase text-muted mb-2">Istniejące Sekrety w Bazie Danych</h6>
+                        @if (Model.Input.ExistingSecrets != null && Model.Input.ExistingSecrets.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm align-middle bg-white">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Typ</th>
+                                            <th>Hash / Wartość</th>
+                                            <th>Opis</th>
+                                            <th>Wygasa</th>
+                                            <th class="text-center" style="width: 120px;">Usuń</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (int i = 0; i < Model.Input.ExistingSecrets.Count; i++)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <input type="hidden" asp-for="Input.ExistingSecrets[i].Id" />
+                                                    <span class="badge bg-secondary">@Model.Input.ExistingSecrets[i].Type</span>
+                                                </td>
+                                                <td><code class="text-muted">@Model.Input.ExistingSecrets[i].ValuePreview</code></td>
+                                                <td>@(Model.Input.ExistingSecrets[i].Description ?? "—")</td>
+                                                <td>@(Model.Input.ExistingSecrets[i].Expiration?.ToString("yyyy-MM-dd HH:mm") ?? "Nigdy")</td>
+                                                <td class="text-center bg-danger-subtle">
+                                                    <div class="form-check d-inline-block">
+                                                        <input asp-for="Input.ExistingSecrets[i].Delete" class="form-check-input border-danger" type="checkbox" id="del_@i" />
+                                                        <label class="form-check-label text-danger small fw-semibold" for="del_@i">Usuń</label>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info py-2 small mb-3">
+                                <i class="bi bi-info-circle me-1"></i> Ten klient nie posiada obecnie żadnych sekretów w bazie (klient publiczny).
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Formularz dodania nowego sekretu -->
+                    <div class="card bg-light border-primary-subtle border">
+                        <div class="card-header bg-primary-subtle py-2">
+                            <h6 class="fw-bold mb-0 text-primary small"><i class="bi bi-plus-circle me-1"></i> Dodaj Nowy Sekret dla Klienta</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <label asp-for="Input.NewSecretValue" class="form-label fw-semibold small">Nowa Wartość Sekretu (tekst jawny)</label>
+                                    <input asp-for="Input.NewSecretValue" type="text" class="form-control font-monospace" placeholder="np. super_tajne_haslo_123!" autocomplete="off" />
+                                    <div class="form-text">Zostanie automatycznie zashashowany algorytmem SHA-256 przed zapisem do bazy.</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label asp-for="Input.NewSecretType" class="form-label fw-semibold small">Typ Sekretu</label>
+                                    <select asp-for="Input.NewSecretType" class="form-select">
+                                        <option value="SharedSecret">SharedSecret (Klucz symetryczny)</option>
+                                        <option value="X509Thumbprint">X509Thumbprint (Odcisk certyfikatu)</option>
+                                        <option value="X509Name">X509Name</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="Input.NewSecretExpiration" class="form-label fw-semibold small">Data Wygaśnięcia (opcjonalnie)</label>
+                                    <input asp-for="Input.NewSecretExpiration" type="datetime-local" class="form-control" />
+                                </div>
+                                <div class="col-12">
+                                    <label asp-for="Input.NewSecretDescription" class="form-label fw-semibold small">Opis Sekretu</label>
+                                    <input asp-for="Input.NewSecretDescription" type="text" class="form-control" placeholder="np. Klucz produkcyjny backendu 2026" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. PRZEPŁYWY & PKCE -->
+                <div class="tab-pane fade" id="flows" role="tabpanel">
+                    <h5 class="fw-bold mb-3 text-secondary">Typy Przepływów OAuth2 (Grant Types) &amp; PKCE</h5>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.AllowedGrantTypes" class="form-label fw-semibold small">Dozwolone Typy Przepływów (AllowedGrantTypes) <span class="text-danger">*</span></label>
+                        <input asp-for="Input.AllowedGrantTypes" id="grantTypesInput" class="form-control font-monospace" />
+                        <div class="form-text">Wpisz typy rozdzielone spacją (np. <code>authorization_code</code>, <code>client_credentials</code>, <code>urn:ietf:params:oauth:grant-type:device_code</code>, <code>refresh_token</code>).</div>
+                        <span asp-validation-for="Input.AllowedGrantTypes" class="text-danger small"></span>
+
+                        <div class="mt-2 d-flex flex-wrap gap-1">
+                            <span class="small text-muted me-2 align-self-center">Szybkie szablony:</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('authorization_code')">Authorization Code</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('client_credentials')">Client Credentials</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('authorization_code urn:ietf:params:oauth:grant-type:device_code')">Code + Device Code</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('hybrid')">Hybrid</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('implicit')">Implicit</button>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border mt-4">
+                        <h6 class="fw-bold small text-uppercase text-muted mb-3">Zabezpieczenia PKCE &amp; Przeglądarka</h6>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="Input.RequirePkce" class="form-check-input" type="checkbox" id="requirePkceSwitch" />
+                            <label class="form-check-label fw-semibold" for="requirePkceSwitch">Wymagaj PKCE (RequirePkce)</label>
+                            <div class="text-muted small">Wymaga przesłania <code>code_challenge</code> i <code>code_verifier</code> (RFC 7636). Bezwzględnie zalecane dla SPA i aplikacji mobilnych.</div>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="Input.AllowPlainTextPkce" class="form-check-input" type="checkbox" id="plainTextPkceSwitch" />
+                            <label class="form-check-label fw-semibold" for="plainTextPkceSwitch">Zezwalaj na Plain-Text PKCE (AllowPlainTextPkce)</label>
+                            <div class="text-muted small">Domyślnie wyłączone. Zezwala na niestosowanie hashowania S256 dla PKCE.</div>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="Input.AllowAccessTokensViaBrowser" class="form-check-input" type="checkbox" id="browserTokensSwitch" />
+                            <label class="form-check-label fw-semibold" for="browserTokensSwitch">Zezwalaj na wydawanie Access Tokenów w Przeglądarce (AllowAccessTokensViaBrowser)</label>
+                            <div class="text-muted small">Wymagane tylko dla starszych przepływów Implicit / Hybrid.</div>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input asp-for="Input.RequireRequestObject" class="form-check-input" type="checkbox" id="requireRequestObjSwitch" />
+                            <label class="form-check-label fw-semibold" for="requireRequestObjSwitch">Wymagaj JWT Request Object (RequireRequestObject)</label>
+                            <div class="text-muted small">Wymaga podpisanych obiektów żądań (JAR - JWT Secured Authorization Request).</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. URIS & WYLOGOWANIE -->
+                <div class="tab-pane fade" id="urls" role="tabpanel">
+                    <h5 class="fw-bold mb-3 text-secondary">Adresy Przekierowań, CORS &amp; Wylogowanie</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Input.RedirectUris" class="form-label fw-semibold small">Adresy Przekierowania po Zalogowaniu (RedirectUris)</label>
+                            <textarea asp-for="Input.RedirectUris" class="form-control font-monospace" rows="4" placeholder="https://myapp.example.com/signin-oidc&#10;https://localhost:3000/callback"></textarea>
+                            <div class="form-text">Dozwolone adresy powrotne po autoryzacji (jeden URI w wierszu).</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Input.PostLogoutRedirectUris" class="form-label fw-semibold small">Adresy Przekierowania po Wylogowaniu (PostLogoutRedirectUris)</label>
+                            <textarea asp-for="Input.PostLogoutRedirectUris" class="form-control font-monospace" rows="4" placeholder="https://myapp.example.com/signout-callback-oidc&#10;https://localhost:3000/"></textarea>
+                            <div class="form-text">Dozwolone adresy docelowe po wylogowaniu użytkownika (jeden URI w wierszu).</div>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Input.AllowedCorsOrigins" class="form-label fw-semibold small">Dozwolone Domeny CORS (AllowedCorsOrigins)</label>
+                            <textarea asp-for="Input.AllowedCorsOrigins" class="form-control font-monospace" rows="2" placeholder="https://myapp.example.com&#10;https://localhost:3000"></textarea>
+                            <div class="form-text">Domeny aplikacji JavaScript dozwolone do wykonywania zapytań CORS do punktów końcowych IdentityServer.</div>
+                        </div>
+
+                        <div class="col-md-6 mt-3">
+                            <div class="p-3 bg-light rounded-3 border h-100">
+                                <h6 class="fw-bold small text-primary mb-2">Front-Channel Logout</h6>
+                                <label asp-for="Input.FrontChannelLogoutUri" class="form-label small">Adres FrontChannelLogoutUri</label>
+                                <input asp-for="Input.FrontChannelLogoutUri" class="form-control font-monospace mb-2" placeholder="https://myapp.example.com/signout-frontchannel" />
+                                <div class="form-check form-switch">
+                                    <input asp-for="Input.FrontChannelLogoutSessionRequired" class="form-check-input" type="checkbox" id="frontSessionReq" />
+                                    <label class="form-check-label small" for="frontSessionReq">Wymagaj identyfikatora sesji (FrontChannelLogoutSessionRequired)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mt-3">
+                            <div class="p-3 bg-light rounded-3 border h-100">
+                                <h6 class="fw-bold small text-primary mb-2">Back-Channel Logout</h6>
+                                <label asp-for="Input.BackChannelLogoutUri" class="form-label small">Adres BackChannelLogoutUri</label>
+                                <input asp-for="Input.BackChannelLogoutUri" class="form-control font-monospace mb-2" placeholder="https://myapp.example.com/signout-backchannel" />
+                                <div class="form-check form-switch">
+                                    <input asp-for="Input.BackChannelLogoutSessionRequired" class="form-check-input" type="checkbox" id="backSessionReq" />
+                                    <label class="form-check-label small" for="backSessionReq">Wymagaj identyfikatora sesji (BackChannelLogoutSessionRequired)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. SCOPES & ZGODY -->
+                <div class="tab-pane fade" id="scopes" role="tabpanel">
+                    <h5 class="fw-bold mb-3 text-secondary">Zakresy Danych (Allowed Scopes) &amp; Zgody Użytkownika</h5>
+
+                    <div class="mb-4">
+                        <label asp-for="Input.AllowedScopes" id="scopesInputLabel" class="form-label fw-semibold small">Dozwolone Zakresy (AllowedScopes)</label>
+                        <input asp-for="Input.AllowedScopes" id="scopesInput" class="form-control font-monospace" placeholder="openid profile email api1 offline_access" />
+                        <div class="form-text">Rozdziel zakresy spacją. Aby umożliwić pobieranie Refresh Tokenów, dodaj zakres <code>offline_access</code>.</div>
+                        <span asp-validation-for="Input.AllowedScopes" class="text-danger small"></span>
+
+                        <div class="mt-2 d-flex flex-wrap gap-1">
+                            <span class="small text-muted me-2 align-self-center">Dodaj popularne:</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="appendScope('openid')">openid</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="appendScope('profile')">profile</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="appendScope('email')">email</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="appendScope('offline_access')">offline_access</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="appendScope('api1')">api1</button>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border">
+                        <h6 class="fw-bold small text-uppercase text-muted mb-3">Ekran Zgody Użytkownika (Consent Screen)</h6>
+
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="Input.RequireConsent" class="form-check-input" type="checkbox" id="requireConsentSwitch" />
+                            <label class="form-check-label fw-semibold" for="requireConsentSwitch">Wymagaj Ekranu Zgody (RequireConsent)</label>
+                            <div class="text-muted small">Wyświetla użytkownikowi stronę z listą uprawnień do zatwierdzenia.</div>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="Input.AllowRememberConsent" class="form-check-input" type="checkbox" id="rememberConsentSwitch" />
+                            <label class="form-check-label fw-semibold" for="rememberConsentSwitch">Zezwalaj na Zapamiętanie Zgody (AllowRememberConsent)</label>
+                            <div class="text-muted small">Użytkownik nie musi ponownie zatwierdzać zgody przy kolejnych logowaniach.</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label asp-for="Input.ConsentLifetime" class="form-label small fw-semibold">Czas Ważności Zgody (w sekundach)</label>
+                                <input asp-for="Input.ConsentLifetime" type="number" class="form-control" placeholder="Puste = bezterminowo" />
+                                <div class="form-text">Czas, po którym zapamiętana zgoda wygaśnie (np. <code>2592000</code> dla 30 dni).</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. TOKENY & WAŻNOŚĆ -->
+                <div class="tab-pane fade" id="tokens" role="tabpanel">
+                    <h5 class="fw-bold mb-3 text-secondary">Czas Życia Tokenów &amp; Refresh Tokens</h5>
+
+                    <div class="p-3 bg-light rounded-3 border mb-4">
+                        <div class="form-check form-switch">
+                            <input asp-for="Input.AllowOfflineAccess" class="form-check-input" type="checkbox" id="offlineAccessSwitch" />
+                            <label class="form-check-label fw-semibold" for="offlineAccessSwitch">Zezwalaj na Offline Access (AllowOfflineAccess)</label>
+                            <div class="text-muted small">Umożliwia wystawianie <strong>Refresh Tokenów</strong> dla tego klienta.</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label asp-for="Input.AccessTokenLifetime" class="form-label fw-semibold small">Czas życia Access Token (w sekundach)</label>
+                            <input asp-for="Input.AccessTokenLifetime" type="number" class="form-control font-monospace" />
+                            <div class="form-text">Domyślnie: 3600 (1 godzina).</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="Input.IdentityTokenLifetime" class="form-label fw-semibold small">Czas życia Identity Token (w sekundach)</label>
+                            <input asp-for="Input.IdentityTokenLifetime" type="number" class="form-control font-monospace" />
+                            <div class="form-text">Domyślnie: 300 (5 minut).</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="Input.AuthorizationCodeLifetime" class="form-label fw-semibold small">Czas życia Kodu Autoryzacji (w sekundach)</label>
+                            <input asp-for="Input.AuthorizationCodeLifetime" type="number" class="form-control font-monospace" />
+                            <div class="form-text">Domyślnie: 300 (5 minut).</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Input.AbsoluteRefreshTokenLifetime" class="form-label fw-semibold small">Bezwzględny czas życia Refresh Token (w sekundach)</label>
+                            <input asp-for="Input.AbsoluteRefreshTokenLifetime" type="number" class="form-control font-monospace" />
+                            <div class="form-text">Maksymalny całkowity czas życia (np. 2592000 = 30 dni).</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Input.SlidingRefreshTokenLifetime" class="form-label fw-semibold small">Ruchomy czas życia Refresh Token (w sekundach)</label>
+                            <input asp-for="Input.SlidingRefreshTokenLifetime" type="number" class="form-control font-monospace" />
+                            <div class="form-text">Czas odnowienia przy każdym użyciu (np. 1296000 = 15 dni).</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 p-3 bg-light rounded-3 border">
+                        <div class="col-md-4">
+                            <label asp-for="Input.AccessTokenType" class="form-label fw-semibold small">Typ Access Tokena</label>
+                            <select asp-for="Input.AccessTokenType" class="form-select">
+                                <option value="0">0: JWT Token (Samozawarty)</option>
+                                <option value="1">1: Reference Token (Weryfikowany w bazie)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="Input.RefreshTokenUsage" class="form-label fw-semibold small">Tryb Użycia Refresh Tokena</label>
+                            <select asp-for="Input.RefreshTokenUsage" class="form-select">
+                                <option value="1">1: ReUse (Ten sam token do wygaśnięcia)</option>
+                                <option value="0">0: OneTime (Jednorazowy - rotacja tokenów)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="Input.RefreshTokenExpiration" class="form-label fw-semibold small">Sposób Wygasania Refresh Tokena</label>
+                            <select asp-for="Input.RefreshTokenExpiration" class="form-select">
+                                <option value="1">1: Absolute (Stała data wygaśnięcia)</option>
+                                <option value="0">0: Sliding (Przesuwany przy aktywności)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mt-3">
+                            <div class="form-check form-switch">
+                                <input asp-for="Input.UpdateAccessTokenClaimsOnRefresh" class="form-check-input" type="checkbox" id="updateClaimsSwitch" />
+                                <label class="form-check-label small fw-semibold" for="updateClaimsSwitch">Aktualizuj Claims przy Refresh (UpdateAccessTokenClaimsOnRefresh)</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mt-3">
+                            <label asp-for="Input.AllowedIdentityTokenSigningAlgorithms" class="form-label small fw-semibold">Algorytmy Podpisu IdToken (opcjonalnie)</label>
+                            <input asp-for="Input.AllowedIdentityTokenSigningAlgorithms" class="form-control font-monospace" placeholder="RS256, ES256" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. CLAIMS & DOSTAWCY -->
+                <div class="tab-pane fade" id="claims" role="tabpanel">
+                    <h5 class="fw-bold mb-3 text-secondary">Mapowanie Claims &amp; Ograniczenia Dostawców Tożsamości</h5>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mb-3">
+                                <input asp-for="Input.AlwaysIncludeUserClaimsInIdToken" class="form-check-input" type="checkbox" id="alwaysUserClaimsSwitch" />
+                                <label class="form-check-label fw-semibold small" for="alwaysUserClaimsSwitch">Zawsze dołączaj claims użytkownika w IdToken</label>
+                                <div class="text-muted small">Jeśli wyłączone, claims są pobierane oddzielnie z endpointu <code>/connect/userinfo</code>.</div>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input asp-for="Input.AlwaysSendClientClaims" class="form-check-input" type="checkbox" id="alwaysClientClaimsSwitch" />
+                                <label class="form-check-label fw-semibold small" for="alwaysClientClaimsSwitch">Zawsze wysyłaj claims klienta (AlwaysSendClientClaims)</label>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input asp-for="Input.IncludeJwtId" class="form-check-input" type="checkbox" id="includeJwtIdSwitch" />
+                                <label class="form-check-label fw-semibold small" for="includeJwtIdSwitch">Dołączaj unikalny JWT ID (IncludeJwtId)</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="Input.ClientClaimsPrefix" class="form-label fw-semibold small">Prefiks Claims Klienta (ClientClaimsPrefix)</label>
+                                <input asp-for="Input.ClientClaimsPrefix" class="form-control font-monospace" />
+                                <div class="form-text">Domyślnie: <code>client_</code>. Ustaw puste, jeśli nie chcesz prefiksu.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Input.PairWiseSubjectSalt" class="form-label fw-semibold small">Sól PairWise Subject (PairWiseSubjectSalt)</label>
+                                <input asp-for="Input.PairWiseSubjectSalt" class="form-control font-monospace" placeholder="opcjonalna sól dla anonimizacji sub" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border">
+                        <h6 class="fw-bold small text-uppercase text-muted mb-3">Dostawcy Zewnętrzni &amp; Device Flow</h6>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="Input.IdentityProviderRestrictions" class="form-label small fw-semibold">Ograniczenie Dostawców IdP (IdentityProviderRestrictions)</label>
+                                <input asp-for="Input.IdentityProviderRestrictions" class="form-control font-monospace" placeholder="Google Microsoft (rozdzielone spacją)" />
+                                <div class="form-text">Pozostaw puste, aby umożliwić logowanie przez wszystkich skonfigurowanych dostawców.</div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label asp-for="Input.UserSsoLifetime" class="form-label small fw-semibold">User SSO Lifetime (sekundy)</label>
+                                <input asp-for="Input.UserSsoLifetime" type="number" class="form-control font-monospace" placeholder="Puste = domyślne" />
+                            </div>
+
+                            <div class="col-md-3">
+                                <label asp-for="Input.DeviceCodeLifetime" class="form-label small fw-semibold">Device Code Lifetime (sekundy)</label>
+                                <input asp-for="Input.DeviceCodeLifetime" type="number" class="form-control font-monospace" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center">
+            <a asp-page="Index" class="btn btn-outline-secondary">
+                Anuluj
+            </a>
+            <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                <i class="bi bi-check-lg me-1"></i> Zapisz Zmiany w Bazie Danych
+            </button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function setGrantTypes(types) {
+            document.getElementById('grantTypesInput').value = types;
+        }
+
+        function appendScope(scope) {
+            var input = document.getElementById('scopesInput');
+            var current = input.value.trim();
+            if (!current) {
+                input.value = scope;
+            } else {
+                var parts = current.split(/\s+/);
+                if (!parts.includes(scope)) {
+                    input.value = current + ' ' + scope;
+                }
+            }
+        }
+    </script>
+}

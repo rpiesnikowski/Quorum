@@ -68,7 +68,10 @@
                                 <span class="badge bg-danger-subtle text-danger">Nieaktywny</span>
                             }
                         </td>
-                        <td class="text-end">
+                        <td class="text-end text-nowrap">
+                            <a asp-page="Edit" asp-route-id="@client.Id" class="btn btn-sm btn-outline-primary me-1" title="Edytuj">
+                                <i class="bi bi-pencil-square me-1"></i> Edytuj
+                            </a>
                             <form method="post" asp-page-handler="Delete" asp-route-id="@client.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć klienta @client.ClientId?');">
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Usuń">
                                     <i class="bi bi-trash"></i>
