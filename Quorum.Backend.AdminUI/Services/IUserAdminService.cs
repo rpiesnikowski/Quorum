@@ -12,6 +12,7 @@ public class AdminUserDto
 
 public interface IUserAdminService
 {
+    Task<int> GetUsersCountAsync();
     Task<IList<AdminUserDto>> GetUsersAsync();
     Task<(bool Success, string? Error)> CreateUserAsync(string userName, string email, string password, string? fullName, string? role);
     Task<(bool Success, string? Error)> DeleteUserAsync(string id);

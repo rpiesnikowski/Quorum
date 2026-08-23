@@ -17,6 +17,11 @@ public class IdentityUserAdminService<TUser> : IUserAdminService where TUser : I
         _roleManager = roleManager;
     }
 
+    public async Task<int> GetUsersCountAsync()
+    {
+        return await _userManager.Users.CountAsync();
+    }
+
     public async Task<IList<AdminUserDto>> GetUsersAsync()
     {
         var users = await _userManager.Users.AsNoTracking().ToListAsync();

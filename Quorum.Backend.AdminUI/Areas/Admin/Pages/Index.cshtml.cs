@@ -1,8 +1,7 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Open.IdentityServer.EntityFramework.DbContexts;
-using Quorum.Backend.AdminUI.Models;
+using Quorum.Backend.AdminUI.Services;
 
 namespace Quorum.Backend.AdminUI.Areas.Admin.Pages;
 
@@ -10,16 +9,16 @@ public class IndexModel : PageModel
 {
     private readonly ConfigurationDbContext _configDb;
     private readonly PersistedGrantDbContext _grantDb;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserAdminService _userService;
 
     public IndexModel(
         ConfigurationDbContext configDb,
         PersistedGrantDbContext grantDb,
-        UserManager<ApplicationUser> userManager)
+        IUserAdminService userService)
     {
         _configDb = configDb;
         _grantDb = grantDb;
-        _userManager = userManager;
+        _userService = userService;
     }
 
     public int ClientsCount { get; set; }
@@ -34,6 +33,6 @@ public class IndexModel : PageModel
         ScopesCount = await _configDb.ApiScopes.CountAsync();
         IdentityResourcesCount = await _configDb.IdentityResources.CountAsync();
         GrantsCount = await _grantDb.PersistedGrants.CountAsync();
-        UsersCount = await _userManager.Users.CountAsync();
+        UsersCount = await _userService.GetUsersCountAsync();
     }
 }
