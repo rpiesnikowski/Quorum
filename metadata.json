@@ -1,6 +1,6 @@
 {
   "name": "Quorum .NET 10 Identity Solution",
-  "description": "Kompletna solucja Quorum z projektem Quorum.Backend (.NET 10) opartym na Open.IdentityServer, SQLite/PostgreSQL EF Core, ASP.NET Core Identity oraz serwerowym GUI CRUD w Razor Pages.",
+  "description": "Kompletna solucja Quorum z projektami Quorum.Backend (.NET 10) oraz wydzieloną biblioteką Razor Class Library / paczką NuGet Quorum.Backend.AdminUI dla Open.IdentityServer i ASP.NET Core Identity.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,0 +1,95 @@
+@page
+@model Quorum.Backend.AdminUI.Areas.Admin.Pages.IdentityResources.CreateModel
+@{
+    ViewData["Title"] = "Nowy Zasób Tożsamości";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h4 mb-1"><i class="bi bi-person-vcard-fill me-2 text-success"></i>Nowy Zasób Tożsamości (IdentityResource)</h2>
+        <p class="text-muted small mb-0">Zdefiniuj nowy zakres tożsamości OIDC (Identity Scope) i skojarzone z nim claims użytkownika</p>
+    </div>
+    <a asp-page="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Wróć do listy
+    </a>
+</div>
+
+<form method="post">
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-light py-3">
+            <span class="fw-semibold text-secondary"><i class="bi bi-sliders me-2"></i>Podstawowe Właściwości Zasobu</span>
+        </div>
+        <div class="card-body p-4">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Input.Name" class="form-label fw-semibold">Nazwa Zasobu (Scope Name) <span class="text-danger">*</span></label>
+                    <input asp-for="Input.Name" class="form-control font-monospace" placeholder="np. custom_profile, company_info, department" />
+                    <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                    <div class="form-text">Identyfikator scope żądany przez klientów OIDC w parametrze <code>scope</code>.</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Input.DisplayName" class="form-label fw-semibold">Nazwa Wyświetlana (Display Name)</label>
+                    <input asp-for="Input.DisplayName" class="form-control" placeholder="np. Dane pracownicze i dział" />
+                    <span asp-validation-for="Input.DisplayName" class="text-danger small"></span>
+                    <div class="form-text">Przyjazna nazwa widoczna na ekranie zgody użytkownika (Consent Screen).</div>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Input.Description" class="form-label fw-semibold">Opis Zasobu</label>
+                    <textarea asp-for="Input.Description" class="form-control" rows="2" placeholder="Dokładny opis uprawnień nadawanych w ramach tego zasobu tożsamości"></textarea>
+                    <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Input.UserClaims" class="form-label fw-semibold">Skojarzone Typy Claims Użytkownika (User Claims)</label>
+                    <textarea asp-for="Input.UserClaims" class="form-control font-monospace" rows="3" placeholder="sub name given_name family_name email role department employee_id (rozdzielone spacją lub nową linią)"></textarea>
+                    <span asp-validation-for="Input.UserClaims" class="text-danger small"></span>
+                    <div class="form-text">Lista typów claims z profilu użytkownika (ASP.NET Identity), które zostaną dołączone do <code>id_token</code> lub zwrócone przez <code>/connect/userinfo</code> gdy ten scope zostanie przyznany.</div>
+                </div>
+
+                <div class="col-12"><hr class="my-2" /></div>
+
+                <div class="col-md-3">
+                    <div class="form-check form-switch">
+                        <input asp-for="Input.Enabled" class="form-check-input" type="checkbox" id="enabledSwitch" />
+                        <label class="form-check-label fw-semibold small" for="enabledSwitch">Aktywny (Enabled)</label>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="form-check form-switch">
+                        <input asp-for="Input.ShowInDiscoveryDocument" class="form-check-input" type="checkbox" id="discSwitch" />
+                        <label class="form-check-label fw-semibold small" for="discSwitch">Pokaż w Discovery</label>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="form-check form-switch">
+                        <input asp-for="Input.Required" class="form-check-input" type="checkbox" id="reqSwitch" />
+                        <label class="form-check-label fw-semibold small" for="reqSwitch">Wymagany (Required)</label>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="form-check form-switch">
+                        <input asp-for="Input.Emphasize" class="form-check-input" type="checkbox" id="emphSwitch" />
+                        <label class="form-check-label fw-semibold small" for="emphSwitch">Wyróżnij na Consent</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-light p-3 d-flex justify-content-between">
+            <a asp-page="Index" class="btn btn-outline-secondary">Anuluj</a>
+            <button type="submit" class="btn btn-success px-4 fw-semibold">
+                <i class="bi bi-check-lg me-1"></i> Utwórz Zasób Tożsamości
+            </button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

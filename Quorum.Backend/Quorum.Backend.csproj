@@ -27,4 +27,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Referencja do projektu / pakietu Quorum.Backend.AdminUI (RCL) -->
+    <ProjectReference Include="..\Quorum.Backend.AdminUI\Quorum.Backend.AdminUI.csproj" />
+  </ItemGroup>
+
 </Project>

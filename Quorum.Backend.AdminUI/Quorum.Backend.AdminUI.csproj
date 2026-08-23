@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Quorum.Backend.AdminUI</RootNamespace>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+
+    <!-- Konfiguracja Paczki NuGet (Automatyczne generowanie pakietu .nupkg przy budowaniu) -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Quorum.Backend.AdminUI</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Quorum</Authors>
+    <Company>Quorum</Company>
+    <Product>Quorum IdentityServer Admin UI</Product>
+    <Title>Quorum Admin UI for Open.IdentityServer</Title>
+    <Description>Kompletny, gotowy do użycia panel administracyjny Razor Pages dla Open.IdentityServer (Clients, ApiScopes, IdentityResources, Users, Persisted Grants).</Description>
+    <PackageTags>identityserver;openidentityserver;admin;adminui;razor-pages;oidc;oauth2;dotnet10</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Quorum/Quorum.Backend</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Quorum/Quorum.Backend</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Open.IdentityServer Entity Framework -->
+    <PackageReference Include="Open.IdentityServer.EntityFramework" Version="2.0.0" />
+    
+    <!-- ASP.NET Core Identity & EF Core -->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
+  </ItemGroup>
+
+</Project>

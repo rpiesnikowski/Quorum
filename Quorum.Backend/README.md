@@ -1,12 +1,19 @@
 # Quorum — Serwer Tożsamości .NET 10 (Open.IdentityServer)
 
-Kompletne rozwiązanie (nowoczesna solucja `Quorum.slnx` wraz z projektem `Quorum.Backend`) serwera tożsamości **OpenID Connect** i **OAuth 2.0** oparte na:
+Kompletne rozwiązanie (nowoczesna solucja `Quorum.slnx` wraz z projektami `Quorum.Backend` i biblioteką `Quorum.Backend.AdminUI`) serwera tożsamości **OpenID Connect** i **OAuth 2.0** oparte na:
 * **.NET 10.0 (C# 13)**
 * **Nowoczesny format solucji XML: `Quorum.slnx`**
 * **Open.IdentityServer 2.0.0** (od Rock Solid Knowledge)
 * **ASP.NET Core Identity** (lokalne konta użytkowników i role)
 * **Entity Framework Core** z automatyczną obsługą **SQLite** oraz **PostgreSQL**
-* **Serwerowe GUI Administracyjne** w **Razor Pages** stylizowane biblioteką **Bootstrap 5**
+* **Dedykowany pakiet / biblioteka Razor Class Library `Quorum.Backend.AdminUI`** publikowalna jako paczka NuGet z kompletnym panelem administracyjnym CRUD
+
+---
+
+## 📦 Struktura Solucji (`Quorum.slnx`)
+
+1. **`Quorum.Backend`** – Główny host ASP.NET Core z silnikiem Open.IdentityServer, endpointami OIDC, autentykacją ASP.NET Core Identity i obsługą EF Core (SQLite / PostgreSQL).
+2. **`Quorum.Backend.AdminUI`** – Niezależna biblioteka **Razor Class Library (RCL)** przygotowana pod dystrybucję jako pakiet **NuGet** (`GeneratePackageOnBuild = true`). Udostępnia metody rozszerzeń `AddQuorumAdminUI<TUser>()` i `UseQuorumAdminUI()`.
 
 ---
 
@@ -25,9 +32,8 @@ Uruchom aplikację (.NET 10):
 dotnet restore Quorum.slnx
 dotnet run --project Quorum.Backend
 
-# Opcja 2: Uruchomienie z profilem HTTPS z launchSettings.json
-cd Quorum.Backend
-dotnet run --launch-profile https
+# Opcja 2: Zbudowanie pakietu NuGet z Admin UI
+dotnet pack Quorum.Backend.AdminUI/Quorum.Backend.AdminUI.csproj -c Release -o ./artifacts
 ```
 
 Aplikacja wystawia punkty końcowe:

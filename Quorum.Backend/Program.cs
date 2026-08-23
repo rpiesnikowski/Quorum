@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Open.IdentityServer.EntityFramework.DbContexts;
+using Quorum.Backend.AdminUI.Extensions;
 using Quorum.Backend.Data;
 using Quorum.Backend.Models;
 
@@ -82,17 +83,12 @@ builder.Services.AddIdentityServer(options =>
 })
 .AddDeveloperSigningCredential();
 
-// 6. Konfiguracja kontrolerów MVC i Razor Pages (Admin Panel CRUD)
+// 6. Konfiguracja kontrolerów MVC i Quorum Admin UI (RCL / NuGet)
 builder.Services.AddControllersWithViews();
-builder.Services.AddRazorPages(options =>
+builder.Services.AddQuorumAdminUI<ApplicationUser>(options =>
 {
-    // Zabezpieczenie katalogu /Admin rolą Administratora
-    options.Conventions.AuthorizeAreaFolder("Admin", "/", "RequireAdministratorRole");
-});
-
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("RequireAdministratorRole", policy => policy.RequireRole("Admin"));
+    options.RequiredRole = "Admin";
+    options.EnableAuthorization = true;
 });
 
 var app = builder.Build();
@@ -111,6 +107,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseQuorumAdminUI();
 
 app.UseRouting();
 
