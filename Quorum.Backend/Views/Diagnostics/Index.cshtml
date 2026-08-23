@@ -1,0 +1,89 @@
+@model Quorum.Backend.Controllers.DiagnosticsViewModel
+@{
+    ViewData["Title"] = "Diagnostyka Tokenów i Claims";
+}
+
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-fingerprint text-primary me-2"></i>Diagnostyka Użytkownika</h2>
+            <p class="text-muted mb-0">Aktualne claims i właściwości sesji uwierzytelnienia</p>
+        </div>
+        <a href="/Admin" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-speedometer2 me-1"></i> Panel Admina
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold mb-0">Claims Użytkownika (Identity Claims)</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Typ Claim</th>
+                                <th>Wartość</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (User.Claims.Any())
+                            {
+                                @foreach (var claim in User.Claims)
+                                {
+                                    <tr>
+                                        <td><code class="text-primary">@claim.Type</code></td>
+                                        <td><span class="badge bg-secondary-subtle text-secondary font-monospace">@claim.Value</span></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted py-3">Brak claims w tożsamości</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold mb-0">Właściwości Sesji (Authentication Properties)</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        @if (Model.AuthenticateResult?.Properties?.Items != null && Model.AuthenticateResult.Properties.Items.Any())
+                        {
+                            @foreach (var prop in Model.AuthenticateResult.Properties.Items)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span class="small fw-semibold text-muted">@prop.Key</span>
+                                    <code class="small text-dark font-monospace text-break">@prop.Value</code>
+                                </li>
+                            }
+                        }
+                        else
+                        {
+                            <li class="list-group-item text-muted text-center py-3 small">Brak właściwości sesji</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card bg-primary-subtle border-primary-subtle rounded-3 p-3 text-primary-emphasis">
+                <div class="d-flex gap-2">
+                    <i class="bi bi-info-circle-fill fs-5"></i>
+                    <div class="small">
+                        Te dane są automatycznie mapowane na tokeny <strong>IdToken</strong> oraz <strong>AccessToken</strong> wystawiane przez Quorum dla połączonych aplikacji klienckich.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

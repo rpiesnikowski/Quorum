@@ -1,0 +1,58 @@
+@page
+@model Quorum.Backend.Areas.Admin.Pages.ApiScopes.CreateModel
+@{
+    ViewData["Title"] = "Nowy Zakres API";
+}
+
+<div class="mb-4">
+    <a asp-page="Index" class="text-decoration-none small text-muted">
+        <i class="bi bi-arrow-left me-1"></i> Powrót do listy zakresów
+    </a>
+    <h2 class="h4 mt-2">Dodaj Nowy Zakres API (ApiScope)</h2>
+</div>
+
+<div class="card border-0 shadow-sm col-lg-7">
+    <div class="card-body p-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Name" class="form-label fw-semibold">Identyfikator Scope <span class="text-danger">*</span></label>
+                <input asp-for="Input.Name" class="form-control font-monospace" placeholder="np. orders.read, invoices, reports.export" />
+                <span asp-validation-for="Input.Name" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.DisplayName" class="form-label fw-semibold">Nazwa wyświetlana <span class="text-danger">*</span></label>
+                <input asp-for="Input.DisplayName" class="form-control" placeholder="np. Odczyt zamówień w systemie" />
+                <span asp-validation-for="Input.DisplayName" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.Description" class="form-label fw-semibold">Opis (widoczny na ekranie zgody OIDC)</label>
+                <textarea asp-for="Input.Description" class="form-control" rows="3" placeholder="Pozwala aplikacji na pobieranie listy zamówień..."></textarea>
+            </div>
+
+            <div class="form-check mb-3">
+                <input asp-for="Input.Required" class="form-check-input" type="checkbox" id="requiredCheck" />
+                <label class="form-check-label" for="requiredCheck">
+                    Wymagany (Użytkownik nie może odznaczyć tego zakresu podczas zgody)
+                </label>
+            </div>
+
+            <div class="form-check mb-4">
+                <input asp-for="Input.Emphasize" class="form-check-input" type="checkbox" id="emphasizeCheck" />
+                <label class="form-check-label" for="emphasizeCheck">
+                    Wyróżniony (Podświetlony na ekranie zgody jako uprawnienie wrażliwe)
+                </label>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="bi bi-check-lg me-1"></i> Zapisz Zakres API
+                </button>
+                <a asp-page="Index" class="btn btn-outline-secondary">Anuluj</a>
+            </div>
+        </form>
+    </div>
+</div>

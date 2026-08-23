@@ -1,0 +1,72 @@
+@page
+@model Quorum.Backend.Areas.Admin.Pages.Clients.CreateModel
+@{
+    ViewData["Title"] = "Nowy Klient OIDC";
+}
+
+<div class="mb-4">
+    <a asp-page="Index" class="text-decoration-none small text-muted">
+        <i class="bi bi-arrow-left me-1"></i> Powrót do listy klientów
+    </a>
+    <h2 class="h4 mt-2">Dodaj nowego klienta OAuth2 / OIDC</h2>
+</div>
+
+<div class="card border-0 shadow-sm col-lg-8">
+    <div class="card-body p-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="Input.ClientId" class="form-label fw-semibold">Client ID <span class="text-danger">*</span></label>
+                <input asp-for="Input.ClientId" class="form-control font-monospace" placeholder="np. my-spa-app lub billing-api" />
+                <span asp-validation-for="Input.ClientId" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.ClientName" class="form-label fw-semibold">Nazwa wyświetlana <span class="text-danger">*</span></label>
+                <input asp-for="Input.ClientName" class="form-control" placeholder="np. Panel Klienta Web" />
+                <span asp-validation-for="Input.ClientName" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.GrantType" class="form-label fw-semibold">Typ Przepływu (Grant Type)</label>
+                <select asp-for="Input.GrantType" class="form-select">
+                    <option value="client_credentials">Client Credentials (Aplikacje w tle / M2M)</option>
+                    <option value="authorization_code">Authorization Code + PKCE (SPA / Web MVC / Mobile)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.ClientSecret" class="form-label fw-semibold">Client Secret (Hasło klienta)</label>
+                <input asp-for="Input.ClientSecret" class="form-control" type="password" placeholder="Wprowadź tajny klucz (zostanie zhaszowany SHA-256)" />
+                <div class="form-text small">Wymagane dla Client Credentials. Opcjonalne dla publicznych klientów z PKCE.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.AllowedScopes" class="form-label fw-semibold">Dozwolone Zakresy (Scopes)</label>
+                <input asp-for="Input.AllowedScopes" class="form-control font-monospace" placeholder="openid profile email api1" />
+                <div class="form-text small">Oddziel spacjami, np. <code>openid profile email api1 api.write</code></div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.RedirectUris" class="form-label fw-semibold">Redirect URIs (Dla Authorization Code)</label>
+                <input asp-for="Input.RedirectUris" class="form-control" placeholder="https://localhost:5002/signin-oidc, https://myapp.com/callback" />
+                <div class="form-text small">Oddziel przecinkami, jeśli podajesz kilka adresów URL.</div>
+            </div>
+
+            <div class="form-check mb-4">
+                <input asp-for="Input.RequirePkce" class="form-check-input" type="checkbox" id="requirePkceCheck" />
+                <label class="form-check-label" for="requirePkceCheck">
+                    Wymagaj Proof Key for Code Exchange (PKCE) - zalecane dla bezpieczeństwa
+                </label>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="bi bi-check-lg me-1"></i> Zapisz Klienta w Bazie
+                </button>
+                <a asp-page="Index" class="btn btn-outline-secondary">Anuluj</a>
+            </div>
+        </form>
+    </div>
+</div>

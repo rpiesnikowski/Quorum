@@ -1,0 +1,45 @@
+@page
+@model Quorum.Backend.Areas.Admin.Pages.IdentityResources.IndexModel
+@{
+    ViewData["Title"] = "Zasoby Tożsamości";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h4 mb-1"><i class="bi bi-person-vcard me-2 text-success"></i>Zasoby Tożsamości (IdentityResources)</h2>
+        <p class="text-muted small mb-0">Zdefiniowane zakresy danych użytkownika zwracane w id_token (np. openid, profile, email)</p>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nazwa Zasobu</th>
+                    <th>Nazwa Wyświetlana</th>
+                    <th>Opis</th>
+                    <th>Skojarzone Claims</th>
+                    <th>Wymagany</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var res in Model.Resources)
+                {
+                    <tr>
+                        <td class="fw-bold font-monospace text-success">@res.Name</td>
+                        <td>@res.DisplayName</td>
+                        <td class="text-muted small">@res.Description</td>
+                        <td>
+                            @foreach (var claim in res.UserClaims)
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary me-1">@claim.Type</span>
+                            }
+                        </td>
+                        <td>@(res.Required ? "Tak" : "Opcjonalny")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
