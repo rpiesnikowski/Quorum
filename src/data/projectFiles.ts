@@ -349,5 +349,19 @@ export const PROJECT_FILES: ProjectFile[] = [
     "category": "config",
     "description": "Plik konfiguracyjny z łatwą zmianą DatabaseProvider (Sqlite / PostgreSQL)",
     "content": "{\n  \"Logging\": {\n    \"LogLevel\": {\n      \"Default\": \"Information\",\n      \"Microsoft.AspNetCore\": \"Warning\",\n      \"Open.IdentityServer\": \"Information\"\n    }\n  },\n  \"AllowedHosts\": \"*\",\n  \"DatabaseProvider\": \"Sqlite\",\n  \"ConnectionStrings\": {\n    \"Sqlite\": \"Data Source=identityserver.db\",\n    \"PostgreSQL\": \"Host=localhost;Port=5432;Database=identity_server_db;Username=postgres;Password=postgres;\"\n  }\n}\n"
+  },
+  {
+    "path": "Quorum.Backend/wwwroot/css/site.css",
+    "name": "Quorum.Backend/wwwroot/css/site.css",
+    "category": "config",
+    "description": "Arkusz stylów CSS serwowany przez app.UseStaticFiles()",
+    "content": "/* Quorum IdentityServer - Global Custom Styles */\n:root {\n    --quorum-primary: #0d6efd;\n    --quorum-dark: #1e293b;\n}\n\nbody {\n    min-height: 100vh;\n    display: flex;\n    flex-direction: column;\n}\n\nmain {\n    flex: 1;\n}\n\n.table td, .table th {\n    vertical-align: middle;\n}\n"
+  },
+  {
+    "path": "Quorum.Backend/wwwroot/js/site.js",
+    "name": "Quorum.Backend/wwwroot/js/site.js",
+    "category": "config",
+    "description": "Skrypt JavaScript serwowany przez app.UseStaticFiles()",
+    "content": "// Quorum IdentityServer - Global JavaScript\nconsole.log('Quorum IdentityServer assets loaded.');\n"
   }
 ];
