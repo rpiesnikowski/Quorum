@@ -6,3 +6,61 @@ coverage/
 *.log
 .env*
 !.env.example
+## Artefakty kompilacji i katalogi wyjściowe (Build / Output)
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+out/
+build/
+
+## Pakiety NuGet
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+packages/
+
+## Testy i pokrycie kodu (Test Results)
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+## Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+## Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+## JetBrains Rider / ReSharper
+.idea/
+*.sln.iml
+_ReSharper*/
+
+## Native AOT (ulepszone w .NET 10) i lokalne pliki wykonywalne
+*.exe
+*.dll
+*.pdb
+*.so
+*.dylib
+
+## Profilowanie i diagnostyka
+*.prof
+*.dmp
+*.vsp
+*.vspx
+
+## Pliki środowiskowe i specyficzne dla użytkownika
+appsettings*.Development.json
+appsettings*.Local.json
+!.settings.json
