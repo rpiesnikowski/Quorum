@@ -227,19 +227,145 @@
                 <div class="tab-pane fade" id="flows" role="tabpanel">
                     <h5 class="fw-bold mb-3 text-secondary">Typy Przepływów OAuth2 (Grant Types) &amp; PKCE</h5>
 
-                    <div class="mb-3">
-                        <label asp-for="Input.AllowedGrantTypes" class="form-label fw-semibold small">Dozwolone Typy Przepływów (AllowedGrantTypes) <span class="text-danger">*</span></label>
-                        <input asp-for="Input.AllowedGrantTypes" id="grantTypesInput" class="form-control font-monospace" />
-                        <div class="form-text">Wpisz typy rozdzielone spacją (np. <code>authorization_code</code>, <code>client_credentials</code>, <code>urn:ietf:params:oauth:grant-type:device_code</code>, <code>refresh_token</code>).</div>
-                        <span asp-validation-for="Input.AllowedGrantTypes" class="text-danger small"></span>
+                    <!-- Zarządzanie Dozwolonymi Typami Przepływów -->
+                    <div class="card border-primary shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+                            <span class="fw-semibold"><i class="bi bi-diagram-3-fill me-2"></i>Dozwolone Typy Przepływów (AllowedGrantTypes) <span class="text-warning">*</span></span>
+                            <span id="grantCountBadge" class="badge bg-light text-primary">Wybrano: 0</span>
+                        </div>
+                        <div class="card-body p-3">
+                            <p class="text-muted small mb-3">
+                                Wybierz protokoły i metody wymiany tokenów, z których ten klient ma prawo korzystać. Kliknij na dostępny typ poniżej, aby go dodać lub usunąć.
+                            </p>
 
-                        <div class="mt-2 d-flex flex-wrap gap-1">
-                            <span class="small text-muted me-2 align-self-center">Szybkie szablony:</span>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('authorization_code')">Authorization Code</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('client_credentials')">Client Credentials</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('authorization_code urn:ietf:params:oauth:grant-type:device_code')">Code + Device Code</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('hybrid')">Hybrid</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGrantTypes('implicit')">Implicit</button>
+                            <!-- Ukryte pole zsynchronizowane z formularzem -->
+                            <input asp-for="Input.AllowedGrantTypes" id="grantTypesInput" type="hidden" />
+                            <span asp-validation-for="Input.AllowedGrantTypes" class="text-danger small d-block mb-2"></span>
+
+                            <!-- Kontener aktualnie wybranych typów -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Aktualnie Aktywne Typy Przepływów dla Klienta:</label>
+                                <div id="selectedGrantsContainer" class="p-3 bg-light rounded-3 border d-flex flex-wrap gap-2 align-items-center min-h-50">
+                                    <!-- Renderowane dynamicznie przez JS -->
+                                </div>
+                            </div>
+
+                            <!-- Szybkie szablony -->
+                            <div class="mb-3 p-2 bg-body-tertiary rounded border">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span class="small fw-semibold text-muted me-1"><i class="bi bi-magic me-1 text-primary"></i>Gotowe profile:</span>
+                                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="applyPreset(['authorization_code'])">
+                                        <i class="bi bi-browser-chrome me-1"></i>SPA / Web (Code + PKCE)
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="applyPreset(['client_credentials'])">
+                                        <i class="bi bi-hdd-network me-1"></i>Backend M2M (Client Credentials)
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="applyPreset(['authorization_code', 'urn:ietf:params:oauth:grant-type:device_code'])">
+                                        <i class="bi bi-tv me-1"></i>Web + Smart TV / CLI (Device Flow)
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="applyPreset(['hybrid'])">
+                                        Hybrid (MVC)
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-danger" onclick="applyPreset([])">
+                                        <i class="bi bi-x-circle me-1"></i>Wyczyść wszystko
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Klikalne standardowe typy przepływów -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Kliknij element, aby dodać lub usunąć z listy:</label>
+                                <div class="row g-2" id="availableGrantsList">
+                                    
+                                    <div class="col-md-6">
+                                        <div class="p-2 border rounded d-flex justify-content-between align-items-center grant-item-card" id="grant-card-authorization_code" style="cursor: pointer;" onclick="toggleGrantType('authorization_code')">
+                                            <div>
+                                                <div class="fw-bold font-monospace small text-primary">authorization_code</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">Standardowy przepływ dla Web, SPA (React, Vue, Angular) i Mobile z PKCE</div>
+                                            </div>
+                                            <div id="grant-status-authorization_code" class="ms-2"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="p-2 border rounded d-flex justify-content-between align-items-center grant-item-card" id="grant-card-client_credentials" style="cursor: pointer;" onclick="toggleGrantType('client_credentials')">
+                                            <div>
+                                                <div class="fw-bold font-monospace small text-primary">client_credentials</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">Dla serwisów backendowych, demonów i mikrousług (M2M)</div>
+                                            </div>
+                                            <div id="grant-status-client_credentials" class="ms-2"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="p-2 border rounded d-flex justify-content-between align-items-center grant-item-card" id="grant-card-urn_ietf_params_oauth_grant-type_device_code" style="cursor: pointer;" onclick="toggleGrantType('urn:ietf:params:oauth:grant-type:device_code')">
+                                            <div>
+                                                <div class="fw-bold font-monospace small text-primary">urn:ietf:params:oauth:grant-type:device_code</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">Device Flow dla Smart TV, konsoli, IoT i narzędzi CLI</div>
+                                            </div>
+                                            <div id="grant-status-urn_ietf_params_oauth_grant-type_device_code" class="ms-2"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="p-2 border rounded d-flex justify-content-between align-items-center grant-item-card" id="grant-card-refresh_token" style="cursor: pointer;" onclick="toggleGrantType('refresh_token')">
+                                            <div>
+                                                <div class="fw-bold font-monospace small text-primary">refresh_token</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">Dla odnawiania wygasłych Access Tokenów w tle (offline_access)</div>
+                                            </div>
+                                            <div id="grant-status-refresh_token" class="ms-2"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="p-2 border rounded d-flex justify-content-between align-items-center grant-item-card" id="grant-card-hybrid" style="cursor: pointer;" onclick="toggleGrantType('hybrid')">
+                                            <div>
+                                                <div class="fw-bold font-monospace small text-secondary">hybrid</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">Połączenie Code i Implicit dla tradycyjnych aplikacji MVC</div>
+                                            </div>
+                                            <div id="grant-status-hybrid" class="ms-2"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="p-2 border rounded d-flex justify-content-between align-items-center grant-item-card" id="grant-card-implicit" style="cursor: pointer;" onclick="toggleGrantType('implicit')">
+                                            <div>
+                                                <div class="fw-bold font-monospace small text-secondary">implicit</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">Starszy przepływ przeglądarkowy (odradzany na rzecz PKCE)</div>
+                                            </div>
+                                            <div id="grant-status-implicit" class="ms-2"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="p-2 border rounded d-flex justify-content-between align-items-center grant-item-card" id="grant-card-password" style="cursor: pointer;" onclick="toggleGrantType('password')">
+                                            <div>
+                                                <div class="fw-bold font-monospace small text-secondary">password</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">Resource Owner Password Credentials (legacy, bezpośrednie hasło)</div>
+                                            </div>
+                                            <div id="grant-status-password" class="ms-2"></div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- Dodaj niestandardowy Grant Type -->
+                            <div class="p-3 bg-light rounded border">
+                                <h6 class="fw-bold small mb-2 text-primary"><i class="bi bi-plus-circle me-1"></i>Dodaj Niestandardowy / Własny Typ Przepływu (Custom Grant)</h6>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-9">
+                                        <label for="customGrantInput" class="form-label small fw-semibold">Identyfikator lub URI przepływu</label>
+                                        <input type="text" id="customGrantInput" class="form-control form-control-sm font-monospace" placeholder="np. urn:openid:params:grant-type:ciba lub delegation" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-sm btn-primary w-100 fw-semibold" onclick="addCustomGrant()">
+                                            <i class="bi bi-plus-lg me-1"></i> Dodaj do listy
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
@@ -600,12 +726,114 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        function setGrantTypes(types) {
-            document.getElementById('grantTypesInput').value = types;
+        // --- Zarządzanie Dozwolonymi Typami Przepływów (AllowedGrantTypes) ---
+        let selectedGrants = new Set();
+
+        function initGrantTypes() {
+            const inputVal = document.getElementById('grantTypesInput').value;
+            if (inputVal && inputVal.trim()) {
+                const parts = inputVal.trim().split(/\s+/);
+                parts.forEach(p => {
+                    if (p.trim()) selectedGrants.add(p.trim());
+                });
+            }
+            renderGrantTypes();
         }
 
+        function renderGrantTypes() {
+            const container = document.getElementById('selectedGrantsContainer');
+            const hiddenInput = document.getElementById('grantTypesInput');
+            const countBadge = document.getElementById('grantCountBadge');
+
+            const grantsArray = Array.from(selectedGrants);
+            hiddenInput.value = grantsArray.join(' ');
+            if (countBadge) countBadge.textContent = 'Wybrano: ' + grantsArray.length;
+
+            if (grantsArray.length === 0) {
+                container.innerHTML = '<span class="text-danger small fst-italic"><i class="bi bi-exclamation-triangle-fill me-1"></i>Nie wybrano żadnego typu przepływu. Kliknij poniżej na kafelki, aby dodać (wymagany minimum 1 typ).</span>';
+            } else {
+                container.innerHTML = grantsArray.map(grant => `
+                    <span class="badge bg-primary text-white fs-6 p-2 px-3 d-inline-flex align-items-center gap-2 shadow-sm rounded-pill">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span class="font-monospace">${grant}</span>
+                        <button type="button" class="btn btn-sm btn-link text-white p-0 text-decoration-none ms-1 opacity-75 hover-opacity-100" 
+                                onclick="removeGrantType('${grant}')" title="Usuń ${grant}">
+                            <i class="bi bi-x-circle-fill fs-5"></i>
+                        </button>
+                    </span>
+                `).join('');
+            }
+
+            // Aktualizacja wyglądu dostępnych standardowych kafelków
+            const knownGrants = [
+                'authorization_code',
+                'client_credentials',
+                'urn:ietf:params:oauth:grant-type:device_code',
+                'refresh_token',
+                'hybrid',
+                'implicit',
+                'password'
+            ];
+
+            knownGrants.forEach(grant => {
+                const safeId = grant.replace(/:/g, '_').replace(/\./g, '_');
+                const card = document.getElementById('grant-card-' + safeId);
+                const status = document.getElementById('grant-status-' + safeId);
+                if (card && status) {
+                    if (selectedGrants.has(grant)) {
+                        card.classList.add('border-success', 'bg-success-subtle');
+                        card.classList.remove('border', 'bg-white');
+                        status.innerHTML = '<span class="badge bg-success px-2 py-1"><i class="bi bi-check2 me-1"></i>Aktywny</span>';
+                    } else {
+                        card.classList.remove('border-success', 'bg-success-subtle');
+                        card.classList.add('border');
+                        status.innerHTML = '<span class="badge bg-light text-secondary border px-2 py-1"><i class="bi bi-plus-lg me-1"></i>Dodaj</span>';
+                    }
+                }
+            });
+        }
+
+        function toggleGrantType(grant) {
+            if (selectedGrants.has(grant)) {
+                selectedGrants.delete(grant);
+            } else {
+                selectedGrants.add(grant);
+            }
+            renderGrantTypes();
+        }
+
+        function removeGrantType(grant) {
+            selectedGrants.delete(grant);
+            renderGrantTypes();
+        }
+
+        function addCustomGrant() {
+            const input = document.getElementById('customGrantInput');
+            if (input && input.value.trim()) {
+                const parts = input.value.trim().split(/\s+/);
+                parts.forEach(p => {
+                    if (p.trim()) selectedGrants.add(p.trim());
+                });
+                input.value = '';
+                renderGrantTypes();
+            }
+        }
+
+        function applyPreset(presetGrants) {
+            selectedGrants.clear();
+            presetGrants.forEach(g => selectedGrants.add(g));
+            renderGrantTypes();
+        }
+
+        // Inicjalizacja po załadowaniu drzewa DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            initGrantTypes();
+        });
+
+        // --- Zarządzanie Zakresami (Scopes) ---
         function appendScope(scope) {
             var input = document.getElementById('scopesInput');
+            if (!input) return;
             var current = input.value.trim();
             if (!current) {
                 input.value = scope;

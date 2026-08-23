@@ -322,12 +322,15 @@ public class EditModel : PageModel
             entity.RequireClientSecret = false;
         }
 
-        // 2. AllowedGrantTypes
-        entity.AllowedGrantTypes.Clear();
-        if (!string.IsNullOrWhiteSpace(Input.AllowedGrantTypes))
+        // 2. AllowedGrantTypes - Bezpieczna synchronizacja kolekcji
+        var submittedGrants = (!string.IsNullOrWhiteSpace(Input.AllowedGrantTypes))
+            ? Input.AllowedGrantTypes.Split(new[] { ' ', ',', '\r', '\n', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            : new List<string>();
+
+        entity.AllowedGrantTypes.RemoveAll(g => !submittedGrants.Contains(g.GrantType, StringComparer.OrdinalIgnoreCase));
+        foreach (var grant in submittedGrants)
         {
-            var grants = Input.AllowedGrantTypes.Split(new[] { ' ', ',', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct();
-            foreach (var grant in grants)
+            if (!entity.AllowedGrantTypes.Any(g => g.GrantType.Equals(grant, StringComparison.OrdinalIgnoreCase)))
             {
                 entity.AllowedGrantTypes.Add(new Open.IdentityServer.EntityFramework.Entities.ClientGrantType
                 {
@@ -336,12 +339,15 @@ public class EditModel : PageModel
             }
         }
 
-        // 3. AllowedScopes
-        entity.AllowedScopes.Clear();
-        if (!string.IsNullOrWhiteSpace(Input.AllowedScopes))
+        // 3. AllowedScopes - Bezpieczna synchronizacja kolekcji
+        var submittedScopes = (!string.IsNullOrWhiteSpace(Input.AllowedScopes))
+            ? Input.AllowedScopes.Split(new[] { ' ', ',', '\r', '\n', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            : new List<string>();
+
+        entity.AllowedScopes.RemoveAll(s => !submittedScopes.Contains(s.Scope, StringComparer.OrdinalIgnoreCase));
+        foreach (var scope in submittedScopes)
         {
-            var scopes = Input.AllowedScopes.Split(new[] { ' ', ',', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct();
-            foreach (var scope in scopes)
+            if (!entity.AllowedScopes.Any(s => s.Scope.Equals(scope, StringComparison.OrdinalIgnoreCase)))
             {
                 entity.AllowedScopes.Add(new Open.IdentityServer.EntityFramework.Entities.ClientScope
                 {
@@ -350,12 +356,15 @@ public class EditModel : PageModel
             }
         }
 
-        // 4. RedirectUris
-        entity.RedirectUris.Clear();
-        if (!string.IsNullOrWhiteSpace(Input.RedirectUris))
+        // 4. RedirectUris - Bezpieczna synchronizacja kolekcji
+        var submittedRedirectUris = (!string.IsNullOrWhiteSpace(Input.RedirectUris))
+            ? Input.RedirectUris.Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            : new List<string>();
+
+        entity.RedirectUris.RemoveAll(r => !submittedRedirectUris.Contains(r.RedirectUri, StringComparer.OrdinalIgnoreCase));
+        foreach (var uri in submittedRedirectUris)
         {
-            var uris = Input.RedirectUris.Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct();
-            foreach (var uri in uris)
+            if (!entity.RedirectUris.Any(r => r.RedirectUri.Equals(uri, StringComparison.OrdinalIgnoreCase)))
             {
                 entity.RedirectUris.Add(new Open.IdentityServer.EntityFramework.Entities.ClientRedirectUri
                 {
@@ -364,12 +373,15 @@ public class EditModel : PageModel
             }
         }
 
-        // 5. PostLogoutRedirectUris
-        entity.PostLogoutRedirectUris.Clear();
-        if (!string.IsNullOrWhiteSpace(Input.PostLogoutRedirectUris))
+        // 5. PostLogoutRedirectUris - Bezpieczna synchronizacja kolekcji
+        var submittedPostLogoutUris = (!string.IsNullOrWhiteSpace(Input.PostLogoutRedirectUris))
+            ? Input.PostLogoutRedirectUris.Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            : new List<string>();
+
+        entity.PostLogoutRedirectUris.RemoveAll(p => !submittedPostLogoutUris.Contains(p.PostLogoutRedirectUri, StringComparer.OrdinalIgnoreCase));
+        foreach (var uri in submittedPostLogoutUris)
         {
-            var postUris = Input.PostLogoutRedirectUris.Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct();
-            foreach (var uri in postUris)
+            if (!entity.PostLogoutRedirectUris.Any(p => p.PostLogoutRedirectUri.Equals(uri, StringComparison.OrdinalIgnoreCase)))
             {
                 entity.PostLogoutRedirectUris.Add(new Open.IdentityServer.EntityFramework.Entities.ClientPostLogoutRedirectUri
                 {
@@ -378,12 +390,15 @@ public class EditModel : PageModel
             }
         }
 
-        // 6. AllowedCorsOrigins
-        entity.AllowedCorsOrigins.Clear();
-        if (!string.IsNullOrWhiteSpace(Input.AllowedCorsOrigins))
+        // 6. AllowedCorsOrigins - Bezpieczna synchronizacja kolekcji
+        var submittedCors = (!string.IsNullOrWhiteSpace(Input.AllowedCorsOrigins))
+            ? Input.AllowedCorsOrigins.Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            : new List<string>();
+
+        entity.AllowedCorsOrigins.RemoveAll(c => !submittedCors.Contains(c.Origin, StringComparer.OrdinalIgnoreCase));
+        foreach (var origin in submittedCors)
         {
-            var origins = Input.AllowedCorsOrigins.Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct();
-            foreach (var origin in origins)
+            if (!entity.AllowedCorsOrigins.Any(c => c.Origin.Equals(origin, StringComparison.OrdinalIgnoreCase)))
             {
                 entity.AllowedCorsOrigins.Add(new Open.IdentityServer.EntityFramework.Entities.ClientCorsOrigin
                 {
@@ -392,12 +407,15 @@ public class EditModel : PageModel
             }
         }
 
-        // 7. IdentityProviderRestrictions
-        entity.IdentityProviderRestrictions.Clear();
-        if (!string.IsNullOrWhiteSpace(Input.IdentityProviderRestrictions))
+        // 7. IdentityProviderRestrictions - Bezpieczna synchronizacja kolekcji
+        var submittedIdps = (!string.IsNullOrWhiteSpace(Input.IdentityProviderRestrictions))
+            ? Input.IdentityProviderRestrictions.Split(new[] { ' ', ',', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            : new List<string>();
+
+        entity.IdentityProviderRestrictions.RemoveAll(i => !submittedIdps.Contains(i.Provider, StringComparer.OrdinalIgnoreCase));
+        foreach (var idp in submittedIdps)
         {
-            var idps = Input.IdentityProviderRestrictions.Split(new[] { ' ', ',', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct();
-            foreach (var idp in idps)
+            if (!entity.IdentityProviderRestrictions.Any(i => i.Provider.Equals(idp, StringComparison.OrdinalIgnoreCase)))
             {
                 entity.IdentityProviderRestrictions.Add(new Open.IdentityServer.EntityFramework.Entities.ClientIdPRestriction
                 {
