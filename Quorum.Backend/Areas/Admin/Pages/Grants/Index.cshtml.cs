@@ -19,9 +19,9 @@ public class IndexModel : PageModel
         Grants = await _context.PersistedGrants.AsNoTracking().ToListAsync();
     }
 
-    public async Task<IActionResult> OnPostRevokeAsync(string key)
+    public async Task<IActionResult> OnPostRevokeAsync(long id, string? key = null)
     {
-        var grant = await _context.PersistedGrants.FindAsync(key);
+        var grant = await _context.PersistedGrants.FirstOrDefaultAsync(x => x.Id == id || (key != null && x.Key == key));
         if (grant != null)
         {
             _context.PersistedGrants.Remove(grant);

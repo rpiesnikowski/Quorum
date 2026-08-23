@@ -92,6 +92,12 @@ public class EditModel : PageModel
         public int? UserSsoLifetime { get; set; }
         public string? UserCodeType { get; set; }
         public int DeviceCodeLifetime { get; set; } = 300;
+
+        // Statyczne Claims przypisane do Klienta
+        public List<ExistingClaimModel> ExistingClaims { get; set; } = new();
+        public string? NewClaimType { get; set; }
+        public string? NewClaimValue { get; set; }
+        public string? NewClaimValueType { get; set; } = "http://www.w3.org/2001/XMLSchema#string";
     }
 
     public class ExistingSecretModel
@@ -101,6 +107,15 @@ public class EditModel : PageModel
         public string? Description { get; set; }
         public DateTime? Expiration { get; set; }
         public string ValuePreview { get; set; } = string.Empty;
+        public bool Delete { get; set; } = false;
+    }
+
+    public class ExistingClaimModel
+    {
+        public int Id { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public string? ValueType { get; set; }
         public bool Delete { get; set; } = false;
     }
 
@@ -188,7 +203,15 @@ public class EditModel : PageModel
             IdentityProviderRestrictions = string.Join(" ", entity.IdentityProviderRestrictions.Select(i => i.Provider)),
             UserSsoLifetime = entity.UserSsoLifetime,
             UserCodeType = entity.UserCodeType,
-            DeviceCodeLifetime = entity.DeviceCodeLifetime
+            DeviceCodeLifetime = entity.DeviceCodeLifetime,
+
+            ExistingClaims = (entity.Claims ?? new List<Open.IdentityServer.EntityFramework.Entities.ClientClaim>()).Select(c => new ExistingClaimModel
+            {
+                Id = c.Id,
+                Type = c.Type,
+                Value = c.Value,
+                ValueType = c.ValueType
+            }).ToList()
         };
 
         return Page();
@@ -381,6 +404,26 @@ public class EditModel : PageModel
                     Provider = idp
                 });
             }
+        }
+
+        // 8. Claims Klienta (Client Claims)
+        if (Input.ExistingClaims != null && Input.ExistingClaims.Any())
+        {
+            var claimsToDelete = Input.ExistingClaims.Where(c => c.Delete).Select(c => c.Id).ToList();
+            if (claimsToDelete.Any())
+            {
+                entity.Claims.RemoveAll(c => claimsToDelete.Contains(c.Id));
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(Input.NewClaimType) && !string.IsNullOrWhiteSpace(Input.NewClaimValue))
+        {
+            entity.Claims.Add(new Open.IdentityServer.EntityFramework.Entities.ClientClaim
+            {
+                Type = Input.NewClaimType.Trim(),
+                Value = Input.NewClaimValue.Trim(),
+                ValueType = string.IsNullOrWhiteSpace(Input.NewClaimValueType) ? "http://www.w3.org/2001/XMLSchema#string" : Input.NewClaimValueType.Trim()
+            });
         }
 
         entity.Updated = DateTime.UtcNow;

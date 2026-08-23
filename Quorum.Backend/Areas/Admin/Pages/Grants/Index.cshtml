@@ -45,7 +45,7 @@
                         <td class="small text-muted">@grant.CreationTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
                         <td class="small text-muted">@(grant.Expiration?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Nigdy")</td>
                         <td class="text-end">
-                            <form method="post" asp-page-handler="Revoke" asp-route-key="@grant.Key" class="d-inline" onsubmit="return confirm('Czy na pewno unieważnić ten token?');">
+                            <form method="post" asp-page-handler="Revoke" asp-route-id="@grant.Id" asp-route-key="@grant.Key" class="d-inline" onsubmit="return confirm('Czy na pewno unieważnić ten token?');">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                     <i class="bi bi-x-circle me-1"></i> Unieważnij
                                 </button>
