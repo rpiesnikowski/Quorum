@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Open.IdentityServer.EntityFramework.DbContexts;
@@ -6,11 +7,19 @@ using Quorum.Backend.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Rejestracja bazy danych dla kont użytkowników (ApplicationDbContext)
+// 1. Obsługa nagłówków X-Forwarded-Proto / X-Forwarded-For dla Reverse Proxy (Docker/Nginx/Caddy)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// 2. Rejestracja bazy danych dla kont użytkowników (ApplicationDbContext)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.ConfigureDatabase<ApplicationDbContext>(builder.Configuration));
 
-// 2. Konfiguracja ASP.NET Core Identity
+// 3. Konfiguracja ASP.NET Core Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = false;
@@ -22,7 +31,27 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// 3. Konfiguracja Open.IdentityServer (RSK) z Entity Framework
+// 4. Konfiguracja ciasteczek logowania i sesji (elastyczna obsługa HTTP / HTTPS w Development i Produkcji)
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.Cookie.Name = "Quorum.Identity";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Działa bez problemu zarówno na https://localhost:5001 jak i http://localhost:5000
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true;
+});
+
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.MinimumSameSitePolicy = SameSiteMode.Lax;
+    options.Secure = CookieSecurePolicy.SameAsRequest;
+});
+
+// 5. Konfiguracja Open.IdentityServer (RSK) z Entity Framework
 builder.Services.AddIdentityServer(options =>
 {
     options.Events.RaiseErrorEvents = true;
@@ -35,6 +64,8 @@ builder.Services.AddIdentityServer(options =>
     options.UserInteraction.LogoutUrl = "/Account/Logout";
     options.UserInteraction.ConsentUrl = "/Consent";
     options.UserInteraction.ErrorUrl = "/Home/Error";
+
+    options.Authentication.CookieSameSiteMode = SameSiteMode.Lax;
 })
 .AddAspNetIdentity<ApplicationUser>()
 // Magazyn konfiguracji w bazie danych (Klienci, Scopes, IdentityResources)
@@ -51,7 +82,7 @@ builder.Services.AddIdentityServer(options =>
 })
 .AddDeveloperSigningCredential();
 
-// 4. Konfiguracja kontrolerów MVC i Razor Pages (Admin Panel CRUD)
+// 6. Konfiguracja kontrolerów MVC i Razor Pages (Admin Panel CRUD)
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages(options =>
 {
@@ -64,17 +95,12 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireAdministratorRole", policy => policy.RequireRole("Admin"));
 });
 
-// Konfiguracja ciasteczek logowania
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.LoginPath = "/Account/Login";
-    options.LogoutPath = "/Account/Logout";
-    options.AccessDeniedPath = "/Account/AccessDenied";
-});
-
 var app = builder.Build();
 
-// 5. Automatyczna migracja i Seedowanie danych początkowych
+// Przetwarzanie nagłówków Proxy przed routingiem
+app.UseForwardedHeaders();
+
+// 7. Automatyczna migracja i Seedowanie danych początkowych
 await SeedData.EnsureSeedDataAsync(app);
 
 if (!app.Environment.IsDevelopment())
@@ -88,7 +114,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// 6. Pipeline IdentityServer i autoryzacji
+// 8. Pipeline IdentityServer i autoryzacji
 app.UseIdentityServer();
 app.UseAuthorization();
 

@@ -14,19 +14,25 @@ Kompletne rozwiązanie (nowoczesna solucja `Quorum.slnx` wraz z projektem `Quoru
 
 ### 1. Uruchomienie z bazą SQLite (domyślnie)
 
-Wymagany jest zainstalowany .NET 10 SDK:
+Zaufaj deweloperskiemu certyfikatowi HTTPS (jednorazowo w systemie):
+```bash
+dotnet dev-certs https --trust
+```
+
+Uruchom aplikację (.NET 10):
 ```bash
 # Opcja 1: Uruchomienie z poziomu solucji (.slnx)
 dotnet restore Quorum.slnx
 dotnet run --project Quorum.Backend
 
-# Opcja 2: Uruchomienie bezpośrednio z katalogu projektu
+# Opcja 2: Uruchomienie z profilem HTTPS z launchSettings.json
 cd Quorum.Backend
-dotnet restore
-dotnet run
+dotnet run --launch-profile https
 ```
 
-Aplikacja automatycznie utworzy bazę `identityserver.db` oraz załaduje początkowe dane (seed):
+Aplikacja wystawia punkty końcowe:
+* **HTTPS:** [https://localhost:5001](https://localhost:5001)
+* **HTTP:** [http://localhost:5000](http://localhost:5000)
 * **Panel Administratora:** [https://localhost:5001/Admin](https://localhost:5001/Admin)
 * **Metadane OpenID Discovery:** [https://localhost:5001/.well-known/openid-configuration](https://localhost:5001/.well-known/openid-configuration)
 * **Domyślny login admina:** `admin`
