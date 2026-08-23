@@ -97,7 +97,6 @@ public class EditModel : PageModel
         public List<ExistingClaimModel> ExistingClaims { get; set; } = new();
         public string? NewClaimType { get; set; }
         public string? NewClaimValue { get; set; }
-        public string? NewClaimValueType { get; set; } = "http://www.w3.org/2001/XMLSchema#string";
     }
 
     public class ExistingSecretModel
@@ -115,7 +114,6 @@ public class EditModel : PageModel
         public int Id { get; set; }
         public string Type { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
-        public string? ValueType { get; set; }
         public bool Delete { get; set; } = false;
     }
 
@@ -209,8 +207,7 @@ public class EditModel : PageModel
             {
                 Id = c.Id,
                 Type = c.Type,
-                Value = c.Value,
-                ValueType = c.ValueType
+                Value = c.Value
             }).ToList()
         };
 
@@ -439,8 +436,7 @@ public class EditModel : PageModel
             entity.Claims.Add(new Open.IdentityServer.EntityFramework.Entities.ClientClaim
             {
                 Type = Input.NewClaimType.Trim(),
-                Value = Input.NewClaimValue.Trim(),
-                ValueType = string.IsNullOrWhiteSpace(Input.NewClaimValueType) ? "http://www.w3.org/2001/XMLSchema#string" : Input.NewClaimValueType.Trim()
+                Value = Input.NewClaimValue.Trim()
             });
         }
 
