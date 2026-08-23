@@ -1,10 +1,14 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Open.IdentityServer.EntityFramework.DbContexts;
+using Quorum.Backend.AdminUI.Data;
 using Quorum.Backend.AdminUI.Extensions;
 using Quorum.Backend.Data;
 using Quorum.Backend.Models;
+using Quorum.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,9 +20,12 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-// 2. Rejestracja bazy danych dla kont użytkowników (ApplicationDbContext)
+// 2. Rejestracja bazy danych dla kont użytkowników i dynamicznych federacji (ApplicationDbContext)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.ConfigureDatabase<ApplicationDbContext>(builder.Configuration));
+
+// Rejestracja interfejsu IFederationDbContext dla panelu AdminUI
+builder.Services.AddScoped<IFederationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
 // 3. Konfiguracja ASP.NET Core Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -41,7 +48,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.Name = "Quorum.Identity";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Działa bez problemu zarówno na https://localhost:5001 jak i http://localhost:5000
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
 });
@@ -52,7 +59,12 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
     options.Secure = CookieSecurePolicy.SameAsRequest;
 });
 
-// 5. Konfiguracja Open.IdentityServer (RSK) z Entity Framework
+// 5. Konfiguracja Dynamicznych Dostawców Tożsamości OIDC (bez restartu serwera)
+builder.Services.AddScoped<IDynamicOidcService, DynamicOidcService>();
+builder.Services.AddSingleton<IAuthenticationSchemeProvider, DynamicAuthenticationSchemeProvider>();
+builder.Services.AddTransient<OpenIdConnectHandler>();
+
+// 6. Konfiguracja Open.IdentityServer (RSK) z Entity Framework
 builder.Services.AddIdentityServer(options =>
 {
     options.Events.RaiseErrorEvents = true;
@@ -83,7 +95,7 @@ builder.Services.AddIdentityServer(options =>
 })
 .AddDeveloperSigningCredential();
 
-// 6. Konfiguracja kontrolerów MVC i Quorum Admin UI (RCL / NuGet)
+// 7. Konfiguracja kontrolerów MVC i Quorum Admin UI (RCL / NuGet)
 builder.Services.AddControllersWithViews();
 builder.Services.AddQuorumAdminUI<ApplicationUser>(options =>
 {
@@ -96,8 +108,15 @@ var app = builder.Build();
 // Przetwarzanie nagłówków Proxy przed routingiem
 app.UseForwardedHeaders();
 
-// 7. Automatyczna migracja i Seedowanie danych początkowych
+// 8. Automatyczna migracja i Seedowanie danych początkowych (w tym federacji Entra ID, Azure B2C, Google OIDC)
 await SeedData.EnsureSeedDataAsync(app);
+
+// Inicjalizacja i załadowanie dynamicznych schematów OIDC do pamięci
+using (var scope = app.Services.CreateScope())
+{
+    var dynamicOidcService = scope.ServiceProvider.GetRequiredService<IDynamicOidcService>();
+    await dynamicOidcService.ReloadFederationSchemesAsync();
+}
 
 if (!app.Environment.IsDevelopment())
 {

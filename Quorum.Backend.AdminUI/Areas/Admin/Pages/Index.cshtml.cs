@@ -10,15 +10,18 @@ public class IndexModel : PageModel
     private readonly ConfigurationDbContext _configDb;
     private readonly PersistedGrantDbContext _grantDb;
     private readonly IUserAdminService _userService;
+    private readonly IFederationAdminService _federationService;
 
     public IndexModel(
         ConfigurationDbContext configDb,
         PersistedGrantDbContext grantDb,
-        IUserAdminService userService)
+        IUserAdminService userService,
+        IFederationAdminService federationService)
     {
         _configDb = configDb;
         _grantDb = grantDb;
         _userService = userService;
+        _federationService = federationService;
     }
 
     public int ClientsCount { get; set; }
@@ -26,6 +29,7 @@ public class IndexModel : PageModel
     public int IdentityResourcesCount { get; set; }
     public int UsersCount { get; set; }
     public int GrantsCount { get; set; }
+    public int FederationsCount { get; set; }
 
     public async Task OnGetAsync()
     {
@@ -34,5 +38,6 @@ public class IndexModel : PageModel
         IdentityResourcesCount = await _configDb.IdentityResources.CountAsync();
         GrantsCount = await _grantDb.PersistedGrants.CountAsync();
         UsersCount = await _userService.GetUsersCountAsync();
+        FederationsCount = await _federationService.GetFederationsCountAsync();
     }
 }

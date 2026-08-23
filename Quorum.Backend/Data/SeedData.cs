@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Open.IdentityServer.EntityFramework.DbContexts;
 using Open.IdentityServer.EntityFramework.Mappers;
 using Open.IdentityServer.Models;
+using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.Models;
 
 namespace Quorum.Backend.Data;
@@ -147,6 +148,85 @@ public static class SeedData
                 }.ToEntity()
             );
             await configDb.SaveChangesAsync();
+        }
+
+        // 8. Seedowanie Dynamicznych Dostawców Tożsamości OIDC (Dynamic External Providers)
+        if (!await appDb.FederationProviders.AnyAsync())
+        {
+            appDb.FederationProviders.AddRange(
+                // 1. Microsoft Entra ID (Azure Active Directory)
+                new OidcFederationProvider
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Scheme = "entra-id",
+                    DisplayName = "Microsoft Entra ID",
+                    Authority = "https://login.microsoftonline.com/organizations/v2.0",
+                    ClientId = "00000000-0000-0000-0000-000000000001",
+                    ClientSecret = "entra-sample-client-secret",
+                    ResponseType = "code",
+                    Scope = "openid profile email",
+                    CallbackPath = "/signin-oidc-entra",
+                    SignedOutCallbackPath = "/signout-callback-oidc",
+                    UsePkce = true,
+                    GetClaimsFromUserInfoEndpoint = true,
+                    SaveTokens = true,
+                    IsEnabled = true,
+                    AutoProvisionUsers = true,
+                    DefaultRole = "User",
+                    IconType = "microsoft",
+                    ButtonColor = "#0078D4",
+                    Prompt = "select_account"
+                },
+
+                // 2. Azure AD B2C (Customer Identity and Access Management)
+                new OidcFederationProvider
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Scheme = "azure-b2c",
+                    DisplayName = "Azure AD B2C (CIAM)",
+                    Authority = "https://mytenant.b2clogin.com/mytenant.onmicrosoft.com/b2c_1_susi/v2.0/",
+                    ClientId = "00000000-0000-0000-0000-000000000002",
+                    ClientSecret = "b2c-sample-client-secret",
+                    ResponseType = "code",
+                    Scope = "openid profile email",
+                    CallbackPath = "/signin-oidc-b2c",
+                    SignedOutCallbackPath = "/signout-callback-oidc",
+                    UsePkce = true,
+                    GetClaimsFromUserInfoEndpoint = true,
+                    SaveTokens = true,
+                    IsEnabled = true,
+                    AutoProvisionUsers = true,
+                    DefaultRole = "User",
+                    IconType = "azure",
+                    ButtonColor = "#0089D6",
+                    AdditionalParametersJson = "{\"p\": \"b2c_1_susi\"}"
+                },
+
+                // 3. Google Workspace / Google Accounts OIDC
+                new OidcFederationProvider
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Scheme = "google-oidc",
+                    DisplayName = "Google Workspace",
+                    Authority = "https://accounts.google.com",
+                    ClientId = "000000000000-samplegoogleclientid.apps.googleusercontent.com",
+                    ClientSecret = "GOCSPX-SampleGoogleClientSecret",
+                    ResponseType = "code",
+                    Scope = "openid profile email",
+                    CallbackPath = "/signin-oidc-google",
+                    SignedOutCallbackPath = "/signout-callback-oidc",
+                    UsePkce = true,
+                    GetClaimsFromUserInfoEndpoint = true,
+                    SaveTokens = true,
+                    IsEnabled = true,
+                    AutoProvisionUsers = true,
+                    DefaultRole = "User",
+                    IconType = "google",
+                    ButtonColor = "#4285F4",
+                    Prompt = "select_account"
+                }
+            );
+            await appDb.SaveChangesAsync();
         }
     }
 }

@@ -14,8 +14,59 @@
                 <p class="text-muted small">Centralny serwer tożsamości OpenID Connect / OAuth 2.0</p>
             </div>
 
-            <div class="card border-0 shadow-sm rounded-4">
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show small mb-3 shadow-sm rounded-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <div class="card border-0 shadow-sm rounded-4 mb-3">
                 <div class="card-body p-4 p-md-5">
+                    @if (Model.ExternalProviders != null && Model.ExternalProviders.Any())
+                    {
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold small text-muted text-uppercase mb-3">Zaloguj się przez dostawcę SSO (Federated OIDC)</label>
+                            <div class="d-flex flex-column gap-2">
+                                @foreach (var provider in Model.ExternalProviders)
+                                {
+                                    <form asp-controller="Account" asp-action="ExternalLogin" method="post">
+                                        <input type="hidden" name="provider" value="@provider.Scheme" />
+                                        <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                                        <button type="submit" class="btn w-100 py-2 d-flex align-items-center justify-content-center gap-2 text-white fw-semibold rounded-3 shadow-sm"
+                                                style="background-color: @(provider.ButtonColor ?? "#0d6efd"); border: none;">
+                                            @if (provider.IconType == "microsoft")
+                                            {
+                                                <i class="bi bi-microsoft"></i>
+                                            }
+                                            else if (provider.IconType == "azure")
+                                            {
+                                                <i class="bi bi-cloud-check-fill"></i>
+                                            }
+                                            else if (provider.IconType == "google")
+                                            {
+                                                <i class="bi bi-google"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-shield-lock"></i>
+                                            }
+                                            <span>Zaloguj przez @provider.DisplayName</span>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="position-relative my-4">
+                            <hr class="text-secondary opacity-25" />
+                            <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small fw-semibold">
+                                lub zaloguj się kontem lokalnym
+                            </span>
+                        </div>
+                    }
+
                     <form method="post" asp-controller="Account" asp-action="Login">
                         <input type="hidden" asp-for="ReturnUrl" />
                         
@@ -46,7 +97,7 @@
 
                         <div class="d-grid gap-2">
                             <button type="submit" name="button" value="login" class="btn btn-primary py-2 fw-semibold">
-                                <i class="bi bi-box-arrow-in-right me-1"></i> Zaloguj się
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Zaloguj się kontem lokalnym
                             </button>
                             @if (!string.IsNullOrEmpty(Model.ReturnUrl))
                             {

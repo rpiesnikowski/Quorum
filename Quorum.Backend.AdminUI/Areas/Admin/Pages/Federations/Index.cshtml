@@ -1,0 +1,183 @@
+@page
+@model Quorum.Backend.AdminUI.Areas.Admin.Pages.Federations.IndexModel
+@{
+    ViewData["Title"] = "Dynamiczne Federacje OIDC";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-diagram-3-fill text-primary me-2"></i>Dynamiczne Federacje OIDC
+        </h2>
+        <p class="text-muted mb-0">
+            Zarządzaj zewnętrznymi dostawcami tożsamości OpenID Connect (Entra ID, Azure AD B2C, Google itp.) z możliwością dodawania i modyfikacji <strong>w locie, bez restartu aplikacji</strong>.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-page="Create" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-lg me-1"></i> Dodaj Dostawcę OIDC
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Dostawca / Schemat</th>
+                        <th>Issuer (Authority URL)</th>
+                        <th>Client ID</th>
+                        <th>Zabezpieczenia</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Federations.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                                Brak skonfigurowanych dynamicznych dostawców OIDC.<br />
+                                <a asp-page="Create" class="btn btn-sm btn-outline-primary mt-2">Dodaj pierwszą federację</a>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var fed in Model.Federations)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="rounded-3 p-2 d-flex align-items-center justify-content-center text-white" 
+                                             style="width: 42px; height: 42px; background-color: @(fed.ButtonColor ?? (fed.IconType == "microsoft" ? "#0078D4" : fed.IconType == "azure" ? "#0089D6" : fed.IconType == "google" ? "#4285F4" : "#6c757d"));">
+                                            @if (fed.IconType == "microsoft")
+                                            {
+                                                <i class="bi bi-microsoft fs-5"></i>
+                                            }
+                                            else if (fed.IconType == "azure")
+                                            {
+                                                <i class="bi bi-cloud-check-fill fs-5"></i>
+                                            }
+                                            else if (fed.IconType == "google")
+                                            {
+                                                <i class="bi bi-google fs-5"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-shield-lock-fill fs-5"></i>
+                                            }
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">@fed.DisplayName</div>
+                                            <div class="text-muted small">
+                                                <code class="text-primary">@fed.Scheme</code>
+                                                @if (fed.AutoProvisionUsers)
+                                                {
+                                                    <span class="badge bg-light text-secondary border ms-1">Auto-provision: @fed.DefaultRole</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="text-truncate small" style="max-width: 280px;" title="@fed.Authority">
+                                        <i class="bi bi-link-45deg text-muted me-1"></i>@fed.Authority
+                                    </div>
+                                    <div class="text-muted small">Callback: <code>@fed.CallbackPath</code></div>
+                                </td>
+                                <td>
+                                    <code class="small text-secondary">@fed.ClientId</code>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @if (fed.UsePkce)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">PKCE</span>
+                                        }
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle">@fed.ResponseType</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (fed.IsEnabled)
+                                    {
+                                        <span class="badge bg-success d-inline-flex align-items-center gap-1">
+                                            <i class="bi bi-check-circle-fill"></i> Aktywny
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary d-inline-flex align-items-center gap-1">
+                                            <i class="bi bi-pause-circle"></i> Wyłączony
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-page="Test" asp-route-id="@fed.Id" class="btn btn-outline-info" title="Testuj Discovery Document">
+                                            <i class="bi bi-search"></i> Testuj
+                                        </a>
+                                        <a asp-page="Edit" asp-route-id="@fed.Id" class="btn btn-outline-secondary" title="Edytuj">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" asp-page-handler="Toggle" asp-route-id="@fed.Id" class="d-inline">
+                                            <button type="submit" class="btn @(fed.IsEnabled ? "btn-outline-warning" : "btn-outline-success")" title="@(fed.IsEnabled ? "Deaktywuj" : "Aktywuj")">
+                                                <i class="bi @(fed.IsEnabled ? "bi-eye-slash" : "bi-eye")"></i>
+                                            </button>
+                                        </form>
+                                        <form method="post" asp-page-handler="Delete" asp-route-id="@fed.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć schemat @fed.Scheme?');">
+                                            <button type="submit" class="btn btn-outline-danger" title="Usuń">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+            <div class="card-body">
+                <h5 class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-lightning-charge-fill text-warning"></i> Architektura Dynamic Schemes (.NET 10)
+                </h5>
+                <p class="text-muted small">
+                    W przeciwieństwie do standardowego <code>services.AddAuthentication().AddOpenIdConnect()</code>, który wymaga restartu procesu przy każdej zmianie, mechanizm <strong>Dynamic OIDC Schemes</strong> wykorzystuje rozszerzony dostawca <code>IAuthenticationSchemeProvider</code> oraz <code>IOptionsMonitorCache&lt;OpenIdConnectOptions&gt;</code>.
+                </p>
+                <ul class="list-unstyled small text-muted mb-0">
+                    <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Zmiany w bazie danych są automatycznie synchronizowane z pamięcią podręczną serwera.</li>
+                    <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Ekran logowania (<code>/Account/Login</code>) renderuje dynamiczne przyciski SSO w czasie rzeczywistym.</li>
+                    <li><i class="bi bi-check2-circle text-success me-2"></i>Auto-provisioning automatycznie rejestruje i wiąże konta w <code>AspNetIdentity</code>.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+            <div class="card-body">
+                <h5 class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-info-circle-fill text-primary"></i> Wymagane URI Przekierowań (Redirect URIs)
+                </h5>
+                <p class="text-muted small">
+                    Podczas rejestracji aplikacji w zewnętrznych dostawcach (Azure Portal / Google Cloud Console) wprowadź poniższe adresy URL:
+                </p>
+                <div class="bg-light p-2 rounded-3 border small font-monospace mb-2 text-break">
+                    https://twoja-domena.pl/signin-oidc-{scheme}
+                </div>
+                <div class="text-muted small">
+                    Np. dla Microsoft Entra ID: <code>https://localhost:5001/signin-oidc-entra</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

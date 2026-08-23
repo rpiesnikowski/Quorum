@@ -26,6 +26,12 @@ public static class AdminUiServiceCollectionExtensions
         // Rejestracja serwisu zarządzania użytkownikami dla panelu AdminUI
         services.TryAddScoped<IUserAdminService, IdentityUserAdminService<TUser>>();
 
+        // Rejestracja klienta HTTP do walidacji endpointów OIDC Discovery (.well-known)
+        services.AddHttpClient();
+
+        // Rejestracja serwisu zarządzania dynamicznymi federacjami OIDC
+        services.TryAddScoped<IFederationAdminService, IdentityFederationAdminService>();
+
         // Konfiguracja konwencji Razor Pages dla obszaru Admin
         services.AddRazorPages(razorOptions =>
         {
