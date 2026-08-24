@@ -43,7 +43,7 @@ packages/
 *.code-workspace
 
 ## JetBrains Rider / ReSharper
-.idea/
+.idea/*
 *.sln.iml
 _ReSharper*/
 

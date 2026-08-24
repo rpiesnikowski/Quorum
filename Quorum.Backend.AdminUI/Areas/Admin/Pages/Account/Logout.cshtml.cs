@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Logging;
 using Quorum.Backend.AdminUI.Options;
 
 namespace Quorum.Backend.AdminUI.Areas.Admin.Pages.Account;
