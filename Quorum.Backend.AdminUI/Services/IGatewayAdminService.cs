@@ -31,4 +31,11 @@ public interface IGatewayAdminService
     Task<(int Total, int Enabled, int Anonymous, int Protected)> GetStatisticsAsync();
     Task<GatewayEvaluationResult> EvaluateRouteAsync(GatewayTestRequest request);
     Task<GatewayTestResponse> ExecuteGatewayTestAsync(GatewayTestRequest request);
+    
+    // Many-to-many Scope mapping methods
+    Task<List<GatewayRouteScope>> GetAllRouteScopesAsync();
+    Task<bool> AddScopeToRouteAsync(int routeId, string scopeName);
+    Task<bool> RemoveScopeFromRouteAsync(int routeId, string scopeName);
+    Task<bool> RemoveScopeMappingByIdAsync(int mappingId);
+    Task<bool> SetRouteScopesAsync(int routeId, IEnumerable<string> scopes);
 }

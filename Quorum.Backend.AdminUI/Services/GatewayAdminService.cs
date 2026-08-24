@@ -695,4 +695,192 @@ public class GatewayAdminService : IGatewayAdminService
 
         return rawBody;
     }
+
+    public async Task<List<GatewayRouteScope>> GetAllRouteScopesAsync()
+    {
+        return await _dbContext.GatewayRouteScopes
+            .Include(s => s.GatewayRoute)
+            .OrderBy(s => s.GatewayRouteId)
+            .ThenBy(s => s.Scope)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    public async Task<bool> AddScopeToRouteAsync(int routeId, string scopeName)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(scopeName)) return false;
+            var cleaned = scopeName.Trim();
+
+            var route = await _dbContext.GatewayRoutes
+                .Include(r => r.Scopes)
+                .FirstOrDefaultAsync(r => r.Id == routeId);
+
+            if (route == null) return false;
+
+            if (!route.Scopes.Any(s => s.Scope.Equals(cleaned, StringComparison.OrdinalIgnoreCase)))
+            {
+                route.Scopes.Add(new GatewayRouteScope
+                {
+                    GatewayRouteId = route.Id,
+                    Scope = cleaned
+                });
+
+                route.ScopeName = string.Join(" ", route.Scopes.Select(s => s.Scope));
+                route.RequiredScope = true; // Automatycznie włącz RequiredScope gdy przypisywany jest zakres
+                route.UpdatedAt = DateTime.UtcNow;
+
+                await _dbContext.SaveChangesAsync();
+                _logger.LogInformation("Przypisano zakres '{Scope}' do trasy Gateway [Id: {RouteId}]", cleaned, routeId);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas przypisywania zakresu '{Scope}' do trasy Gateway [Id: {RouteId}]", scopeName, routeId);
+            return false;
+        }
+    }
+
+    public async Task<bool> RemoveScopeFromRouteAsync(int routeId, string scopeName)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(scopeName)) return false;
+            var cleaned = scopeName.Trim();
+
+            var route = await _dbContext.GatewayRoutes
+                .Include(r => r.Scopes)
+                .FirstOrDefaultAsync(r => r.Id == routeId);
+
+            if (route == null) return false;
+
+            var toRemove = route.Scopes
+                .Where(s => s.Scope.Equals(cleaned, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (toRemove.Any())
+            {
+                foreach (var item in toRemove)
+                {
+                    _dbContext.GatewayRouteScopes.Remove(item);
+                }
+
+                route.ScopeName = string.Join(" ", route.Scopes
+                    .Where(s => !s.Scope.Equals(cleaned, StringComparison.OrdinalIgnoreCase))
+                    .Select(s => s.Scope));
+
+                if (!route.Scopes.Any(s => !s.Scope.Equals(cleaned, StringComparison.OrdinalIgnoreCase)))
+                {
+                    route.RequiredScope = false;
+                }
+
+                route.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
+                _logger.LogInformation("Usunięto zakres '{Scope}' z trasy Gateway [Id: {RouteId}]", cleaned, routeId);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas usuwania zakresu '{Scope}' z trasy Gateway [Id: {RouteId}]", scopeName, routeId);
+            return false;
+        }
+    }
+
+    public async Task<bool> RemoveScopeMappingByIdAsync(int mappingId)
+    {
+        try
+        {
+            var mapping = await _dbContext.GatewayRouteScopes
+                .Include(s => s.GatewayRoute)
+                .ThenInclude(r => r!.Scopes)
+                .FirstOrDefaultAsync(s => s.Id == mappingId);
+
+            if (mapping == null) return false;
+
+            var route = mapping.GatewayRoute;
+            _dbContext.GatewayRouteScopes.Remove(mapping);
+
+            if (route != null)
+            {
+                var remainingScopes = route.Scopes
+                    .Where(s => s.Id != mappingId)
+                    .Select(s => s.Scope)
+                    .ToList();
+
+                route.ScopeName = remainingScopes.Any() ? string.Join(" ", remainingScopes) : null;
+                if (!remainingScopes.Any())
+                {
+                    route.RequiredScope = false;
+                }
+                route.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Usunięto mapowanie zakresu [MappingId: {MappingId}]", mappingId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas usuwania mapowania zakresu [MappingId: {MappingId}]", mappingId);
+            return false;
+        }
+    }
+
+    public async Task<bool> SetRouteScopesAsync(int routeId, IEnumerable<string> scopes)
+    {
+        try
+        {
+            var route = await _dbContext.GatewayRoutes
+                .Include(r => r.Scopes)
+                .FirstOrDefaultAsync(r => r.Id == routeId);
+
+            if (route == null) return false;
+
+            var incomingScopes = (scopes ?? Enumerable.Empty<string>())
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var toRemove = route.Scopes
+                .Where(s => !incomingScopes.Contains(s.Scope, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var item in toRemove)
+            {
+                _dbContext.GatewayRouteScopes.Remove(item);
+            }
+
+            var currentExisting = route.Scopes.Select(s => s.Scope).ToList();
+            foreach (var newScope in incomingScopes)
+            {
+                if (!currentExisting.Contains(newScope, StringComparer.OrdinalIgnoreCase))
+                {
+                    route.Scopes.Add(new GatewayRouteScope
+                    {
+                        GatewayRouteId = route.Id,
+                        Scope = newScope
+                    });
+                }
+            }
+
+            route.ScopeName = incomingScopes.Any() ? string.Join(" ", incomingScopes) : null;
+            route.RequiredScope = incomingScopes.Any();
+            route.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Zaktualizowano zestaw zakresów dla trasy Gateway [Id: {RouteId}]: {Scopes}", routeId, string.Join(", ", incomingScopes));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas ustawiania zakresów dla trasy Gateway [Id: {RouteId}]", routeId);
+            return false;
+        }
+    }
 }
