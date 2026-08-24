@@ -15,9 +15,17 @@ public class IndexModel : PageModel
 
     public IList<AdminUserDto> Users { get; set; } = new List<AdminUserDto>();
 
+    [BindProperty(SupportsGet = true)]
+    public string? Search { get; set; }
+
+    public int TotalCount { get; set; }
+    public int AdminCount { get; set; }
+
     public async Task OnGetAsync()
     {
-        Users = await _userService.GetUsersAsync();
+        Users = await _userService.GetUsersAsync(Search);
+        TotalCount = Users.Count;
+        AdminCount = Users.Count(u => u.Roles.Contains("Admin", StringComparer.OrdinalIgnoreCase));
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(string id)
@@ -31,6 +39,6 @@ public class IndexModel : PageModel
         {
             TempData["SuccessMessage"] = "Użytkownik został pomyślnie usunięty.";
         }
-        return RedirectToPage();
+        return RedirectToPage(new { search = Search });
     }
 }

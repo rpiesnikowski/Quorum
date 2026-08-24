@@ -8,44 +8,86 @@
     <a asp-page="Index" class="text-decoration-none small text-muted">
         <i class="bi bi-arrow-left me-1"></i> Powrót do listy użytkowników
     </a>
-    <h2 class="h4 mt-2">Utwórz Nowe Konto Użytkownika</h2>
+    <h2 class="h4 mt-2"><i class="bi bi-person-plus me-2 text-primary"></i>Utwórz Nowe Konto Użytkownika</h2>
 </div>
 
-<div class="card border-0 shadow-sm col-lg-7">
+<div class="card border-0 shadow-sm col-lg-8">
     <div class="card-body p-4">
         <form method="post">
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3"></div>
 
-            <div class="mb-3">
-                <label asp-for="Input.UserName" class="form-label fw-semibold">Login / Nazwa Użytkownika <span class="text-danger">*</span></label>
-                <input asp-for="Input.UserName" class="form-control font-monospace" placeholder="np. tomasz.nowak" />
-                <span asp-validation-for="Input.UserName" class="text-danger small"></span>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Input.UserName" class="form-label fw-semibold">Login / Nazwa Użytkownika <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-person-badge"></i></span>
+                        <input asp-for="Input.UserName" class="form-control font-monospace" placeholder="np. tomasz.nowak" autofocus />
+                    </div>
+                    <span asp-validation-for="Input.UserName" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Input.FullName" class="form-label fw-semibold">Imię i Nazwisko</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-person"></i></span>
+                        <input asp-for="Input.FullName" class="form-control" placeholder="np. Tomasz Nowak" />
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Input.Email" class="form-label fw-semibold">Adres Email <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-envelope"></i></span>
+                        <input asp-for="Input.Email" class="form-control" type="email" placeholder="np. tomasz.nowak@firma.pl" />
+                    </div>
+                    <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                    <div class="form-check mt-2">
+                        <input asp-for="Input.EmailConfirmed" class="form-check-input" id="emailConfirmedCheck" />
+                        <label class="form-check-label small text-secondary" for="emailConfirmedCheck">
+                            Oznacz adres email jako zweryfikowany
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Input.PhoneNumber" class="form-label fw-semibold">Numer Telefonu</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-telephone"></i></span>
+                        <input asp-for="Input.PhoneNumber" class="form-control" placeholder="+48 123 456 789" />
+                    </div>
+                    <span asp-validation-for="Input.PhoneNumber" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-12">
+                    <label asp-for="Input.Password" class="form-label fw-semibold">Hasło Początkowe <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-key"></i></span>
+                        <input asp-for="Input.Password" class="form-control" type="password" placeholder="Minimum 6 znaków" />
+                    </div>
+                    <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Input.FullName" class="form-label fw-semibold">Imię i Nazwisko</label>
-                <input asp-for="Input.FullName" class="form-control" placeholder="np. Tomasz Nowak" />
-            </div>
+            <hr class="my-4" />
 
-            <div class="mb-3">
-                <label asp-for="Input.Email" class="form-label fw-semibold">Adres Email <span class="text-danger">*</span></label>
-                <input asp-for="Input.Email" class="form-control" type="email" placeholder="np. tomasz.nowak@firma.pl" />
-                <span asp-validation-for="Input.Email" class="text-danger small"></span>
-            </div>
+            <h5 class="h6 fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary"></i>Przypisanie Ról Systemowych</h5>
+            <div class="row g-2 mb-4">
+                @foreach (var role in Model.AvailableRoles)
+                {
+                    var isChecked = Model.Input.SelectedRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
+                    var icon = role == "Admin" ? "bi-shield-fill-exclamation" : (role == "Manager" ? "bi-briefcase-fill" : "bi-person-fill");
 
-            <div class="mb-3">
-                <label asp-for="Input.Password" class="form-label fw-semibold">Hasło <span class="text-danger">*</span></label>
-                <input asp-for="Input.Password" class="form-control" type="password" placeholder="Minimum 6 znaków" />
-                <span asp-validation-for="Input.Password" class="text-danger small"></span>
-            </div>
-
-            <div class="mb-4">
-                <label asp-for="Input.Role" class="form-label fw-semibold">Rola w Systemie</label>
-                <select asp-for="Input.Role" class="form-select">
-                    <option value="User">User (Standardowy użytkownik)</option>
-                    <option value="Manager">Manager (Dostęp rozszerzony)</option>
-                    <option value="Admin">Admin (Pełny dostęp do Panelu Admina CRUD)</option>
-                </select>
+                    <div class="col-md-4">
+                        <div class="card border p-3 rounded-3 h-100">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="Input.SelectedRoles" value="@role" id="role_@role" @(isChecked ? "checked" : "") />
+                                <label class="form-check-label fw-semibold d-flex align-items-center gap-1" for="role_@role">
+                                    <i class="bi @icon me-1"></i> @role
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
 
             <div class="d-flex gap-2">
