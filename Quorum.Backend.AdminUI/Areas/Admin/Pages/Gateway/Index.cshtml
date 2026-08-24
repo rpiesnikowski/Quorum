@@ -14,6 +14,9 @@
         </p>
     </div>
     <div class="d-flex gap-2">
+        <a asp-page="Test" class="btn btn-outline-warning text-dark shadow-sm">
+            <i class="bi bi-lightning-charge-fill me-1 text-warning"></i> Tester Gateway (Proxy)
+        </a>
         <a asp-page="Create" class="btn btn-primary shadow-sm">
             <i class="bi bi-plus-lg me-1"></i> Dodaj Nową Trasę (Route)
         </a>
@@ -252,6 +255,9 @@
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="btn-group btn-group-sm">
+                                        <a asp-page="Test" asp-route-routeId="@route.Id" class="btn btn-outline-warning text-dark" title="Przetestuj tę trasę w Testerze">
+                                            <i class="bi bi-play-circle"></i>
+                                        </a>
                                         <a asp-page="Edit" asp-route-id="@route.Id" class="btn btn-outline-secondary" title="Edytuj trasę">
                                             <i class="bi bi-pencil"></i>
                                         </a>

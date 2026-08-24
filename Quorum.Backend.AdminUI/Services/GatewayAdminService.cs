@@ -1,3 +1,9 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Quorum.Backend.AdminUI.Data;
@@ -196,5 +202,451 @@ public class GatewayAdminService : IGatewayAdminService
         var @protected = await _dbContext.GatewayRoutes.CountAsync(r => !r.AllowAnonymous);
 
         return (total, enabled, anonymous, @protected);
+    }
+
+    public async Task<GatewayEvaluationResult> EvaluateRouteAsync(GatewayTestRequest request)
+    {
+        var result = new GatewayEvaluationResult();
+
+        // 1. Normalizacja ścieżki i query string
+        string rawUrl = (request.RequestUrl ?? string.Empty).Trim();
+        string path = "/";
+        string? query = null;
+
+        if (Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsedAbsoluteUri))
+        {
+            path = parsedAbsoluteUri.AbsolutePath;
+            query = parsedAbsoluteUri.Query.TrimStart('?');
+        }
+        else
+        {
+            var parts = rawUrl.Split('?', 2);
+            path = parts[0];
+            if (!path.StartsWith("/")) path = "/" + path;
+            if (parts.Length > 1) query = parts[1];
+        }
+
+        result.NormalizedPath = path;
+        result.OriginalQueryString = string.IsNullOrWhiteSpace(query) ? null : query;
+
+        // 2. Parsowanie wejściowych nagłówków
+        var inputHeaders = ParseHeaders(request.RawHeaders);
+
+        // 3. Pobranie tras z bazy posortowanych według priorytetu
+        var routes = await _dbContext.GatewayRoutes
+            .Include(r => r.ApiScope)
+            .OrderByDescending(r => r.Priority)
+            .ThenBy(r => r.MatchPattern)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var methodUpper = (request.HttpMethod ?? "GET").Trim().ToUpperInvariant();
+        GatewayRoute? winningRoute = null;
+        Match? winningMatch = null;
+
+        foreach (var route in routes)
+        {
+            var eval = new GatewayRouteCandidateEvaluation
+            {
+                RouteId = route.Id,
+                RouteName = route.RouteName,
+                MatchPattern = route.MatchPattern,
+                Priority = route.Priority,
+                IsEnabled = route.IsEnabled,
+                AllowedMethods = route.HttpMethods ?? "ALL"
+            };
+
+            // Sprawdzenie metody HTTP
+            bool methodMatches = false;
+            if (string.Equals(route.HttpMethods, "ALL", StringComparison.OrdinalIgnoreCase))
+            {
+                methodMatches = true;
+            }
+            else
+            {
+                var allowed = (route.HttpMethods ?? "")
+                    .Split(new[] { ',', ';', '|', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(m => m.Trim().ToUpperInvariant());
+                methodMatches = allowed.Contains(methodUpper);
+            }
+            eval.IsMethodMatch = methodMatches;
+
+            // Sprawdzenie dopasowania Regex
+            bool regexMatches = false;
+            Match? matchResult = null;
+            try
+            {
+                matchResult = Regex.Match(path, route.MatchPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250));
+                regexMatches = matchResult.Success;
+            }
+            catch (Exception ex)
+            {
+                eval.Details = $"Błąd wyrażenia regularnego: {ex.Message}";
+            }
+            eval.IsRegexMatch = regexMatches;
+
+            // Ocena statusu
+            if (!route.IsEnabled)
+            {
+                eval.EvaluationStatus = "Wyłączona (IsEnabled = false)";
+            }
+            else if (regexMatches && methodMatches)
+            {
+                if (winningRoute == null)
+                {
+                    eval.IsWinner = true;
+                    eval.EvaluationStatus = "DOPASOWANO (Zwycięska reguła)";
+                    eval.Details = $"Wybrana jako reguła routingu (Priorytet: {route.Priority})";
+                    winningRoute = route;
+                    winningMatch = matchResult;
+                }
+                else
+                {
+                    eval.EvaluationStatus = "Pominięto (Niższy priorytet)";
+                    eval.Details = $"Wzorzec i metoda pasują, lecz wyprzedzona przez regułę #{winningRoute.Id} (Priorytet: {winningRoute.Priority})";
+                }
+            }
+            else if (regexMatches && !methodMatches)
+            {
+                eval.EvaluationStatus = "Niezgodna metoda HTTP";
+                eval.Details = $"Wzorzec Regex pasuje, lecz metoda '{methodUpper}' nie znajduje się na liście [{route.HttpMethods}]";
+            }
+            else
+            {
+                eval.EvaluationStatus = "Brak dopasowania Regex";
+                eval.Details = $"Wzorzec nie pasuje do ścieżki '{path}'";
+            }
+
+            result.CandidateEvaluations.Add(eval);
+        }
+
+        if (winningRoute == null)
+        {
+            result.IsMatched = false;
+            result.AuthStatusBadge = "badge bg-danger";
+            result.AuthSummary = "Brak pasującej aktywnej reguły API Gateway dla podanej ścieżki i metody HTTP.";
+            return result;
+        }
+
+        result.IsMatched = true;
+        result.MatchedRoute = winningRoute;
+
+        // 4. Obliczenie docelowego adresu URL (Target Upstream URI)
+        var scheme = string.IsNullOrWhiteSpace(winningRoute.Scheme) ? "https" : winningRoute.Scheme.Trim().ToLowerInvariant();
+        var host = (winningRoute.AddressHost ?? "localhost").Trim();
+        var port = winningRoute.AddressPort;
+
+        string targetPath;
+        if (!string.IsNullOrWhiteSpace(winningRoute.AddressPath))
+        {
+            targetPath = winningRoute.AddressPath.Trim();
+            if (!targetPath.StartsWith("/")) targetPath = "/" + targetPath;
+        }
+        else if (!string.IsNullOrWhiteSpace(winningRoute.AddressBasePath))
+        {
+            var basePath = winningRoute.AddressBasePath.Trim().TrimEnd('/');
+            if (!basePath.StartsWith("/")) basePath = "/" + basePath;
+
+            // Jeśli Regex zawierał grupę przechwytującą podścieżkę (np. ^/api/v1/users(/.*)?$)
+            if (winningMatch != null && winningMatch.Groups.Count > 1 && winningMatch.Groups[1].Success && !string.IsNullOrEmpty(winningMatch.Groups[1].Value))
+            {
+                var sub = winningMatch.Groups[1].Value.TrimStart('/');
+                targetPath = string.IsNullOrEmpty(sub) ? basePath : $"{basePath}/{sub}";
+            }
+            else
+            {
+                // Fallback: połączenie bazowej ścieżki z wejściową
+                var trimmedPath = path.TrimStart('/');
+                targetPath = string.IsNullOrEmpty(trimmedPath) ? basePath : $"{basePath}/{trimmedPath}";
+            }
+        }
+        else
+        {
+            targetPath = path;
+        }
+
+        // Połączenie parametrów Query String
+        var queryParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(result.OriginalQueryString))
+        {
+            queryParts.Add(result.OriginalQueryString);
+        }
+        if (!string.IsNullOrWhiteSpace(winningRoute.AddressQueryString))
+        {
+            queryParts.Add(winningRoute.AddressQueryString.TrimStart('?'));
+        }
+        var finalQuery = queryParts.Count > 0 ? string.Join("&", queryParts) : null;
+
+        // Konstrukcja pełnego Upstream URL
+        bool isStandardPort = (scheme == "https" && port == 443) || (scheme == "http" && port == 80);
+        var portSuffix = isStandardPort ? string.Empty : $":{port}";
+        var queryStringSuffix = string.IsNullOrEmpty(finalQuery) ? string.Empty : $"?{finalQuery}";
+
+        result.CalculatedUpstreamUrl = $"{scheme}://{host}{portSuffix}{targetPath}{queryStringSuffix}";
+
+        // 5. Obliczenie docelowych nagłówków HTTP
+        foreach (var header in inputHeaders)
+        {
+            result.CalculatedHeaders[header.Key] = header.Value;
+        }
+
+        // Dołączenie skonfigurowanych nagłówków z reguły
+        if (!string.IsNullOrWhiteSpace(winningRoute.Headers))
+        {
+            var routeHeaders = ParseHeaders(winningRoute.Headers);
+            foreach (var rh in routeHeaders)
+            {
+                result.CalculatedHeaders[rh.Key] = rh.Value;
+            }
+        }
+
+        // Standardowe nagłówki proxy
+        result.CalculatedHeaders["X-Forwarded-For"] = "127.0.0.1";
+        result.CalculatedHeaders["X-Forwarded-Proto"] = scheme;
+        result.CalculatedHeaders["X-Forwarded-Host"] = host;
+        result.CalculatedHeaders["X-Gateway-Route-Id"] = winningRoute.Id.ToString();
+        result.CalculatedHeaders["X-Gateway-Route-Pattern"] = winningRoute.MatchPattern;
+
+        // 6. Analiza zabezpieczeń i uwierzytelniania
+        if (winningRoute.AllowAnonymous)
+        {
+            result.AuthRequired = false;
+            result.AuthPassed = true;
+            result.AuthStatusBadge = "badge bg-success";
+            result.AuthSummary = "Dostęp publiczny (Anonimowy) - AllowAnonymous = true";
+            result.AuthDetails.Add("Reguła nie wymaga tokenu uwierzytelniającego.");
+        }
+        else
+        {
+            result.AuthRequired = true;
+            var hasAuthHeader = result.CalculatedHeaders.ContainsKey("Authorization") && !string.IsNullOrWhiteSpace(result.CalculatedHeaders["Authorization"]);
+
+            if (hasAuthHeader)
+            {
+                result.AuthPassed = true;
+                result.AuthStatusBadge = "badge bg-primary";
+                result.AuthSummary = $"Wymagana autoryzacja - Wykryto nagłówek Authorization (Schematy: {winningRoute.AuthenticationSchemes ?? "Bearer"})";
+                result.AuthDetails.Add("Nagłówek 'Authorization' został przekazany do żądania docelowego.");
+                if (winningRoute.RequiredScope)
+                {
+                    result.AuthDetails.Add($"Wymagany scope autoryzacji: {winningRoute.ScopeName ?? "ApiScope"} (weryfikacja claims w mikrousłudze).");
+                }
+            }
+            else
+            {
+                result.AuthPassed = false;
+                result.AuthStatusBadge = "badge bg-warning text-dark";
+                result.AuthSummary = $"Brak nagłówka Authorization! Reguła wymaga uwierzytelnienia (Schematy: {winningRoute.AuthenticationSchemes ?? "Bearer"})";
+                result.AuthDetails.Add("Żądanie nie zawiera nagłówka Authorization. W rzeczywistym środowisku API Gateway zwróci 401 Unauthorized.");
+                if (winningRoute.RequiredScope)
+                {
+                    result.AuthDetails.Add($"Wymagany scope tokenu: {winningRoute.ScopeName ?? "ApiScope"}.");
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public async Task<GatewayTestResponse> ExecuteGatewayTestAsync(GatewayTestRequest request)
+    {
+        var response = new GatewayTestResponse
+        {
+            Request = request,
+            Evaluation = await EvaluateRouteAsync(request)
+        };
+
+        if (!response.Evaluation.IsMatched || !request.ExecuteLiveRequest)
+        {
+            response.Execution.Executed = false;
+            return response;
+        }
+
+        var matchedRoute = response.Evaluation.MatchedRoute;
+        var timeoutSeconds = request.CustomTimeoutSeconds ?? (matchedRoute?.TimeoutSeconds > 0 ? matchedRoute.TimeoutSeconds : 30);
+
+        using var handler = new HttpClientHandler
+        {
+            AllowAutoRedirect = false
+        };
+
+        if (request.IgnoreSslErrors)
+        {
+            handler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true;
+        }
+
+        using var httpClient = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(timeoutSeconds)
+        };
+
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            using var httpRequest = new HttpRequestMessage(new HttpMethod(request.HttpMethod), response.Evaluation.CalculatedUpstreamUrl);
+
+            // Dodanie nagłówków
+            var hasBody = !string.IsNullOrEmpty(request.RequestBody) &&
+                          !string.Equals(request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase) &&
+                          !string.Equals(request.HttpMethod, "HEAD", StringComparison.OrdinalIgnoreCase);
+
+            if (hasBody)
+            {
+                var content = new StringContent(request.RequestBody ?? string.Empty, Encoding.UTF8, request.ContentType ?? "application/json");
+                httpRequest.Content = content;
+            }
+
+            foreach (var h in response.Evaluation.CalculatedHeaders)
+            {
+                if (string.Equals(h.Key, "Content-Type", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(h.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue; // Obsługiwane przez HttpContent
+                }
+
+                httpRequest.Headers.TryAddWithoutValidation(h.Key, h.Value);
+            }
+
+            var httpResponse = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseContentRead);
+            stopwatch.Stop();
+
+            response.Execution.Executed = true;
+            response.Execution.StatusCode = (int)httpResponse.StatusCode;
+            response.Execution.StatusPhrase = httpResponse.ReasonPhrase ?? httpResponse.StatusCode.ToString();
+            response.Execution.IsSuccess = httpResponse.IsSuccessStatusCode;
+            response.Execution.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+
+            // Odczyt nagłówków odpowiedzi
+            foreach (var header in httpResponse.Headers)
+            {
+                response.Execution.ResponseHeaders[header.Key] = string.Join(", ", header.Value);
+            }
+            if (httpResponse.Content?.Headers != null)
+            {
+                foreach (var header in httpResponse.Content.Headers)
+                {
+                    response.Execution.ResponseHeaders[header.Key] = string.Join(", ", header.Value);
+                }
+                response.Execution.ResponseContentType = httpResponse.Content.Headers.ContentType?.ToString();
+                response.Execution.ContentLength = httpResponse.Content.Headers.ContentLength;
+            }
+
+            // Odczyt ciała odpowiedzi
+            if (httpResponse.Content != null)
+            {
+                var body = await httpResponse.Content.ReadAsStringAsync();
+                response.Execution.ResponseBody = body;
+                response.Execution.FormattedResponseBody = FormatResponseBody(body, response.Execution.ResponseContentType);
+            }
+        }
+        catch (TaskCanceledException tex)
+        {
+            stopwatch.Stop();
+            response.Execution.Executed = true;
+            response.Execution.StatusCode = (int)HttpStatusCode.GatewayTimeout;
+            response.Execution.StatusPhrase = "Gateway Timeout";
+            response.Execution.IsSuccess = false;
+            response.Execution.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+            response.Execution.ErrorMessage = $"Przekroczono limit czasu połączenia ({timeoutSeconds}s) do serwera docelowego: {response.Evaluation.CalculatedUpstreamUrl}";
+            response.Execution.ErrorDetails = tex.ToString();
+        }
+        catch (HttpRequestException rex)
+        {
+            stopwatch.Stop();
+            response.Execution.Executed = true;
+            response.Execution.StatusCode = (int)HttpStatusCode.BadGateway;
+            response.Execution.StatusPhrase = "Bad Gateway";
+            response.Execution.IsSuccess = false;
+            response.Execution.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+            response.Execution.ErrorMessage = $"Błąd połączenia z serwerem docelowym ({response.Evaluation.CalculatedUpstreamUrl}): {rex.Message}";
+            response.Execution.ErrorDetails = rex.ToString();
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            response.Execution.Executed = true;
+            response.Execution.StatusCode = (int)HttpStatusCode.InternalServerError;
+            response.Execution.StatusPhrase = "Internal Error";
+            response.Execution.IsSuccess = false;
+            response.Execution.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+            response.Execution.ErrorMessage = $"Wystąpił nieoczekiwany błąd podczas testowania proxy: {ex.Message}";
+            response.Execution.ErrorDetails = ex.ToString();
+        }
+
+        return response;
+    }
+
+    private static Dictionary<string, string> ParseHeaders(string? rawHeaders)
+    {
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(rawHeaders)) return headers;
+
+        var text = rawHeaders.Trim();
+
+        // Próba parsowania jako JSON
+        if (text.StartsWith("{") && text.EndsWith("}"))
+        {
+            try
+            {
+                var jsonDict = JsonSerializer.Deserialize<Dictionary<string, string>>(text);
+                if (jsonDict != null)
+                {
+                    foreach (var kvp in jsonDict)
+                    {
+                        headers[kvp.Key] = kvp.Value;
+                    }
+                    return headers;
+                }
+            }
+            catch
+            {
+                // Kontynuacja jako tekst linia po linii
+            }
+        }
+
+        // Parsowanie linia po linii (Klucz: Wartość lub Klucz=Wartość)
+        var lines = text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#") || trimmed.StartsWith("//"))
+                continue;
+
+            int separatorIndex = trimmed.IndexOf(':');
+            if (separatorIndex < 0) separatorIndex = trimmed.IndexOf('=');
+
+            if (separatorIndex > 0)
+            {
+                var key = trimmed.Substring(0, separatorIndex).Trim();
+                var value = trimmed.Substring(separatorIndex + 1).Trim();
+                if (!string.IsNullOrEmpty(key))
+                {
+                    headers[key] = value;
+                }
+            }
+        }
+
+        return headers;
+    }
+
+    private static string? FormatResponseBody(string? rawBody, string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(rawBody)) return rawBody;
+
+        if (contentType != null && contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var jsonDoc = JsonDocument.Parse(rawBody);
+                return JsonSerializer.Serialize(jsonDoc, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch
+            {
+                return rawBody;
+            }
+        }
+
+        return rawBody;
     }
 }

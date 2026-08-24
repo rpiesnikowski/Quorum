@@ -29,4 +29,6 @@ public interface IGatewayAdminService
     Task<bool> DeleteRouteAsync(int id);
     Task<bool> ToggleRouteStatusAsync(int id);
     Task<(int Total, int Enabled, int Anonymous, int Protected)> GetStatisticsAsync();
+    Task<GatewayEvaluationResult> EvaluateRouteAsync(GatewayTestRequest request);
+    Task<GatewayTestResponse> ExecuteGatewayTestAsync(GatewayTestRequest request);
 }
