@@ -6,7 +6,6 @@ using Open.IdentityServer.Events;
 using Open.IdentityServer.Extensions;
 using Open.IdentityServer.Services;
 using Quorum.Backend.AdminUI.Models;
-using Quorum.Backend.Models;
 using Quorum.Backend.Services;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;

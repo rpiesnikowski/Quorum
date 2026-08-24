@@ -24,4 +24,6 @@ public class AdminUiOptions
     /// Czy włączyć automatyczne zabezpieczenie autoryzacją obszaru /Admin.
     /// </summary>
     public bool EnableAuthorization { get; set; } = true;
+
+    public bool SeedData { get; set; }
 }

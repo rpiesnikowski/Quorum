@@ -6,8 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Open.IdentityServer.EntityFramework.DbContexts;
 using Quorum.Backend.AdminUI.Data;
 using Quorum.Backend.AdminUI.Extensions;
-using Quorum.Backend.Data;
-using Quorum.Backend.Models;
+using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,7 +21,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
 // 2. Rejestracja bazy danych dla kont użytkowników i dynamicznych federacji (ApplicationDbContext)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.ConfigureDatabase<ApplicationDbContext>(builder.Configuration));
+    options.ConfigureDatabase<ApplicationDbContext>(builder.Configuration, typeof(Program)));
 
 // Rejestracja interfejsu IFederationDbContext dla panelu AdminUI
 builder.Services.AddScoped<IFederationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
@@ -84,12 +83,12 @@ builder.Services.AddIdentityServer(options =>
 // Magazyn konfiguracji w bazie danych (Klienci, Scopes, IdentityResources)
 .AddConfigurationStore(options =>
 {
-    options.ConfigureDbContext = b => b.ConfigureDatabase<ConfigurationDbContext>(builder.Configuration);
+    options.ConfigureDbContext = b => b.ConfigureDatabase<ConfigurationDbContext>(builder.Configuration, typeof(Program));
 })
 // Magazyn operacyjny w bazie danych (Tokeny, Kody OIDC, Zgody użytkowników)
 .AddOperationalStore(options =>
 {
-    options.ConfigureDbContext = b => b.ConfigureDatabase<PersistedGrantDbContext>(builder.Configuration);
+    options.ConfigureDbContext = b => b.ConfigureDatabase<PersistedGrantDbContext>(builder.Configuration, typeof(Program));
     options.EnableTokenCleanup = true;
     options.TokenCleanupInterval = 3600;
 })
@@ -101,6 +100,7 @@ builder.Services.AddQuorumAdminUI<ApplicationUser>(options =>
 {
     options.RequiredRole = "Admin";
     options.EnableAuthorization = true;
+    options.SeedData = true;
 });
 
 var app = builder.Build();

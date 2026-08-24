@@ -1,16 +1,17 @@
-using Microsoft.EntityFrameworkCore;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
-namespace Quorum.Backend.Data;
+namespace Quorum.Backend.AdminUI.Data;
 
 public static class DatabaseExtensions
 {
     public static void ConfigureDatabase<TContext>(
         this DbContextOptionsBuilder builder,
-        IConfiguration configuration) where TContext : DbContext
+        IConfiguration configuration, Type program) where TContext : DbContext
     {
         var provider = configuration.GetValue<string>("DatabaseProvider") ?? "Sqlite";
-        var migrationsAssembly = typeof(Program).GetTypeInfo().Assembly.GetName().Name;
+        var migrationsAssembly = program.GetTypeInfo().Assembly.GetName().Name;
 
         switch (provider.ToLowerInvariant())
         {

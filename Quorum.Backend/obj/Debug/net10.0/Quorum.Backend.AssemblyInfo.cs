@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Quorum.Backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ddbcb0cd9568dc0cd61eaf0194f0087be66aef20")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0e8aad1c66e7a0ca35c2f926fd7533299d3984b3")]
 [assembly: System.Reflection.AssemblyProductAttribute("Quorum.Backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Quorum.Backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

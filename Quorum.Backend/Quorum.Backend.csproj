@@ -21,15 +21,17 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-
-    <!-- Bazy Danych (SQLite domyślnie + PostgreSQL) -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    
   </ItemGroup>
 
   <ItemGroup>
     <!-- Referencja do projektu / pakietu Quorum.Backend.AdminUI (RCL) -->
     <ProjectReference Include="..\Quorum.Backend.AdminUI\Quorum.Backend.AdminUI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Data\" />
+    <Folder Include="Models\" />
   </ItemGroup>
 
 </Project>

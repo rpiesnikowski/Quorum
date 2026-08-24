@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyDescriptionAttribute(("Kompletny, gotowy do użycia panel administracyjny Razor Pages dla Open.IdentitySe" +
     "rver (Clients, ApiScopes, IdentityResources, Users, Persisted Grants)."))]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ddbcb0cd9568dc0cd61eaf0194f0087be66aef20")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0e8aad1c66e7a0ca35c2f926fd7533299d3984b3")]
 [assembly: System.Reflection.AssemblyProductAttribute("Quorum IdentityServer Admin UI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Quorum.Backend.AdminUI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

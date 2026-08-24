@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Quorum.Backend.AdminUI.Data;
 using Quorum.Backend.AdminUI.Models;
-using Quorum.Backend.Models;
 
-namespace Quorum.Backend.Data;
+namespace Quorum.Backend.AdminUI.Data;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederationDbContext
 {
