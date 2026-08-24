@@ -229,5 +229,96 @@ public static class SeedData
             );
             await appDb.SaveChangesAsync();
         }
+
+        // 9. Seedowanie Tras API Gateway (Reguły Reverse Proxy)
+        if (!await appDb.GatewayRoutes.AnyAsync())
+        {
+            var api1Scope = await configDb.ApiScopes.FirstOrDefaultAsync(s => s.Name == "api1");
+            var apiReadScope = await configDb.ApiScopes.FirstOrDefaultAsync(s => s.Name == "api.read");
+
+            appDb.GatewayRoutes.AddRange(
+                // 1. Serwis Użytkowników i Kont (Wymaga JWT Bearer + Scope api1)
+                new GatewayRoute
+                {
+                    MatchPattern = @"^/api/v1/users(/.*)?$",
+                    RouteName = "Serwis Użytkowników (Users Service)",
+                    Description = "Routing do wewnętrznego mikroserwisu użytkowników z wymaganym tokenem JWT i uprawnieniem api1.",
+                    Scheme = "https",
+                    AddressHost = "users-service.internal",
+                    AddressPort = 8443,
+                    AddressBasePath = "/v1/users",
+                    AddressPath = null,
+                    AddressQueryString = null,
+                    Headers = "{\"X-Forwarded-Gateway\": \"Quorum.Gateway\", \"X-Service-Name\": \"UsersAPI\"}",
+                    TimeoutSeconds = 30,
+                    HttpMethods = "GET,POST,PUT,DELETE",
+                    AllowAnonymous = false,
+                    RequiredScope = true,
+                    ApiScopeId = api1Scope?.Id,
+                    ScopeName = "api1",
+                    AuthenticationSchemes = "Bearer",
+                    IsEnabled = true,
+                    Priority = 100,
+                    EnableCaching = false,
+                    ForwardOriginalHost = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+
+                // 2. Publiczny Katalog Produktów (Anonimowy dostęp, Classic Proxy)
+                new GatewayRoute
+                {
+                    MatchPattern = @"^/api/v1/catalog(/.*)?$",
+                    RouteName = "Katalog Produktów (Catalog Service)",
+                    Description = "Publiczny routing do katalogu produktów bez konieczności przekazywania tokenu JWT (AllowAnonymous).",
+                    Scheme = "http",
+                    AddressHost = "catalog-api.local",
+                    AddressPort = 8080,
+                    AddressBasePath = "/public/catalog",
+                    AddressPath = null,
+                    AddressQueryString = "channel=web&region=eu",
+                    Headers = "{\"X-Cache-Policy\": \"public-max-age-300\"}",
+                    TimeoutSeconds = 15,
+                    HttpMethods = "GET",
+                    AllowAnonymous = true,
+                    RequiredScope = false,
+                    ApiScopeId = null,
+                    ScopeName = null,
+                    AuthenticationSchemes = null,
+                    IsEnabled = true,
+                    Priority = 80,
+                    EnableCaching = true,
+                    ForwardOriginalHost = false,
+                    CreatedAt = DateTime.UtcNow
+                },
+
+                // 3. Mikroserwis Zamówień i Płatności (Wymaga JWT Bearer + Scope api.read)
+                new GatewayRoute
+                {
+                    MatchPattern = @"^/api/v1/orders(/.*)?$",
+                    RouteName = "Serwis Zamówień (Orders Service)",
+                    Description = "Bezpieczne proxy dla transakcji zakupowych i statusów zamówień.",
+                    Scheme = "https",
+                    AddressHost = "orders.internal.mesh",
+                    AddressPort = 9443,
+                    AddressBasePath = "/api/orders",
+                    AddressPath = null,
+                    AddressQueryString = null,
+                    Headers = "{\"X-Gateway-Env\": \"Production\"}",
+                    TimeoutSeconds = 45,
+                    HttpMethods = "GET,POST,PUT",
+                    AllowAnonymous = false,
+                    RequiredScope = true,
+                    ApiScopeId = apiReadScope?.Id,
+                    ScopeName = "api.read",
+                    AuthenticationSchemes = "Bearer",
+                    IsEnabled = true,
+                    Priority = 90,
+                    EnableCaching = false,
+                    ForwardOriginalHost = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            );
+            await appDb.SaveChangesAsync();
+        }
     }
 }

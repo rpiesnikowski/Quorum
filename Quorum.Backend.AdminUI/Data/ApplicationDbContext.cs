@@ -4,7 +4,7 @@ using Quorum.Backend.AdminUI.Models;
 
 namespace Quorum.Backend.AdminUI.Data;
 
-public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederationDbContext
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederationDbContext, IGatewayDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -15,6 +15,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederat
     /// Tabela konfiguracji dynamicznych dostawców tożsamości OpenID Connect (OIDC).
     /// </summary>
     public DbSet<OidcFederationProvider> FederationProviders { get; set; } = null!;
+
+    /// <summary>
+    /// Tabela konfiguracji tras i reguł proxy API Gateway.
+    /// </summary>
+    public DbSet<GatewayRoute> GatewayRoutes { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -29,6 +34,29 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederat
             entity.Property(e => e.Authority).IsRequired().HasMaxLength(512);
             entity.Property(e => e.ClientId).IsRequired().HasMaxLength(256);
             entity.Property(e => e.CallbackPath).IsRequired().HasMaxLength(256);
+        });
+
+        builder.Entity<GatewayRoute>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.MatchPattern).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.AddressHost).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Scheme).HasMaxLength(16).HasDefaultValue("https");
+            entity.Property(e => e.AddressPort).HasDefaultValue(443);
+            entity.Property(e => e.AddressBasePath).HasMaxLength(255);
+            entity.Property(e => e.AddressPath).HasMaxLength(255);
+            entity.Property(e => e.AddressQueryString).HasMaxLength(500);
+            entity.Property(e => e.HttpMethods).HasMaxLength(64).HasDefaultValue("ALL");
+            entity.Property(e => e.AuthenticationSchemes).HasMaxLength(255).HasDefaultValue("Bearer");
+            entity.Property(e => e.IsEnabled).HasDefaultValue(true);
+            entity.Property(e => e.Priority).HasDefaultValue(0);
+            entity.Property(e => e.AllowAnonymous).HasDefaultValue(false);
+            entity.Property(e => e.RequiredScope).HasDefaultValue(false);
+            entity.Property(e => e.ScopeName).HasMaxLength(200);
+
+            entity.HasIndex(e => e.MatchPattern);
+            entity.HasIndex(e => e.Priority);
+            entity.HasIndex(e => e.IsEnabled);
         });
     }
 }

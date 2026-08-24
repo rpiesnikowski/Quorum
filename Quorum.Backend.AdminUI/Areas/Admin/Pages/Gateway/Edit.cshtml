@@ -1,0 +1,285 @@
+@page "{id:int}"
+@model Quorum.Backend.AdminUI.Areas.Admin.Pages.Gateway.EditModel
+@{
+    ViewData["Title"] = "Edycja Trasy API Gateway";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-pencil-square text-primary me-2"></i>Edycja Trasy API Gateway
+        </h2>
+        <p class="text-muted mb-0">
+            Trasa: <code class="text-primary font-monospace fs-6">@Model.Input.MatchPattern</code> 
+            (ID: <strong>@Model.Input.Id</strong>)
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-page="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Wróć do listy
+        </a>
+    </div>
+</div>
+
+<form method="post">
+    <input type="hidden" asp-for="Input.Id" />
+    <div asp-validation-summary="All" class="alert alert-danger" style="display: @(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+
+    <div class="row g-4">
+        <!-- Lewa Kolumna: Reguła i Segmenty URI -->
+        <div class="col-lg-8">
+            <!-- Karta 1: Dopasowanie Ścieżki -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-signpost-split-fill text-primary"></i> 1. Dopasowanie Ścieżki (Matching Rule)
+                    </h5>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="mb-3">
+                        <label asp-for="Input.MatchPattern" class="form-label fw-semibold small"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light font-monospace text-muted">Regex</span>
+                            <input asp-for="Input.MatchPattern" class="form-control font-monospace" placeholder="^/api/v1/users/.*" />
+                        </div>
+                        <div class="form-text small">Wzorzec wyrażenia regularnego, wg którego bramka przechwytuje żądania (np. <code>^/api/v1/users(/.*)?$</code>).</div>
+                        <span asp-validation-for="Input.MatchPattern" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Input.RouteName" class="form-label fw-semibold small"></label>
+                            <input asp-for="Input.RouteName" class="form-control" placeholder="np. Users Microservice" />
+                            <span asp-validation-for="Input.RouteName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.HttpMethods" class="form-label fw-semibold small"></label>
+                            <input asp-for="Input.HttpMethods" class="form-control font-monospace" placeholder="GET,POST,PUT,DELETE lub ALL" />
+                            <div class="form-text small">Rozdziel metody przecinkiem lub wpisz <code>ALL</code>.</div>
+                            <span asp-validation-for="Input.HttpMethods" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label asp-for="Input.Description" class="form-label fw-semibold small"></label>
+                        <textarea asp-for="Input.Description" class="form-control" rows="2" placeholder="Krótki opis biznesowy reguły..."></textarea>
+                        <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Karta 2: Segmenty URI Docelowego Serwera (Upstream) -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-hdd-network-fill text-info"></i> 2. Segmenty Docelowego URI (Upstream Proxy)
+                    </h5>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label asp-for="Input.Scheme" class="form-label fw-semibold small"></label>
+                            <select asp-for="Input.Scheme" class="form-select font-monospace">
+                                <option value="https">HTTPS</option>
+                                <option value="http">HTTP</option>
+                            </select>
+                            <span asp-validation-for="Input.Scheme" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.AddressHost" class="form-label fw-semibold small"></label>
+                            <input asp-for="Input.AddressHost" class="form-control font-monospace" placeholder="users.internal, api.example.com" />
+                            <span asp-validation-for="Input.AddressHost" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="Input.AddressPort" class="form-label fw-semibold small"></label>
+                            <input asp-for="Input.AddressPort" type="number" class="form-control font-monospace" placeholder="443" />
+                            <span asp-validation-for="Input.AddressPort" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="Input.AddressBasePath" class="form-label fw-semibold small"></label>
+                            <input asp-for="Input.AddressBasePath" class="form-control font-monospace" placeholder="/v1/users" />
+                            <div class="form-text small">Doklejane przed docelową ścieżką żądania.</div>
+                            <span asp-validation-for="Input.AddressBasePath" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.AddressPath" class="form-label fw-semibold small"></label>
+                            <input asp-for="Input.AddressPath" class="form-control font-monospace" placeholder="opcjonalny override" />
+                            <div class="form-text small">Statyczne nadpisanie ścieżki docelowej.</div>
+                            <span asp-validation-for="Input.AddressPath" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.AddressQueryString" class="form-label fw-semibold small"></label>
+                        <input asp-for="Input.AddressQueryString" class="form-control font-monospace" placeholder="env=prod&version=1.0" />
+                        <div class="form-text small">Domyślne parametry Query String dodawane do żądania upstream.</div>
+                        <span asp-validation-for="Input.AddressQueryString" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Headers" class="form-label fw-semibold small"></label>
+                        <textarea asp-for="Input.Headers" class="form-control font-monospace small" rows="2" placeholder='{"X-Gateway-Route": "users-v1", "X-Custom-Header": "Value"}'></textarea>
+                        <div class="form-text small">Nagłówki HTTP w formacie JSON lub linia po linii (Klucz: Wartość).</div>
+                        <span asp-validation-for="Input.Headers" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Input.TimeoutSeconds" class="form-label fw-semibold small"></label>
+                            <div class="input-group">
+                                <input asp-for="Input.TimeoutSeconds" type="number" class="form-control" />
+                                <span class="input-group-text bg-light">sekund</span>
+                            </div>
+                            <span asp-validation-for="Input.TimeoutSeconds" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center pt-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="Input.ForwardOriginalHost" class="form-check-input" type="checkbox" id="chkForwardHost" />
+                                <label class="form-check-label small fw-semibold" for="chkForwardHost">
+                                    Przekazuj oryginalny nagłówek Host (X-Forwarded-Host)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prawa Kolumna: Zabezpieczenia, Auth, Scopes & Flagi -->
+        <div class="col-lg-4">
+            <!-- Karta 3: Bezpieczeństwo i Uwierzytelnianie -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-lock-fill text-warning"></i> 3. Uwierzytelnianie &amp; Scopes
+                    </h5>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="form-check form-switch">
+                            <input asp-for="Input.AllowAnonymous" class="form-check-input" type="checkbox" id="chkAllowAnon" onchange="toggleAuthFields()" />
+                            <label class="form-check-label fw-bold text-dark" for="chkAllowAnon">
+                                AllowAnonymous
+                            </label>
+                        </div>
+                        <div class="text-muted small mt-1">
+                            Zezwól na dostęp bez tokenu JWT (klasyczne Reverse Proxy dla otwartych endpointów).
+                        </div>
+                    </div>
+
+                    <div id="authConfigSection">
+                        <div class="mb-3">
+                            <label asp-for="Input.AuthenticationSchemes" class="form-label fw-semibold small"></label>
+                            <input asp-for="Input.AuthenticationSchemes" class="form-control font-monospace" placeholder="Bearer, Cookies" />
+                            <div class="form-text small">Schematy uwierzytelniania weryfikowane przez bramkę (np. <code>Bearer</code>).</div>
+                            <span asp-validation-for="Input.AuthenticationSchemes" class="text-danger small"></span>
+                        </div>
+
+                        <div class="p-3 bg-light rounded-3 mb-3 border">
+                            <div class="form-check form-switch mb-2">
+                                <input asp-for="Input.RequiredScope" class="form-check-input" type="checkbox" id="chkReqScope" onchange="toggleScopeFields()" />
+                                <label class="form-check-label fw-bold text-dark" for="chkReqScope">
+                                    Wymagaj Scope (RequiredScope)
+                                </label>
+                            </div>
+                            <div class="text-muted small">
+                                Wymaga obecności konkretnego zakresu w roszczeniu <code>scope</code> tokenu JWT.
+                            </div>
+
+                            <div id="scopeSelectContainer" class="mt-3" style="display: @(Model.Input.RequiredScope ? "block" : "none")">
+                                <label asp-for="Input.ApiScopeId" class="form-label fw-semibold small"></label>
+                                <select asp-for="Input.ApiScopeId" asp-items="Model.AvailableScopes" class="form-select"></select>
+                                <span asp-validation-for="Input.ApiScopeId" class="text-danger small"></span>
+
+                                <div class="mt-2">
+                                    <label asp-for="Input.CustomScopeName" class="form-label fw-semibold small">Lub wpisz własną nazwę Scope:</label>
+                                    <input asp-for="Input.CustomScopeName" class="form-control font-monospace" placeholder="np. orders.read" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Karta 4: Parametry Operacyjne & Metadane -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-sliders text-secondary"></i> 4. Ustawienia Operacyjne
+                    </h5>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="mb-3">
+                        <label asp-for="Input.Priority" class="form-label fw-semibold small"></label>
+                        <input asp-for="Input.Priority" type="number" class="form-control font-monospace" />
+                        <div class="form-text small">Wyższa liczba = wcześniejsze dopasowanie reguły w potoku.</div>
+                        <span asp-validation-for="Input.Priority" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input asp-for="Input.IsEnabled" class="form-check-input" type="checkbox" id="chkIsEnabled" />
+                        <label class="form-check-label fw-semibold small" for="chkIsEnabled">
+                            Trasa aktywna (IsEnabled)
+                        </label>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input asp-for="Input.EnableCaching" class="form-check-input" type="checkbox" id="chkEnableCaching" />
+                        <label class="form-check-label fw-semibold small" for="chkEnableCaching">
+                            Włącz Response Caching
+                        </label>
+                    </div>
+
+                    <hr class="my-3" />
+                    <div class="small text-muted">
+                        <div>Utworzono: <strong>@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC</strong></div>
+                        @if (Model.UpdatedAt.HasValue)
+                        {
+                            <div>Zmodyfikowano: <strong>@Model.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC</strong></div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Przycisk Zapisz -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg shadow-sm">
+                    <i class="bi bi-save me-1"></i> Zapisz Zmiany
+                </button>
+                <a asp-page="Index" class="btn btn-outline-secondary">Anuluj</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleAuthFields() {
+            const isAnon = document.getElementById('chkAllowAnon').checked;
+            const authSection = document.getElementById('authConfigSection');
+            if (authSection) {
+                authSection.style.opacity = isAnon ? '0.5' : '1';
+                authSection.querySelectorAll('input, select').forEach(el => {
+                    el.disabled = isAnon;
+                });
+            }
+        }
+
+        function toggleScopeFields() {
+            const reqScope = document.getElementById('chkReqScope').checked;
+            const scopeContainer = document.getElementById('scopeSelectContainer');
+            if (scopeContainer) {
+                scopeContainer.style.display = reqScope ? 'block' : 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleAuthFields();
+            toggleScopeFields();
+        });
+    </script>
+}

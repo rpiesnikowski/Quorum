@@ -35,6 +35,9 @@ public static class AdminUiServiceCollectionExtensions
         // Rejestracja serwisu zarządzania dynamicznymi federacjami OIDC
         services.TryAddScoped<IFederationAdminService, IdentityFederationAdminService>();
 
+        // Rejestracja serwisu zarządzania API Gateway
+        services.TryAddScoped<IGatewayAdminService, GatewayAdminService>();
+
         // Rejestracja dedykowanego schematu uwierzytelniania ciasteczkowego dla administratorów
         services.AddAuthentication()
             .AddCookie(options.AuthenticationScheme, cookieOptions =>
