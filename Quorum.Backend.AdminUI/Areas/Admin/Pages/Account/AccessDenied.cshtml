@@ -1,0 +1,35 @@
+@page "/Admin/Account/AccessDenied"
+@model Quorum.Backend.AdminUI.Areas.Admin.Pages.Account.AccessDeniedModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Brak uprawnień administratora";
+}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+</head>
+<body class="bg-dark text-white d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+    <div class="card bg-secondary bg-opacity-25 border-danger border-opacity-50 p-4 rounded-4 shadow-lg text-center" style="max-width: 500px;">
+        <div class="text-danger mb-3">
+            <i class="bi bi-shield-x display-1"></i>
+        </div>
+        <h3 class="fw-bold text-white mb-2">Brak uprawnień administratora</h3>
+        <p class="text-light text-opacity-75 small mb-4">
+            Zalogowane konto nie posiada roli <code>Admin</code> wymaganej do przeglądania i modyfikacji zasobów tożsamości Open.IdentityServer.
+        </p>
+        <div class="d-flex flex-column gap-2">
+            <a href="/Admin/Account/Login" class="btn btn-warning fw-semibold">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Zaloguj jako Administrator
+            </a>
+            <a href="/" class="btn btn-outline-light btn-sm">
+                Powrót do strony głównej
+            </a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,6 +13,7 @@ public static class AdminUiServiceCollectionExtensions
 {
     /// <summary>
     /// Rejestruje usługi i strony Razor Pages panelu Quorum Admin UI w kontenerze DI dla wskazanego typu użytkownika.
+    /// Konfiguruje dedykowany, odizolowany schemat uwierzytelniania dla administratorów (Sposób nr 1).
     /// </summary>
     public static IServiceCollection AddQuorumAdminUI<TUser>(
         this IServiceCollection services,
@@ -32,24 +35,48 @@ public static class AdminUiServiceCollectionExtensions
         // Rejestracja serwisu zarządzania dynamicznymi federacjami OIDC
         services.TryAddScoped<IFederationAdminService, IdentityFederationAdminService>();
 
+        // Rejestracja dedykowanego schematu uwierzytelniania ciasteczkowego dla administratorów
+        services.AddAuthentication()
+            .AddCookie(options.AuthenticationScheme, cookieOptions =>
+            {
+                cookieOptions.Cookie.Name = options.CookieName;
+                cookieOptions.LoginPath = options.LoginPath;
+                cookieOptions.LogoutPath = options.LogoutPath;
+                cookieOptions.AccessDeniedPath = options.AccessDeniedPath;
+                cookieOptions.ReturnUrlParameter = "returnUrl";
+                cookieOptions.ExpireTimeSpan = options.ExpireTimeSpan;
+                cookieOptions.SlidingExpiration = true;
+                cookieOptions.Cookie.HttpOnly = true;
+                cookieOptions.Cookie.SameSite = SameSiteMode.Lax;
+                cookieOptions.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            });
+
+        // Rejestracja dedykowanej polityki autoryzacji opartej o schemat administratora i wymaganą rolę
+        services.AddAuthorization(authOptions =>
+        {
+            authOptions.AddPolicy(options.PolicyName, policy =>
+            {
+                policy.AddAuthenticationSchemes(options.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
+                if (!string.IsNullOrEmpty(options.RequiredRole))
+                {
+                    policy.RequireRole(options.RequiredRole);
+                }
+            });
+        });
+
         // Konfiguracja konwencji Razor Pages dla obszaru Admin
         services.AddRazorPages(razorOptions =>
         {
             if (options.EnableAuthorization)
             {
+                // Zabezpieczenie całego obszaru /Admin polityką administratora
                 razorOptions.Conventions.AuthorizeAreaFolder("Admin", options.AreaFolder, options.PolicyName);
-            }
-        });
 
-        // Rejestracja domyślnej polityki opartej o rolę, jeśli nie została jeszcze zdefiniowana
-        services.AddAuthorizationCore(authOptions =>
-        {
-            if (authOptions.GetPolicy(options.PolicyName) == null)
-            {
-                authOptions.AddPolicy(options.PolicyName, policy =>
-                {
-                    policy.RequireRole(options.RequiredRole);
-                });
+                // Dostęp anonimowy dla dedykowanych stron uwierzytelniania AdminUI
+                razorOptions.Conventions.AllowAnonymousToAreaPage("Admin", "/Account/Login");
+                razorOptions.Conventions.AllowAnonymousToAreaPage("Admin", "/Account/Logout");
+                razorOptions.Conventions.AllowAnonymousToAreaPage("Admin", "/Account/AccessDenied");
             }
         });
 

@@ -128,4 +128,46 @@ public class IdentityUserAdminService<TUser> : IUserAdminService where TUser : I
 
         return (true, null);
     }
+
+    public async Task<(bool Succeeded, AdminUserDto? User, string? ErrorMessage)> ValidateAdminCredentialsAsync(string userNameOrEmail, string password, string requiredRole)
+    {
+        if (string.IsNullOrWhiteSpace(userNameOrEmail) || string.IsNullOrWhiteSpace(password))
+        {
+            return (false, null, "Wprowadź login/email oraz hasło.");
+        }
+
+        var user = await _userManager.FindByNameAsync(userNameOrEmail)
+                ?? await _userManager.FindByEmailAsync(userNameOrEmail);
+
+        if (user == null)
+        {
+            return (false, null, "Nieprawidłowy login lub hasło administratora.");
+        }
+
+        var passwordValid = await _userManager.CheckPasswordAsync(user, password);
+        if (!passwordValid)
+        {
+            return (false, null, "Nieprawidłowy login lub hasło administratora.");
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        if (!string.IsNullOrEmpty(requiredRole) && !roles.Contains(requiredRole, StringComparer.OrdinalIgnoreCase))
+        {
+            return (false, null, $"Konto '{user.UserName}' nie posiada uprawnień administratora (wymagana rola: {requiredRole}).");
+        }
+
+        var fullNameProp = typeof(TUser).GetProperty("FullName", BindingFlags.Public | BindingFlags.Instance);
+        string? fullName = fullNameProp?.GetValue(user) as string;
+
+        var dto = new AdminUserDto
+        {
+            Id = user.Id,
+            UserName = user.UserName ?? user.Id,
+            Email = user.Email ?? string.Empty,
+            FullName = fullName,
+            Roles = roles
+        };
+
+        return (true, dto, null);
+    }
 }

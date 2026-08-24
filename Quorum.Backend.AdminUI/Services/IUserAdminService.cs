@@ -16,4 +16,5 @@ public interface IUserAdminService
     Task<IList<AdminUserDto>> GetUsersAsync();
     Task<(bool Success, string? Error)> CreateUserAsync(string userName, string email, string password, string? fullName, string? role);
     Task<(bool Success, string? Error)> DeleteUserAsync(string id);
+    Task<(bool Succeeded, AdminUserDto? User, string? ErrorMessage)> ValidateAdminCredentialsAsync(string userNameOrEmail, string password, string requiredRole);
 }
