@@ -20,6 +20,17 @@ public class EditModel : PageModel
     [BindProperty]
     public ClientInputModel Input { get; set; } = new();
 
+    public class ScopeItemDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string Type { get; set; } = "API";
+        public bool Emphasize { get; set; }
+    }
+
+    public List<ScopeItemDto> AvailableScopes { get; set; } = new();
+
     public class ClientInputModel
     {
         public int Id { get; set; }
@@ -210,12 +221,62 @@ public class EditModel : PageModel
             }).ToList()
         };
 
+        await LoadAvailableScopesAsync();
         return Page();
+    }
+
+    private async Task LoadAvailableScopesAsync()
+    {
+        var identityScopes = await _context.IdentityResources
+            .AsNoTracking()
+            .Where(r => r.Enabled)
+            .OrderBy(r => r.Name)
+            .Select(r => new ScopeItemDto
+            {
+                Name = r.Name,
+                DisplayName = r.DisplayName ?? r.Name,
+                Description = r.Description,
+                Type = "Tożsamość (Identity)",
+                Emphasize = r.Emphasize
+            })
+            .ToListAsync();
+
+        var apiScopes = await _context.ApiScopes
+            .AsNoTracking()
+            .Where(s => s.Enabled)
+            .OrderBy(s => s.Name)
+            .Select(s => new ScopeItemDto
+            {
+                Name = s.Name,
+                DisplayName = s.DisplayName ?? s.Name,
+                Description = s.Description,
+                Type = "API",
+                Emphasize = s.Emphasize
+            })
+            .ToListAsync();
+
+        AvailableScopes = identityScopes.Concat(apiScopes).ToList();
+
+        if (!AvailableScopes.Any(s => s.Name == "offline_access"))
+        {
+            AvailableScopes.Add(new ScopeItemDto
+            {
+                Name = "offline_access",
+                DisplayName = "Dostęp offline (Refresh Token)",
+                Description = "Pozwala aplikacji na odświeżanie tokenów bez ponownego logowania",
+                Type = "Protokół OIDC",
+                Emphasize = false
+            });
+        }
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!ModelState.IsValid) return Page();
+        if (!ModelState.IsValid)
+        {
+            await LoadAvailableScopesAsync();
+            return Page();
+        }
 
         var entity = await _context.Clients
             .Include(x => x.AllowedGrantTypes)

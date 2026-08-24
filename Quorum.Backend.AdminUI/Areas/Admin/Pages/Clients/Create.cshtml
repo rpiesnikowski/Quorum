@@ -8,44 +8,133 @@
     <a asp-page="Index" class="text-decoration-none small text-muted">
         <i class="bi bi-arrow-left me-1"></i> Powrót do listy klientów
     </a>
-    <h2 class="h4 mt-2">Dodaj nowego klienta OAuth2 / OIDC</h2>
+    <h2 class="h4 mt-2"><i class="bi bi-shield-plus text-primary me-2"></i>Dodaj nowego klienta OAuth2 / OIDC</h2>
 </div>
 
-<div class="card border-0 shadow-sm col-lg-8">
+<div class="card border-0 shadow-sm col-lg-10">
     <div class="card-body p-4">
-        <form method="post">
+        <form method="post" id="clientCreateForm">
             <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-            <div class="mb-3">
-                <label asp-for="Input.ClientId" class="form-label fw-semibold">Client ID <span class="text-danger">*</span></label>
-                <input asp-for="Input.ClientId" class="form-control font-monospace" placeholder="np. my-spa-app lub billing-api" />
-                <span asp-validation-for="Input.ClientId" class="text-danger small"></span>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Input.ClientId" class="form-label fw-semibold">Client ID <span class="text-danger">*</span></label>
+                    <input asp-for="Input.ClientId" class="form-control font-monospace" placeholder="np. my-spa-app lub billing-api" autofocus />
+                    <span asp-validation-for="Input.ClientId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Input.ClientName" class="form-label fw-semibold">Nazwa wyświetlana <span class="text-danger">*</span></label>
+                    <input asp-for="Input.ClientName" class="form-control" placeholder="np. Panel Klienta Web" />
+                    <span asp-validation-for="Input.ClientName" class="text-danger small"></span>
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Input.ClientName" class="form-label fw-semibold">Nazwa wyświetlana <span class="text-danger">*</span></label>
-                <input asp-for="Input.ClientName" class="form-control" placeholder="np. Panel Klienta Web" />
-                <span asp-validation-for="Input.ClientName" class="text-danger small"></span>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Input.GrantType" class="form-label fw-semibold">Typ Przepływu (Grant Type)</label>
+                    <select asp-for="Input.GrantType" class="form-select" id="grantTypeSelect">
+                        <option value="client_credentials">Client Credentials (Aplikacje w tle / M2M)</option>
+                        <option value="authorization_code">Authorization Code + PKCE (SPA / Web MVC / Mobile)</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Input.ClientSecret" class="form-label fw-semibold">Client Secret (Hasło klienta)</label>
+                    <input asp-for="Input.ClientSecret" class="form-control" type="password" placeholder="Wprowadź tajny klucz (zostanie zhaszowany SHA-256)" />
+                    <div class="form-text small">Wymagane dla Client Credentials. Opcjonalne dla publicznych klientów z PKCE.</div>
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Input.GrantType" class="form-label fw-semibold">Typ Przepływu (Grant Type)</label>
-                <select asp-for="Input.GrantType" class="form-select">
-                    <option value="client_credentials">Client Credentials (Aplikacje w tle / M2M)</option>
-                    <option value="authorization_code">Authorization Code + PKCE (SPA / Web MVC / Mobile)</option>
-                </select>
-            </div>
+            <!-- SEKCJA SCOPES: Autocomplete, Lista tagów i Tabela wyboru -->
+            <div class="card border bg-light mb-4">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-key-fill text-warning me-2"></i>Dozwolone Zakresy (Allowed Scopes)</h6>
+                            <span class="text-muted small">Wybierz zakresy z tabeli poniżej lub wpisz z podpowiedziami</span>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary border" id="scopeCountBadge">0 wybranych</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Pole tekstowe z autocomplete i tagami -->
+                    <div class="mb-3">
+                        <label asp-for="Input.AllowedScopes" class="form-label fw-semibold small">Wybrane Zakresy (Scopes)</label>
+                        <div class="position-relative">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" id="scopeAutocompleteInput" class="form-control" placeholder="Wpisz nazwę scope, aby szybko dodać z podpowiedzi..." autocomplete="off" />
+                            </div>
+                            <!-- Lista dropdown autopodpowiedzi -->
+                            <div id="autocompleteDropdown" class="list-group position-absolute w-100 shadow-sm border mt-1" style="display:none; z-index: 1050; max-height: 220px; overflow-y: auto;"></div>
+                        </div>
 
-            <div class="mb-3">
-                <label asp-for="Input.ClientSecret" class="form-label fw-semibold">Client Secret (Hasło klienta)</label>
-                <input asp-for="Input.ClientSecret" class="form-control" type="password" placeholder="Wprowadź tajny klucz (zostanie zhaszowany SHA-256)" />
-                <div class="form-text small">Wymagane dla Client Credentials. Opcjonalne dla publicznych klientów z PKCE.</div>
-            </div>
+                        <!-- Ukryte / Widoczne pole docelowe formularza -->
+                        <input asp-for="Input.AllowedScopes" id="scopesHiddenInput" class="form-control font-monospace mt-2" readonly />
+                        <span asp-validation-for="Input.AllowedScopes" class="text-danger small"></span>
 
-            <div class="mb-3">
-                <label asp-for="Input.AllowedScopes" class="form-label fw-semibold">Dozwolone Zakresy (Scopes)</label>
-                <input asp-for="Input.AllowedScopes" class="form-control font-monospace" placeholder="openid profile email api1" />
-                <div class="form-text small">Oddziel spacjami, np. <code>openid profile email api1 api.write</code></div>
+                        <!-- Kontener na dynamiczne chipy / tagi -->
+                        <div class="mt-2 d-flex flex-wrap gap-1 align-items-center" id="selectedScopesTags">
+                            <!-- Renderowane przez JS -->
+                        </div>
+                    </div>
+
+                    <!-- Tabela Grid do zaznaczania Scope -->
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-semibold small mb-0"><i class="bi bi-table me-1"></i>Katalog dostępnych zakresów (Zaznacz wiersz lub checkbox, aby dodać/usunąć)</label>
+                            <div class="input-group input-group-sm w-auto" style="max-width: 250px;">
+                                <input type="text" id="filterScopesTableInput" class="form-control form-control-sm" placeholder="Filtruj tabelę..." />
+                                <span class="input-group-text bg-white text-muted"><i class="bi bi-funnel"></i></span>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive bg-white rounded border" style="max-height: 280px; overflow-y: auto;">
+                            <table class="table table-hover table-sm align-middle mb-0" id="scopesTable">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th style="width: 40px;" class="text-center">#</th>
+                                        <th style="width: 200px;">Identyfikator Scope</th>
+                                        <th>Nazwa Wyświetlana / Opis</th>
+                                        <th style="width: 140px;">Typ</th>
+                                        <th style="width: 80px;" class="text-end">Akcja</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var scope in Model.AvailableScopes)
+                                    {
+                                        <tr class="scope-row" style="cursor: pointer;" data-scope-name="@scope.Name" data-display-name="@scope.DisplayName" data-description="@(scope.Description ?? "")" data-type="@scope.Type">
+                                            <td class="text-center" onclick="event.stopPropagation();">
+                                                <input type="checkbox" class="form-check-input scope-checkbox" value="@scope.Name" id="chk_@scope.Name" />
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-primary border font-monospace px-2 py-1">@scope.Name</span>
+                                                @if (scope.Emphasize)
+                                                {
+                                                    <i class="bi bi-star-fill text-warning small ms-1" title="Wyróżniony"></i>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="fw-semibold small">@scope.DisplayName</div>
+                                                @if (!string.IsNullOrWhiteSpace(scope.Description))
+                                                {
+                                                    <div class="text-muted text-truncate" style="max-width: 400px; font-size: 0.8rem;">@scope.Description</div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary-subtle text-secondary border small">@scope.Type</span>
+                                            </td>
+                                            <td class="text-end" onclick="event.stopPropagation();">
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 toggle-scope-btn" data-scope="@scope.Name">
+                                                    <i class="bi bi-plus-lg"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="mb-3">
@@ -70,3 +159,243 @@
         </form>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const availableScopes = [
+            @foreach (var s in Model.AvailableScopes)
+            {
+                <text>{ name: "@Html.Raw(s.Name)", displayName: "@Html.Raw(s.DisplayName.Replace("\"", "\\\""))", description: "@Html.Raw((s.Description ?? "").Replace("\"", "\\\""))", type: "@Html.Raw(s.Type)" },</text>
+            }
+        ];
+
+        let selectedScopes = new Set();
+
+        function initSelectedScopes() {
+            const rawVal = document.getElementById('scopesHiddenInput').value;
+            if (rawVal) {
+                rawVal.trim().split(/\s+/).forEach(s => {
+                    if (s) selectedScopes.add(s);
+                });
+            }
+            syncScopesUI();
+        }
+
+        function syncScopesUI() {
+            const scopesArr = Array.from(selectedScopes);
+            const hiddenInput = document.getElementById('scopesHiddenInput');
+            if (hiddenInput) {
+                hiddenInput.value = scopesArr.join(' ');
+            }
+
+            const badge = document.getElementById('scopeCountBadge');
+            if (badge) {
+                badge.innerText = `${scopesArr.length} wybranych`;
+            }
+
+            // Render tagów
+            const tagsContainer = document.getElementById('selectedScopesTags');
+            if (tagsContainer) {
+                if (scopesArr.length === 0) {
+                    tagsContainer.innerHTML = '<span class="text-muted small fst-italic">Brak wybranych zakresów. Zaznacz powyżej lub wpisz nazwę.</span>';
+                } else {
+                    tagsContainer.innerHTML = scopesArr.map(s => `
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle d-inline-flex align-items-center py-1 px-2 font-monospace">
+                            ${escapeHtml(s)}
+                            <button type="button" class="btn-close btn-close-sm ms-2" style="font-size: 0.65rem;" onclick="removeScope('${escapeHtml(s)}')"></button>
+                        </span>
+                    `).join('');
+                }
+            }
+
+            // Zaktualizuj stan checkboxów i podświetlenie wierszy tabeli
+            document.querySelectorAll('#scopesTable tbody tr.scope-row').forEach(row => {
+                const scopeName = row.getAttribute('data-scope-name');
+                const isSelected = selectedScopes.has(scopeName);
+                const chk = row.querySelector('.scope-checkbox');
+                const btn = row.querySelector('.toggle-scope-btn');
+
+                if (chk) chk.checked = isSelected;
+
+                if (isSelected) {
+                    row.classList.add('table-primary');
+                    if (btn) {
+                        btn.className = 'btn btn-sm btn-danger py-0 px-2 toggle-scope-btn';
+                        btn.innerHTML = '<i class="bi bi-dash-lg"></i>';
+                        btn.title = 'Usuń zakres';
+                    }
+                } else {
+                    row.classList.remove('table-primary');
+                    if (btn) {
+                        btn.className = 'btn btn-sm btn-outline-primary py-0 px-2 toggle-scope-btn';
+                        btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+                        btn.title = 'Dodaj zakres';
+                    }
+                }
+            });
+        }
+
+        function addScope(scope) {
+            if (!scope) return;
+            const cleaned = scope.trim();
+            if (cleaned) {
+                selectedScopes.add(cleaned);
+                syncScopesUI();
+            }
+        }
+
+        function removeScope(scope) {
+            if (!scope) return;
+            selectedScopes.delete(scope.trim());
+            syncScopesUI();
+        }
+
+        function toggleScope(scope) {
+            if (selectedScopes.has(scope)) {
+                removeScope(scope);
+            } else {
+                addScope(scope);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initSelectedScopes();
+
+            // Kliknięcie wiersza w tabeli przełącza zakres
+            document.querySelectorAll('#scopesTable tbody tr.scope-row').forEach(row => {
+                row.addEventListener('click', function(e) {
+                    const scopeName = this.getAttribute('data-scope-name');
+                    toggleScope(scopeName);
+                });
+            });
+
+            // Checkbox zmiana
+            document.querySelectorAll('.scope-checkbox').forEach(chk => {
+                chk.addEventListener('change', function(e) {
+                    toggleScope(this.value);
+                });
+            });
+
+            // Button zmiana
+            document.querySelectorAll('.toggle-scope-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const scope = this.getAttribute('data-scope');
+                    toggleScope(scope);
+                });
+            });
+
+            // Filtrowanie w tabeli
+            const filterInput = document.getElementById('filterScopesTableInput');
+            if (filterInput) {
+                filterInput.addEventListener('input', function() {
+                    const term = this.value.toLowerCase().trim();
+                    document.querySelectorAll('#scopesTable tbody tr.scope-row').forEach(row => {
+                        const name = (row.getAttribute('data-scope-name') || '').toLowerCase();
+                        const disp = (row.getAttribute('data-display-name') || '').toLowerCase();
+                        const desc = (row.getAttribute('data-description') || '').toLowerCase();
+                        if (name.includes(term) || disp.includes(term) || desc.includes(term)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            // Autocomplete podpowiedzi
+            const autoInput = document.getElementById('scopeAutocompleteInput');
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            if (autoInput && dropdown) {
+                autoInput.addEventListener('input', function() {
+                    const term = this.value.toLowerCase().trim();
+                    if (!term) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                        return;
+                    }
+
+                    const matches = availableScopes.filter(s =>
+                        s.name.toLowerCase().includes(term) ||
+                        s.displayName.toLowerCase().includes(term) ||
+                        (s.description && s.description.toLowerCase().includes(term))
+                    );
+
+                    if (matches.length === 0) {
+                        dropdown.innerHTML = `
+                            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2" onclick="addCustomScope('${escapeHtml(term)}')">
+                                <div>
+                                    <span class="badge bg-light text-primary border font-monospace me-2">${escapeHtml(term)}</span>
+                                    <span class="small text-muted">Dodaj niestandardowy zakres</span>
+                                </div>
+                                <i class="bi bi-plus-circle text-primary"></i>
+                            </div>
+                        `;
+                        dropdown.style.display = 'block';
+                        return;
+                    }
+
+                    dropdown.innerHTML = matches.map(s => {
+                        const isSelected = selectedScopes.has(s.name);
+                        return `
+                            <a href="javascript:void(0)" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 ${isSelected ? 'active text-white' : ''}" onclick="selectFromAutocomplete('${escapeHtml(s.name)}')">
+                                <div>
+                                    <span class="badge ${isSelected ? 'bg-light text-dark' : 'bg-light text-primary'} border font-monospace me-2">${escapeHtml(s.name)}</span>
+                                    <span class="fw-semibold small">${escapeHtml(s.displayName)}</span>
+                                    ${s.description ? `<div class="small opacity-75 text-truncate" style="max-width: 400px;">${escapeHtml(s.description)}</div>` : ''}
+                                </div>
+                                <span class="badge ${isSelected ? 'bg-white text-primary' : 'bg-secondary-subtle text-secondary'}">${escapeHtml(s.type)}</span>
+                            </a>
+                        `;
+                    }).join('');
+
+                    dropdown.style.display = 'block';
+                });
+
+                // Ukrywanie dropdown po kliknięciu poza
+                document.addEventListener('click', function(e) {
+                    if (!autoInput.contains(e.target) && !dropdown.contains(e.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+
+                // Enter na polu autocomplete
+                autoInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = this.value.trim();
+                        if (val) {
+                            addScope(val);
+                            this.value = '';
+                            dropdown.style.display = 'none';
+                        }
+                    }
+                });
+            }
+        });
+
+        window.selectFromAutocomplete = function(scope) {
+            addScope(scope);
+            const autoInput = document.getElementById('scopeAutocompleteInput');
+            const dropdown = document.getElementById('autocompleteDropdown');
+            if (autoInput) autoInput.value = '';
+            if (dropdown) dropdown.style.display = 'none';
+        };
+
+        window.addCustomScope = function(scope) {
+            addScope(scope);
+            const autoInput = document.getElementById('scopeAutocompleteInput');
+            const dropdown = document.getElementById('autocompleteDropdown');
+            if (autoInput) autoInput.value = '';
+            if (dropdown) dropdown.style.display = 'none';
+        };
+    </script>
+}

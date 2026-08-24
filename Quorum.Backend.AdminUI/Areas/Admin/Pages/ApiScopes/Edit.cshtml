@@ -1,28 +1,38 @@
-@page
-@model Quorum.Backend.AdminUI.Areas.Admin.Pages.ApiScopes.CreateModel
+@page "{id:int}"
+@model Quorum.Backend.AdminUI.Areas.Admin.Pages.ApiScopes.EditModel
 @{
-    ViewData["Title"] = "Nowy Zakres API";
+    ViewData["Title"] = $"Edycja Zakresu API: {Model.Input.Name}";
 }
 
 <div class="mb-4">
     <a asp-page="Index" class="text-decoration-none small text-muted">
         <i class="bi bi-arrow-left me-1"></i> Powrót do listy zakresów
     </a>
-    <h2 class="h4 mt-2"><i class="bi bi-key-fill text-warning me-2"></i>Dodaj Nowy Zakres API (ApiScope)</h2>
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <div>
+            <h2 class="h4 mb-0"><i class="bi bi-pencil-square text-primary me-2"></i>Edycja Zakresu API: <span class="font-monospace text-primary">@Model.Input.Name</span></h2>
+            <p class="text-muted small mb-0">Zmień ustawienia, nazwę wyświetlaną lub opis zakresu API</p>
+        </div>
+        <span class="badge @(Model.Input.Enabled ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary") px-3 py-2 fs-6">
+            <i class="bi @(Model.Input.Enabled ? "bi-check-circle" : "bi-dash-circle") me-1"></i>
+            @(Model.Input.Enabled ? "Aktywny" : "Wyłączony")
+        </span>
+    </div>
 </div>
 
 <div class="card border-0 shadow-sm col-lg-8">
     <div class="card-body p-4">
         <form method="post">
+            <input type="hidden" asp-for="Input.Id" />
             <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3"></div>
 
             <div class="mb-3">
                 <label asp-for="Input.Name" class="form-label fw-semibold">Identyfikator Scope <span class="text-danger">*</span></label>
                 <div class="input-group">
                     <span class="input-group-text bg-light text-muted font-monospace"><i class="bi bi-tag"></i></span>
-                    <input asp-for="Input.Name" class="form-control font-monospace" placeholder="np. orders.read, invoices, reports.export" autofocus />
+                    <input asp-for="Input.Name" class="form-control font-monospace" placeholder="np. orders.read, invoices, reports.export" />
                 </div>
-                <div class="form-text small">Unikalny identyfikator zakresu (bez spacji), np. <code>api.read</code>, <code>billing.admin</code>.</div>
+                <div class="form-text small">Unikalna nazwa identyfikatora zakresu (używana w protokole OAuth2 / OIDC).</div>
                 <span asp-validation-for="Input.Name" class="text-danger small"></span>
             </div>
 
@@ -42,37 +52,38 @@
 
             <div class="p-3 bg-light rounded-3 border mb-4">
                 <div class="form-check form-switch mb-2">
-                    <input asp-for="Input.Enabled" class="form-check-input" type="checkbox" id="enabledCheck" />
-                    <label class="form-check-label fw-semibold" for="enabledCheck">
+                    <input asp-for="Input.Enabled" class="form-check-input" type="checkbox" id="enabledEditCheck" />
+                    <label class="form-check-label fw-semibold" for="enabledEditCheck">
                         Zakres aktywny (Enabled)
                     </label>
                     <div class="text-muted small">Tylko aktywne zakresy mogą być wnioskowane przez klientów.</div>
                 </div>
 
                 <div class="form-check form-switch mb-2">
-                    <input asp-for="Input.Required" class="form-check-input" type="checkbox" id="requiredCheck" />
-                    <label class="form-check-label fw-semibold" for="requiredCheck">
+                    <input asp-for="Input.Required" class="form-check-input" type="checkbox" id="requiredEditCheck" />
+                    <label class="form-check-label fw-semibold" for="requiredEditCheck">
                         Wymagany (Required)
                     </label>
                     <div class="text-muted small">Użytkownik nie może odznaczyć tego zakresu podczas wyrażania zgody.</div>
                 </div>
 
                 <div class="form-check form-switch">
-                    <input asp-for="Input.Emphasize" class="form-check-input" type="checkbox" id="emphasizeCheck" />
-                    <label class="form-check-label fw-semibold" for="emphasizeCheck">
+                    <input asp-for="Input.Emphasize" class="form-check-input" type="checkbox" id="emphasizeEditCheck" />
+                    <label class="form-check-label fw-semibold" for="emphasizeEditCheck">
                         Wyróżniony (Emphasize)
                     </label>
                     <div class="text-muted small">Podświetlony na ekranie zgody jako uprawnienie o podwyższonym znaczeniu.</div>
                 </div>
             </div>
 
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary px-4">
-                    <i class="bi bi-check-lg me-1"></i> Zapisz Zakres API
-                </button>
-                <a asp-page="Index" class="btn btn-outline-secondary">Anuluj</a>
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check-lg me-1"></i> Zapisz Zmiany
+                    </button>
+                    <a asp-page="Index" class="btn btn-outline-secondary">Anuluj</a>
+                </div>
             </div>
         </form>
     </div>
 </div>
-
