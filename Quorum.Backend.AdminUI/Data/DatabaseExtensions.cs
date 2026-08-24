@@ -31,8 +31,20 @@ public static class DatabaseExtensions
                 builder.UseNpgsql(pgConn, sql => sql.MigrationsAssembly(migrationsAssembly));
                 break;
 
+            case "sqlserver":
+            case "mssql":
+            case "sql":
+                var sqlServerConn = configuration.GetConnectionString("SqlServer") 
+                                 ?? configuration.GetConnectionString("DefaultConnection");
+                if (string.IsNullOrWhiteSpace(sqlServerConn))
+                {
+                    throw new InvalidOperationException("Brak ConnectionStrings:SqlServer (lub ConnectionStrings:DefaultConnection) w appsettings.json!");
+                }
+                builder.UseSqlServer(sqlServerConn, sql => sql.MigrationsAssembly(migrationsAssembly));
+                break;
+
             default:
-                throw new InvalidOperationException($"Niewspierany dostawca bazy danych: {provider}. Wybierz 'Sqlite' lub 'PostgreSQL'.");
+                throw new InvalidOperationException($"Niewspierany dostawca bazy danych: '{provider}'. Dostępne opcje: 'Sqlite', 'PostgreSQL', 'SqlServer'.");
         }
     }
 }
