@@ -21,6 +21,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederat
     /// </summary>
     public DbSet<GatewayRoute> GatewayRoutes { get; set; } = null!;
 
+    /// <summary>
+    /// Tabela mapująca zakresy (Scopes) przypisane do tras API Gateway.
+    /// </summary>
+    public DbSet<GatewayRouteScope> GatewayRouteScopes { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -52,11 +57,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederat
             entity.Property(e => e.Priority).HasDefaultValue(0);
             entity.Property(e => e.AllowAnonymous).HasDefaultValue(false);
             entity.Property(e => e.RequiredScope).HasDefaultValue(false);
-            entity.Property(e => e.ScopeName).HasMaxLength(200);
+            entity.Property(e => e.ScopeName).HasMaxLength(500);
 
             entity.HasIndex(e => e.MatchPattern);
             entity.HasIndex(e => e.Priority);
             entity.HasIndex(e => e.IsEnabled);
+        });
+
+        builder.Entity<GatewayRouteScope>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Scope).IsRequired().HasMaxLength(200);
+            entity.HasIndex(e => new { e.GatewayRouteId, e.Scope });
+            entity.HasOne(e => e.GatewayRoute)
+                  .WithMany(r => r.Scopes)
+                  .HasForeignKey(e => e.GatewayRouteId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

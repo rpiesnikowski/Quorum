@@ -94,12 +94,17 @@ public class GatewayRoute
     public bool AllowAnonymous { get; set; } = false;
 
     /// <summary>
-    /// Czy wymagana jest weryfikacja konkretnego Scope
+    /// Czy wymagana jest weryfikacja konkretnych Scope (RequiredScope)
     /// </summary>
     public bool RequiredScope { get; set; } = false;
 
     /// <summary>
-    /// Klucz obcy do tabeli ApiScopes (opcjonalny, gdy RequiredScope = true)
+    /// Kolekcja przypisanych zakresów (Scopes) powiązanych z tą trasą API Gateway
+    /// </summary>
+    public virtual ICollection<GatewayRouteScope> Scopes { get; set; } = new List<GatewayRouteScope>();
+
+    /// <summary>
+    /// Klucz obcy do tabeli ApiScopes (opcjonalny, zachowany dla kompatybilności)
     /// </summary>
     public int? ApiScopeId { get; set; }
 
@@ -110,9 +115,9 @@ public class GatewayRoute
     public virtual ApiScope? ApiScope { get; set; }
 
     /// <summary>
-    /// Nazwa scope zapasowa / tekstowa (np. api.read, orders.write)
+    /// Zapasowy / zagregowany tekst nazw zakresów (np. "api1 api.read")
     /// </summary>
-    [MaxLength(200)]
+    [MaxLength(500)]
     public string? ScopeName { get; set; }
 
     /// <summary>

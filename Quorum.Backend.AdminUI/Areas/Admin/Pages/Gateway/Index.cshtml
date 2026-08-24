@@ -206,10 +206,27 @@
                                             </span>
                                             @if (route.RequiredScope)
                                             {
-                                                var scopeDisplayName = route.ApiScope?.Name ?? route.ScopeName ?? "Wymagany";
-                                                <span class="badge bg-warning-subtle text-warning border d-inline-flex align-items-center gap-1" title="Wymagany Scope">
-                                                    <i class="bi bi-key-fill"></i> Scope: @scopeDisplayName
-                                                </span>
+                                                var scopesList = route.Scopes != null && route.Scopes.Any() 
+                                                    ? route.Scopes.Select(s => s.Scope).ToList()
+                                                    : (route.ScopeName ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+                                                if (scopesList.Any())
+                                                {
+                                                    <div class="d-flex flex-wrap gap-1 mt-1" style="max-width: 220px;">
+                                                        @foreach (var sc in scopesList)
+                                                        {
+                                                            <span class="badge bg-warning-subtle text-warning border font-monospace" style="font-size: 0.72rem;" title="Wymagany Scope: @sc">
+                                                                <i class="bi bi-key-fill"></i> @sc
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning-subtle text-warning border d-inline-flex align-items-center gap-1">
+                                                        <i class="bi bi-key-fill"></i> Scope: Wymagany
+                                                    </span>
+                                                }
                                             }
                                         </div>
                                     }

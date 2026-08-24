@@ -246,7 +246,25 @@
                                         </span>
                                         @if (route.RequiredScope)
                                         {
-                                            <span class="badge bg-warning text-dark">Scope: @(route.ScopeName ?? "ApiScope")</span>
+                                            var testScopes = route.Scopes != null && route.Scopes.Any() 
+                                                ? route.Scopes.Select(s => s.Scope).ToList() 
+                                                : (route.ScopeName ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+                                            if (testScopes.Any())
+                                            {
+                                                <div class="d-flex flex-wrap gap-1 align-items-center">
+                                                    @foreach (var sc in testScopes)
+                                                    {
+                                                        <span class="badge bg-warning text-dark font-monospace" style="font-size: 0.72rem;">
+                                                            <i class="bi bi-key-fill"></i> @sc
+                                                        </span>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark">Scope: Wymagany</span>
+                                            }
                                         }
                                     </div>
                                     <div class="small text-muted">@evalResult.AuthSummary</div>

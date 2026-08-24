@@ -6,89 +6,95 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="fw-bold mb-1">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a asp-page="Index">API Gateway</a></li>
+                <li class="breadcrumb-item active">Nowa Trasa</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-0 text-dark">
             <i class="bi bi-plus-circle text-primary me-2"></i>Nowa Trasa API Gateway
         </h2>
-        <p class="text-muted mb-0">Zdefiniuj regułę proxy, dopasowanie Regex, parametry docelowego serwera oraz uprawnienia OAuth2/OIDC.</p>
+        <div class="text-muted small">Zdefiniuj regułę dopasowania żądania wejściowego i przekierowania do mikroserwisu.</div>
     </div>
-    <div>
+    <div class="d-flex gap-2">
         <a asp-page="Index" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i> Wróć do listy
+            <i class="bi bi-arrow-left me-1"></i> Powrót do Listy
         </a>
     </div>
 </div>
 
-<form method="post">
-    <div asp-validation-summary="All" class="alert alert-danger" style="display: @(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+<form method="post" id="routeForm">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm mb-4"></div>
 
     <div class="row g-4">
-        <!-- Lewa Kolumna: Reguła i Segmenty URI -->
-        <div class="col-lg-8">
-            <!-- Karta 1: Dopasowanie Ścieżki -->
+        <!-- Lewa kolumna: Definicja Routingu i Upstream -->
+        <div class="col-lg-7">
+            <!-- Karta 1: Reguła Wejściowa -->
             <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-header bg-white py-3 border-0">
                     <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                        <i class="bi bi-signpost-split-fill text-primary"></i> 1. Dopasowanie Ścieżki (Matching Rule)
+                        <i class="bi bi-signpost-2 text-primary"></i> 1. Dopasowanie Żądania (Inbound Request)
                     </h5>
                 </div>
                 <div class="card-body pt-0">
                     <div class="mb-3">
                         <label asp-for="Input.MatchPattern" class="form-label fw-semibold small"></label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light font-monospace text-muted">Regex</span>
-                            <input asp-for="Input.MatchPattern" class="form-control font-monospace" placeholder="^/api/v1/users/.*" />
+                            <span class="input-group-text bg-light text-muted font-monospace small">Regex</span>
+                            <input asp-for="Input.MatchPattern" class="form-control font-monospace" placeholder="^/api/v1/users/(?<id>[0-9]+)" />
                         </div>
-                        <div class="form-text small">Wzorzec wyrażenia regularnego, wg którego bramka przechwytuje żądania (np. <code>^/api/v1/users(/.*)?$</code>).</div>
+                        <div class="form-text small">Wzorzec wyrażenia regularnego (Regex) testowany względem ścieżki URL żądania wejściowego.</div>
                         <span asp-validation-for="Input.MatchPattern" class="text-danger small"></span>
                     </div>
 
-                    <div class="row g-3">
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label asp-for="Input.RouteName" class="form-label fw-semibold small"></label>
-                            <input asp-for="Input.RouteName" class="form-control" placeholder="np. Users Microservice" />
+                            <input asp-for="Input.RouteName" class="form-control" placeholder="np. Users-Service-V1" />
                             <span asp-validation-for="Input.RouteName" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
                             <label asp-for="Input.HttpMethods" class="form-label fw-semibold small"></label>
-                            <input asp-for="Input.HttpMethods" class="form-control font-monospace" placeholder="GET,POST,PUT,DELETE lub ALL" />
-                            <div class="form-text small">Rozdziel metody przecinkiem lub wpisz <code>ALL</code>.</div>
+                            <input asp-for="Input.HttpMethods" class="form-control font-monospace" placeholder="ALL lub GET, POST, PUT" />
+                            <div class="form-text small">Wpisz <code>ALL</code> lub oddziel metody przecinkami.</div>
                             <span asp-validation-for="Input.HttpMethods" class="text-danger small"></span>
                         </div>
                     </div>
 
-                    <div class="mt-3">
+                    <div class="mb-0">
                         <label asp-for="Input.Description" class="form-label fw-semibold small"></label>
-                        <textarea asp-for="Input.Description" class="form-control" rows="2" placeholder="Krótki opis biznesowy reguły..."></textarea>
+                        <textarea asp-for="Input.Description" class="form-control" rows="2" placeholder="Opcjonalny opis przeznaczenia trasy..."></textarea>
                         <span asp-validation-for="Input.Description" class="text-danger small"></span>
                     </div>
                 </div>
             </div>
 
-            <!-- Karta 2: Segmenty URI Docelowego Serwera (Upstream) -->
+            <!-- Karta 2: Serwer Docelowy (Upstream Destination) -->
             <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-header bg-white py-3 border-0">
                     <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                        <i class="bi bi-hdd-network-fill text-info"></i> 2. Segmenty Docelowego URI (Upstream Proxy)
+                        <i class="bi bi-hdd-network text-info"></i> 2. Serwer Docelowy (Upstream Service)
                     </h5>
                 </div>
                 <div class="card-body pt-0">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label asp-for="Input.Scheme" class="form-label fw-semibold small"></label>
                             <select asp-for="Input.Scheme" class="form-select font-monospace">
-                                <option value="https">HTTPS</option>
-                                <option value="http">HTTP</option>
+                                <option value="https">https</option>
+                                <option value="http">http</option>
                             </select>
                             <span asp-validation-for="Input.Scheme" class="text-danger small"></span>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <label asp-for="Input.AddressHost" class="form-label fw-semibold small"></label>
-                            <input asp-for="Input.AddressHost" class="form-control font-monospace" placeholder="users.internal, api.example.com" />
+                            <input asp-for="Input.AddressHost" class="form-control font-monospace" placeholder="api.internal.local lub 10.0.0.5" />
                             <span asp-validation-for="Input.AddressHost" class="text-danger small"></span>
                         </div>
                         <div class="col-md-3">
                             <label asp-for="Input.AddressPort" class="form-label fw-semibold small"></label>
-                            <input asp-for="Input.AddressPort" type="number" class="form-control font-monospace" placeholder="443" />
+                            <input asp-for="Input.AddressPort" type="number" class="form-control font-monospace" />
                             <span asp-validation-for="Input.AddressPort" class="text-danger small"></span>
                         </div>
                     </div>
@@ -96,29 +102,28 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label asp-for="Input.AddressBasePath" class="form-label fw-semibold small"></label>
-                            <input asp-for="Input.AddressBasePath" class="form-control font-monospace" placeholder="/v1/users" />
-                            <div class="form-text small">Doklejane przed docelową ścieżką żądania.</div>
+                            <input asp-for="Input.AddressBasePath" class="form-control font-monospace" placeholder="/api/backend" />
+                            <div class="form-text small">Prefiks ścieżki docelowej.</div>
                             <span asp-validation-for="Input.AddressBasePath" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
                             <label asp-for="Input.AddressPath" class="form-label fw-semibold small"></label>
-                            <input asp-for="Input.AddressPath" class="form-control font-monospace" placeholder="opcjonalny override" />
-                            <div class="form-text small">Statyczne nadpisanie ścieżki docelowej.</div>
+                            <input asp-for="Input.AddressPath" class="form-control font-monospace" placeholder="/v1/users/${id}" />
+                            <div class="form-text small">Nadpisanie ścieżki (obsługuje grupy <code>${id}</code>).</div>
                             <span asp-validation-for="Input.AddressPath" class="text-danger small"></span>
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label asp-for="Input.AddressQueryString" class="form-label fw-semibold small"></label>
-                        <input asp-for="Input.AddressQueryString" class="form-control font-monospace" placeholder="env=prod&version=1.0" />
-                        <div class="form-text small">Domyślne parametry Query String dodawane do żądania upstream.</div>
+                        <input asp-for="Input.AddressQueryString" class="form-control font-monospace" placeholder="source=gateway&env=prod" />
                         <span asp-validation-for="Input.AddressQueryString" class="text-danger small"></span>
                     </div>
 
                     <div class="mb-3">
                         <label asp-for="Input.Headers" class="form-label fw-semibold small"></label>
-                        <textarea asp-for="Input.Headers" class="form-control font-monospace small" rows="2" placeholder='{"X-Gateway-Route": "users-v1", "X-Custom-Header": "Value"}'></textarea>
-                        <div class="form-text small">Nagłówki HTTP w formacie JSON lub linia po linii (Klucz: Wartość).</div>
+                        <textarea asp-for="Input.Headers" class="form-control font-monospace" rows="2" placeholder="X-Service-Name: UsersService&#10;X-Gateway-Env: Production"></textarea>
+                        <div class="form-text small">Statyczne nagłówki dodawane do żądania (format: <code>Klucz: Wartość</code> w nowych liniach).</div>
                         <span asp-validation-for="Input.Headers" class="text-danger small"></span>
                     </div>
 
@@ -126,16 +131,16 @@
                         <div class="col-md-6">
                             <label asp-for="Input.TimeoutSeconds" class="form-label fw-semibold small"></label>
                             <div class="input-group">
-                                <input asp-for="Input.TimeoutSeconds" type="number" class="form-control" />
-                                <span class="input-group-text bg-light">sekund</span>
+                                <input asp-for="Input.TimeoutSeconds" type="number" class="form-control font-monospace" />
+                                <span class="input-group-text bg-light small">sekund</span>
                             </div>
                             <span asp-validation-for="Input.TimeoutSeconds" class="text-danger small"></span>
                         </div>
-                        <div class="col-md-6 d-flex align-items-center pt-4">
+                        <div class="col-md-6 d-flex align-items-center mt-4">
                             <div class="form-check form-switch">
                                 <input asp-for="Input.ForwardOriginalHost" class="form-check-input" type="checkbox" id="chkForwardHost" />
-                                <label class="form-check-label small fw-semibold" for="chkForwardHost">
-                                    Przekazuj oryginalny nagłówek Host (X-Forwarded-Host)
+                                <label class="form-check-label fw-semibold small" for="chkForwardHost">
+                                    Przekazuj oryginalny nagłówek Host
                                 </label>
                             </div>
                         </div>
@@ -144,25 +149,25 @@
             </div>
         </div>
 
-        <!-- Prawa Kolumna: Zabezpieczenia, Auth, Scopes & Flagi -->
-        <div class="col-lg-4">
-            <!-- Karta 3: Bezpieczeństwo i Uwierzytelnianie -->
+        <!-- Prawa kolumna: Zabezpieczenia & Scopes & Opcje -->
+        <div class="col-lg-5">
+            <!-- Karta 3: Zabezpieczenia & Uprawnienia -->
             <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-header bg-white py-3 border-0">
                     <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                        <i class="bi bi-shield-lock-fill text-warning"></i> 3. Uwierzytelnianie &amp; Scopes
+                        <i class="bi bi-shield-lock text-warning"></i> 3. Uwierzytelnianie & Scopes
                     </h5>
                 </div>
                 <div class="card-body pt-0">
                     <div class="p-3 bg-light rounded-3 mb-3 border">
-                        <div class="form-check form-switch">
+                        <div class="form-check form-switch mb-1">
                             <input asp-for="Input.AllowAnonymous" class="form-check-input" type="checkbox" id="chkAllowAnon" onchange="toggleAuthFields()" />
                             <label class="form-check-label fw-bold text-dark" for="chkAllowAnon">
-                                AllowAnonymous
+                                Dostęp Anonimowy (AllowAnonymous)
                             </label>
                         </div>
-                        <div class="text-muted small mt-1">
-                            Zezwól na dostęp bez tokenu JWT (klasyczne Reverse Proxy dla otwartych endpointów).
+                        <div class="text-muted small">
+                            Gdy włączone, bramka przepuszcza ruch bez walidacji tokenu JWT / sesji użytkownika.
                         </div>
                     </div>
 
@@ -174,6 +179,7 @@
                             <span asp-validation-for="Input.AuthenticationSchemes" class="text-danger small"></span>
                         </div>
 
+                        <!-- Panel Wymagaj Scope -->
                         <div class="p-3 bg-light rounded-3 mb-3 border">
                             <div class="form-check form-switch mb-2">
                                 <input asp-for="Input.RequiredScope" class="form-check-input" type="checkbox" id="chkReqScope" onchange="toggleScopeFields()" />
@@ -182,17 +188,92 @@
                                 </label>
                             </div>
                             <div class="text-muted small">
-                                Wymaga obecności konkretnego zakresu w roszczeniu <code>scope</code> tokenu JWT.
+                                Wymaga obecności wybranych zakresów w roszczeniu <code>scope</code> tokenu JWT. Możesz dodać kilka zakresów.
                             </div>
 
                             <div id="scopeSelectContainer" class="mt-3" style="display: @(Model.Input.RequiredScope ? "block" : "none")">
-                                <label asp-for="Input.ApiScopeId" class="form-label fw-semibold small"></label>
-                                <select asp-for="Input.ApiScopeId" asp-items="Model.AvailableScopes" class="form-select"></select>
-                                <span asp-validation-for="Input.ApiScopeId" class="text-danger small"></span>
+                                <!-- SEKCJA SCOPES: Autocomplete, Lista tagów i Tabela wyboru -->
+                                <div class="card border bg-white shadow-sm mb-2">
+                                    <div class="card-header bg-white py-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="fw-bold mb-0 text-dark small"><i class="bi bi-key-fill text-warning me-1"></i>Wymagane Zakresy (Scopes)</h6>
+                                            </div>
+                                            <span class="badge bg-primary-subtle text-primary border" id="scopeCountBadge">0 wybranych</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <!-- Pole tekstowe z autocomplete i tagami -->
+                                        <div class="mb-2">
+                                            <div class="position-relative">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                                    <input type="text" id="scopeAutocompleteInput" class="form-control" placeholder="Wpisz nazwę scope, aby szybko dodać..." autocomplete="off" />
+                                                </div>
+                                                <!-- Lista dropdown autopodpowiedzi -->
+                                                <div id="autocompleteDropdown" class="list-group position-absolute w-100 shadow-sm border mt-1" style="display:none; z-index: 1050; max-height: 200px; overflow-y: auto;"></div>
+                                            </div>
 
-                                <div class="mt-2">
-                                    <label asp-for="Input.CustomScopeName" class="form-label fw-semibold small">Lub wpisz własną nazwę Scope:</label>
-                                    <input asp-for="Input.CustomScopeName" class="form-control font-monospace" placeholder="np. orders.read" />
+                                            <!-- Ukryte / Widoczne pole docelowe formularza -->
+                                            <input asp-for="Input.Scopes" id="scopesHiddenInput" class="form-control form-control-sm font-monospace mt-2 bg-light" readonly placeholder="Brak wybranych zakresów" />
+                                            <span asp-validation-for="Input.Scopes" class="text-danger small"></span>
+
+                                            <!-- Kontener na dynamiczne chipy / tagi -->
+                                            <div class="mt-2 d-flex flex-wrap gap-1 align-items-center" id="selectedScopesTags">
+                                                <!-- Renderowane przez JS -->
+                                            </div>
+                                        </div>
+
+                                        <!-- Tabela Grid do zaznaczania Scope -->
+                                        <div class="mt-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label class="form-label fw-semibold small mb-0"><i class="bi bi-table me-1"></i>Katalog zakresów (Zaznacz aby dodać)</label>
+                                                <div class="input-group input-group-sm w-auto" style="max-width: 180px;">
+                                                    <input type="text" id="filterScopesTableInput" class="form-control form-control-sm" placeholder="Filtruj..." />
+                                                    <span class="input-group-text bg-white text-muted"><i class="bi bi-funnel"></i></span>
+                                                </div>
+                                            </div>
+
+                                            <div class="table-responsive bg-white rounded border" style="max-height: 240px; overflow-y: auto;">
+                                                <table class="table table-hover table-sm align-middle mb-0" id="scopesTable" style="font-size: 0.82rem;">
+                                                    <thead class="table-light sticky-top">
+                                                        <tr>
+                                                            <th style="width: 35px;" class="text-center">#</th>
+                                                            <th>Zakres (Scope)</th>
+                                                            <th style="width: 80px;">Typ</th>
+                                                            <th style="width: 60px;" class="text-end">Akcja</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var scope in Model.AvailableScopes)
+                                                        {
+                                                            <tr class="scope-row" style="cursor: pointer;" data-scope-name="@scope.Name" data-display-name="@scope.DisplayName" data-description="@(scope.Description ?? "")" data-type="@scope.Type">
+                                                                <td class="text-center" onclick="event.stopPropagation();">
+                                                                    <input type="checkbox" class="form-check-input scope-checkbox" value="@scope.Name" id="chk_@scope.Name" />
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge bg-light text-primary border font-monospace px-2 py-1">@scope.Name</span>
+                                                                    @if (scope.Emphasize)
+                                                                    {
+                                                                        <i class="bi bi-star-fill text-warning small ms-1" title="Wyróżniony"></i>
+                                                                    }
+                                                                    <div class="text-muted small text-truncate" style="max-width: 200px;">@scope.DisplayName</div>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 0.7rem;">@scope.Type</span>
+                                                                </td>
+                                                                <td class="text-end" onclick="event.stopPropagation();">
+                                                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 toggle-scope-btn" data-scope="@scope.Name">
+                                                                        <i class="bi bi-plus-lg"></i>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -245,13 +326,115 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        const availableScopes = [
+            @foreach (var s in Model.AvailableScopes)
+            {
+                <text>{ name: "@Html.Raw(s.Name)", displayName: "@Html.Raw(s.DisplayName.Replace("\"", "\\\""))", description: "@Html.Raw((s.Description ?? "").Replace("\"", "\\\""))", type: "@Html.Raw(s.Type)" },</text>
+            }
+        ];
+
+        let selectedScopes = new Set();
+
+        function initSelectedScopes() {
+            const rawVal = document.getElementById('scopesHiddenInput').value;
+            if (rawVal) {
+                rawVal.trim().split(/[\s,;]+/).forEach(s => {
+                    if (s) selectedScopes.add(s);
+                });
+            }
+            syncScopesUI();
+        }
+
+        function syncScopesUI() {
+            const scopesArr = Array.from(selectedScopes);
+            const hiddenInput = document.getElementById('scopesHiddenInput');
+            if (hiddenInput) {
+                hiddenInput.value = scopesArr.join(' ');
+            }
+
+            const badge = document.getElementById('scopeCountBadge');
+            if (badge) {
+                badge.innerText = `${scopesArr.length} wybranych`;
+            }
+
+            // Render tagów
+            const tagsContainer = document.getElementById('selectedScopesTags');
+            if (tagsContainer) {
+                if (scopesArr.length === 0) {
+                    tagsContainer.innerHTML = '<span class="text-muted small fst-italic">Brak wybranych zakresów. Zaznacz w tabeli lub wpisz nazwę.</span>';
+                } else {
+                    tagsContainer.innerHTML = scopesArr.map(s => `
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle d-inline-flex align-items-center py-1 px-2 font-monospace">
+                            ${escapeHtml(s)}
+                            <button type="button" class="btn-close btn-close-sm ms-2" style="font-size: 0.65rem;" onclick="removeScope('${escapeHtml(s)}')"></button>
+                        </span>
+                    `).join('');
+                }
+            }
+
+            // Zaktualizuj stan checkboxów i podświetlenie wierszy tabeli
+            document.querySelectorAll('#scopesTable tbody tr.scope-row').forEach(row => {
+                const scopeName = row.getAttribute('data-scope-name');
+                const isSelected = selectedScopes.has(scopeName);
+                const chk = row.querySelector('.scope-checkbox');
+                const btn = row.querySelector('.toggle-scope-btn');
+
+                if (chk) chk.checked = isSelected;
+
+                if (isSelected) {
+                    row.classList.add('table-primary');
+                    if (btn) {
+                        btn.className = 'btn btn-sm btn-danger py-0 px-2 toggle-scope-btn';
+                        btn.innerHTML = '<i class="bi bi-dash-lg"></i>';
+                        btn.title = 'Usuń zakres';
+                    }
+                } else {
+                    row.classList.remove('table-primary');
+                    if (btn) {
+                        btn.className = 'btn btn-sm btn-outline-primary py-0 px-2 toggle-scope-btn';
+                        btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+                        btn.title = 'Dodaj zakres';
+                    }
+                }
+            });
+        }
+
+        function addScope(scope) {
+            if (!scope) return;
+            const cleaned = scope.trim();
+            if (cleaned) {
+                selectedScopes.add(cleaned);
+                syncScopesUI();
+            }
+        }
+
+        function removeScope(scope) {
+            if (!scope) return;
+            selectedScopes.delete(scope.trim());
+            syncScopesUI();
+        }
+
+        function toggleScope(scope) {
+            if (selectedScopes.has(scope)) {
+                removeScope(scope);
+            } else {
+                addScope(scope);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
         function toggleAuthFields() {
             const isAnon = document.getElementById('chkAllowAnon').checked;
             const authSection = document.getElementById('authConfigSection');
             if (authSection) {
                 authSection.style.opacity = isAnon ? '0.5' : '1';
-                authSection.querySelectorAll('input, select').forEach(el => {
-                    el.disabled = isAnon;
+                authSection.querySelectorAll('input, select, button').forEach(el => {
+                    if (el.id !== 'chkAllowAnon') el.disabled = isAnon;
                 });
             }
         }
@@ -265,8 +448,137 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            initSelectedScopes();
             toggleAuthFields();
             toggleScopeFields();
+
+            // Kliknięcie wiersza w tabeli przełącza zakres
+            document.querySelectorAll('#scopesTable tbody tr.scope-row').forEach(row => {
+                row.addEventListener('click', function(e) {
+                    const scopeName = this.getAttribute('data-scope-name');
+                    toggleScope(scopeName);
+                });
+            });
+
+            // Checkbox zmiana
+            document.querySelectorAll('.scope-checkbox').forEach(chk => {
+                chk.addEventListener('change', function(e) {
+                    toggleScope(this.value);
+                });
+            });
+
+            // Button zmiana
+            document.querySelectorAll('.toggle-scope-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const scope = this.getAttribute('data-scope');
+                    toggleScope(scope);
+                });
+            });
+
+            // Filtrowanie w tabeli
+            const filterInput = document.getElementById('filterScopesTableInput');
+            if (filterInput) {
+                filterInput.addEventListener('input', function() {
+                    const term = this.value.toLowerCase().trim();
+                    document.querySelectorAll('#scopesTable tbody tr.scope-row').forEach(row => {
+                        const name = (row.getAttribute('data-scope-name') || '').toLowerCase();
+                        const disp = (row.getAttribute('data-display-name') || '').toLowerCase();
+                        const desc = (row.getAttribute('data-description') || '').toLowerCase();
+                        if (name.includes(term) || disp.includes(term) || desc.includes(term)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            // Autocomplete podpowiedzi
+            const autoInput = document.getElementById('scopeAutocompleteInput');
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            if (autoInput && dropdown) {
+                autoInput.addEventListener('input', function() {
+                    const term = this.value.toLowerCase().trim();
+                    if (!term) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                        return;
+                    }
+
+                    const matches = availableScopes.filter(s =>
+                        s.name.toLowerCase().includes(term) ||
+                        s.displayName.toLowerCase().includes(term) ||
+                        (s.description && s.description.toLowerCase().includes(term))
+                    );
+
+                    if (matches.length === 0) {
+                        dropdown.innerHTML = `
+                            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2" onclick="addCustomScope('${escapeHtml(term)}')">
+                                <div>
+                                    <span class="badge bg-light text-primary border font-monospace me-2">${escapeHtml(term)}</span>
+                                    <span class="small text-muted">Dodaj niestandardowy zakres</span>
+                                </div>
+                                <i class="bi bi-plus-circle text-primary"></i>
+                            </div>
+                        `;
+                        dropdown.style.display = 'block';
+                        return;
+                    }
+
+                    dropdown.innerHTML = matches.map(s => {
+                        const isSelected = selectedScopes.has(s.name);
+                        return `
+                            <a href="javascript:void(0)" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 ${isSelected ? 'active text-white' : ''}" onclick="selectFromAutocomplete('${escapeHtml(s.name)}')">
+                                <div>
+                                    <span class="badge ${isSelected ? 'bg-light text-dark' : 'bg-light text-primary'} border font-monospace me-2">${escapeHtml(s.name)}</span>
+                                    <span class="fw-semibold small">${escapeHtml(s.displayName)}</span>
+                                </div>
+                                <span class="badge ${isSelected ? 'bg-white text-primary' : 'bg-secondary-subtle text-secondary'}">${escapeHtml(s.type)}</span>
+                            </a>
+                        `;
+                    }).join('');
+
+                    dropdown.style.display = 'block';
+                });
+
+                // Ukrywanie dropdown po kliknięciu poza
+                document.addEventListener('click', function(e) {
+                    if (!autoInput.contains(e.target) && !dropdown.contains(e.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+
+                // Enter na polu autocomplete
+                autoInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = this.value.trim();
+                        if (val) {
+                            addScope(val);
+                            this.value = '';
+                            dropdown.style.display = 'none';
+                        }
+                    }
+                });
+            }
         });
+
+        window.selectFromAutocomplete = function(scope) {
+            addScope(scope);
+            const autoInput = document.getElementById('scopeAutocompleteInput');
+            const dropdown = document.getElementById('autocompleteDropdown');
+            if (autoInput) autoInput.value = '';
+            if (dropdown) dropdown.style.display = 'none';
+        };
+
+        window.addCustomScope = function(scope) {
+            addScope(scope);
+            const autoInput = document.getElementById('scopeAutocompleteInput');
+            const dropdown = document.getElementById('autocompleteDropdown');
+            if (autoInput) autoInput.value = '';
+            if (dropdown) dropdown.style.display = 'none';
+        };
     </script>
 }

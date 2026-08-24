@@ -37,6 +37,7 @@ public class GatewayAdminService : IGatewayAdminService
 
         IQueryable<GatewayRoute> query = _dbContext.GatewayRoutes
             .Include(r => r.ApiScope)
+            .Include(r => r.Scopes)
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -48,6 +49,7 @@ public class GatewayAdminService : IGatewayAdminService
                 r.AddressHost.ToLower().Contains(term) ||
                 (r.AddressBasePath != null && r.AddressBasePath.ToLower().Contains(term)) ||
                 (r.ScopeName != null && r.ScopeName.ToLower().Contains(term)) ||
+                r.Scopes.Any(s => s.Scope.ToLower().Contains(term)) ||
                 (r.Description != null && r.Description.ToLower().Contains(term)));
         }
 
@@ -83,6 +85,7 @@ public class GatewayAdminService : IGatewayAdminService
     {
         return await _dbContext.GatewayRoutes
             .Include(r => r.ApiScope)
+            .Include(r => r.Scopes)
             .OrderByDescending(r => r.Priority)
             .ThenBy(r => r.MatchPattern)
             .AsNoTracking()
@@ -93,6 +96,7 @@ public class GatewayAdminService : IGatewayAdminService
     {
         return await _dbContext.GatewayRoutes
             .Include(r => r.ApiScope)
+            .Include(r => r.Scopes)
             .FirstOrDefaultAsync(r => r.Id == id);
     }
 
@@ -102,6 +106,10 @@ public class GatewayAdminService : IGatewayAdminService
         {
             route.CreatedAt = DateTime.UtcNow;
             route.UpdatedAt = DateTime.UtcNow;
+            if (route.Scopes.Any() && string.IsNullOrWhiteSpace(route.ScopeName))
+            {
+                route.ScopeName = string.Join(" ", route.Scopes.Select(s => s.Scope));
+            }
             _dbContext.GatewayRoutes.Add(route);
             await _dbContext.SaveChangesAsync();
             _logger.LogInformation("Utworzono nową regułę Gateway Route [Id: {Id}, Pattern: {Pattern}]", route.Id, route.MatchPattern);
@@ -118,7 +126,9 @@ public class GatewayAdminService : IGatewayAdminService
     {
         try
         {
-            var existing = await _dbContext.GatewayRoutes.FirstOrDefaultAsync(r => r.Id == route.Id);
+            var existing = await _dbContext.GatewayRoutes
+                .Include(r => r.Scopes)
+                .FirstOrDefaultAsync(r => r.Id == route.Id);
             if (existing == null) return false;
 
             existing.MatchPattern = route.MatchPattern;
@@ -136,13 +146,42 @@ public class GatewayAdminService : IGatewayAdminService
             existing.AllowAnonymous = route.AllowAnonymous;
             existing.RequiredScope = route.RequiredScope;
             existing.ApiScopeId = route.ApiScopeId;
-            existing.ScopeName = route.ScopeName;
             existing.AuthenticationSchemes = route.AuthenticationSchemes;
             existing.IsEnabled = route.IsEnabled;
             existing.Priority = route.Priority;
             existing.EnableCaching = route.EnableCaching;
             existing.ForwardOriginalHost = route.ForwardOriginalHost;
             existing.UpdatedAt = DateTime.UtcNow;
+
+            // Synchronizacja kolekcji GatewayRouteScopes
+            var incomingScopes = (route.Scopes ?? new List<GatewayRouteScope>())
+                .Select(s => s.Scope.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var toRemove = existing.Scopes
+                .Where(s => !incomingScopes.Contains(s.Scope, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+            foreach (var rem in toRemove)
+            {
+                _dbContext.GatewayRouteScopes.Remove(rem);
+            }
+
+            var currentExistingScopeNames = existing.Scopes.Select(s => s.Scope).ToList();
+            foreach (var newScope in incomingScopes)
+            {
+                if (!currentExistingScopeNames.Contains(newScope, StringComparer.OrdinalIgnoreCase))
+                {
+                    existing.Scopes.Add(new GatewayRouteScope
+                    {
+                        GatewayRouteId = existing.Id,
+                        Scope = newScope
+                    });
+                }
+            }
+
+            existing.ScopeName = string.Join(" ", incomingScopes);
 
             await _dbContext.SaveChangesAsync();
             _logger.LogInformation("Zaktualizowano regułę Gateway Route [Id: {Id}, Pattern: {Pattern}]", route.Id, route.MatchPattern);
@@ -235,6 +274,7 @@ public class GatewayAdminService : IGatewayAdminService
         // 3. Pobranie tras z bazy posortowanych według priorytetu
         var routes = await _dbContext.GatewayRoutes
             .Include(r => r.ApiScope)
+            .Include(r => r.Scopes)
             .OrderByDescending(r => r.Priority)
             .ThenBy(r => r.MatchPattern)
             .AsNoTracking()
@@ -429,7 +469,10 @@ public class GatewayAdminService : IGatewayAdminService
                 result.AuthDetails.Add("Nagłówek 'Authorization' został przekazany do żądania docelowego.");
                 if (winningRoute.RequiredScope)
                 {
-                    result.AuthDetails.Add($"Wymagany scope autoryzacji: {winningRoute.ScopeName ?? "ApiScope"} (weryfikacja claims w mikrousłudze).");
+                    var scopesList = winningRoute.Scopes.Any()
+                        ? string.Join(", ", winningRoute.Scopes.Select(s => s.Scope))
+                        : (winningRoute.ScopeName ?? "ApiScope");
+                    result.AuthDetails.Add($"Wymagany scope autoryzacji: [{scopesList}] (weryfikacja claims w mikrousłudze).");
                 }
             }
             else
@@ -440,7 +483,10 @@ public class GatewayAdminService : IGatewayAdminService
                 result.AuthDetails.Add("Żądanie nie zawiera nagłówka Authorization. W rzeczywistym środowisku API Gateway zwróci 401 Unauthorized.");
                 if (winningRoute.RequiredScope)
                 {
-                    result.AuthDetails.Add($"Wymagany scope tokenu: {winningRoute.ScopeName ?? "ApiScope"}.");
+                    var scopesList = winningRoute.Scopes.Any()
+                        ? string.Join(", ", winningRoute.Scopes.Select(s => s.Scope))
+                        : (winningRoute.ScopeName ?? "ApiScope");
+                    result.AuthDetails.Add($"Wymagany scope tokenu: [{scopesList}].");
                 }
             }
         }

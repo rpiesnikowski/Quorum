@@ -41,6 +41,27 @@ public static class SeedData
         var appDb = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await EnsureTablesCreatedAsync(appDb);
 
+        try
+        {
+            // Bezpieczne utworzenie tabeli GatewayRouteScopes dla bazy SQLite/relacyjnej, jeśli schemat był już wcześniej częściowo zainicjowany
+            if (appDb.Database.IsSqlite())
+            {
+                await appDb.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS ""GatewayRouteScopes"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_GatewayRouteScopes"" PRIMARY KEY AUTOINCREMENT,
+                        ""GatewayRouteId"" INTEGER NOT NULL,
+                        ""Scope"" TEXT NOT NULL,
+                        CONSTRAINT ""FK_GatewayRouteScopes_GatewayRoutes_GatewayRouteId"" FOREIGN KEY (""GatewayRouteId"") REFERENCES ""GatewayRoutes"" (""Id"") ON DELETE CASCADE
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_GatewayRouteScopes_GatewayRouteId_Scope"" ON ""GatewayRouteScopes"" (""GatewayRouteId"", ""Scope"");
+                ");
+            }
+        }
+        catch
+        {
+            // Ignorujemy błędy DDL, jeśli tabela już istnieje lub jest zarządzana przez silnik
+        }
+
         var configDb = scope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
         await EnsureTablesCreatedAsync(configDb);
 

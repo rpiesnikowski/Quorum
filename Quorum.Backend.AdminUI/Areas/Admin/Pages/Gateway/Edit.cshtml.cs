@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Open.IdentityServer.EntityFramework.DbContexts;
 using Quorum.Backend.AdminUI.Models;
@@ -25,7 +24,7 @@ public class EditModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    public List<SelectListItem> AvailableScopes { get; set; } = new();
+    public List<ScopeItemDto> AvailableScopes { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
@@ -91,15 +90,11 @@ public class EditModel : PageModel
         [Display(Name = "Zezwól na dostęp anonimowy (AllowAnonymous - klasyczne proxy bez tokenu JWT)")]
         public bool AllowAnonymous { get; set; } = false;
 
-        [Display(Name = "Wymagaj konkretnego Scope (RequiredScope)")]
+        [Display(Name = "Wymagaj Scope (RequiredScope)")]
         public bool RequiredScope { get; set; } = false;
 
-        [Display(Name = "Wybierz powiązany Scope z bazy (Relacja FK ApiScopes)")]
-        public int? ApiScopeId { get; set; }
-
-        [StringLength(200)]
-        [Display(Name = "Niestandardowa nazwa Scope")]
-        public string? CustomScopeName { get; set; }
+        [Display(Name = "Wymagane Zakresy (Scopes)")]
+        public string? Scopes { get; set; }
 
         [StringLength(255)]
         [Display(Name = "Schematy uwierzytelniania (np. Bearer, Cookies, entra-id)")]
@@ -133,6 +128,10 @@ public class EditModel : PageModel
         CreatedAt = route.CreatedAt;
         UpdatedAt = route.UpdatedAt;
 
+        var existingScopes = route.Scopes.Any()
+            ? string.Join(" ", route.Scopes.Select(s => s.Scope))
+            : (route.ScopeName ?? string.Empty);
+
         Input = new InputModel
         {
             Id = route.Id,
@@ -150,8 +149,7 @@ public class EditModel : PageModel
             HttpMethods = route.HttpMethods,
             AllowAnonymous = route.AllowAnonymous,
             RequiredScope = route.RequiredScope,
-            ApiScopeId = route.ApiScopeId,
-            CustomScopeName = route.ApiScopeId.HasValue ? null : route.ScopeName,
+            Scopes = existingScopes,
             AuthenticationSchemes = route.AuthenticationSchemes,
             IsEnabled = route.IsEnabled,
             Priority = route.Priority,
@@ -183,21 +181,15 @@ public class EditModel : PageModel
             return Page();
         }
 
-        string? resolvedScopeName = null;
-        if (Input.RequiredScope)
+        var selectedScopes = new List<string>();
+        if (Input.RequiredScope && !string.IsNullOrWhiteSpace(Input.Scopes))
         {
-            if (Input.ApiScopeId.HasValue && Input.ApiScopeId.Value > 0)
-            {
-                var scope = await _configDb.ApiScopes.FindAsync(Input.ApiScopeId.Value);
-                if (scope != null)
-                {
-                    resolvedScopeName = scope.Name;
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(Input.CustomScopeName))
-            {
-                resolvedScopeName = Input.CustomScopeName.Trim();
-            }
+            selectedScopes = Input.Scopes
+                .Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         var route = new GatewayRoute
@@ -217,14 +209,18 @@ public class EditModel : PageModel
             HttpMethods = string.IsNullOrWhiteSpace(Input.HttpMethods) ? "ALL" : Input.HttpMethods.Trim(),
             AllowAnonymous = Input.AllowAnonymous,
             RequiredScope = Input.RequiredScope,
-            ApiScopeId = (Input.RequiredScope && Input.ApiScopeId > 0) ? Input.ApiScopeId : null,
-            ScopeName = resolvedScopeName,
+            ScopeName = selectedScopes.Any() ? string.Join(" ", selectedScopes) : null,
             AuthenticationSchemes = Input.AllowAnonymous ? null : (string.IsNullOrWhiteSpace(Input.AuthenticationSchemes) ? "Bearer" : Input.AuthenticationSchemes.Trim()),
             IsEnabled = Input.IsEnabled,
             Priority = Input.Priority,
             EnableCaching = Input.EnableCaching,
             ForwardOriginalHost = Input.ForwardOriginalHost,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            Scopes = selectedScopes.Select(s => new GatewayRouteScope
+            {
+                GatewayRouteId = Input.Id,
+                Scope = s
+            }).ToList()
         };
 
         var success = await _gatewayService.UpdateRouteAsync(route);
@@ -241,17 +237,34 @@ public class EditModel : PageModel
 
     private async Task LoadAvailableScopesAsync()
     {
-        var scopes = await _configDb.ApiScopes
+        var identityScopes = await _configDb.IdentityResources
             .AsNoTracking()
-            .OrderBy(s => s.Name)
+            .Where(r => r.Enabled)
+            .OrderBy(r => r.Name)
+            .Select(r => new ScopeItemDto
+            {
+                Name = r.Name,
+                DisplayName = r.DisplayName ?? r.Name,
+                Description = r.Description,
+                Type = "Tożsamość (Identity)",
+                Emphasize = r.Emphasize
+            })
             .ToListAsync();
 
-        AvailableScopes = scopes.Select(s => new SelectListItem
-        {
-            Value = s.Id.ToString(),
-            Text = $"{s.Name} ({s.DisplayName})"
-        }).ToList();
+        var apiScopes = await _configDb.ApiScopes
+            .AsNoTracking()
+            .Where(s => s.Enabled)
+            .OrderBy(s => s.Name)
+            .Select(s => new ScopeItemDto
+            {
+                Name = s.Name,
+                DisplayName = s.DisplayName ?? s.Name,
+                Description = s.Description,
+                Type = "API",
+                Emphasize = s.Emphasize
+            })
+            .ToListAsync();
 
-        AvailableScopes.Insert(0, new SelectListItem { Value = "", Text = "-- Wybierz ApiScope z bazy danych --" });
+        AvailableScopes = identityScopes.Concat(apiScopes).ToList();
     }
 }
