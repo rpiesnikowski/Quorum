@@ -1,14 +1,13 @@
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Open.IdentityServer.Events;
 using Open.IdentityServer.Extensions;
 using Open.IdentityServer.Services;
-using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.Services;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.Controllers;
 

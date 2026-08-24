@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Quorum.Backend.AdminUI.Models;
+namespace Quorum.Backend.EntityFramework.Models;
 
 /// <summary>
 /// Tabela mapująca wiele zakresów (Scopes) do reguły API Gateway.

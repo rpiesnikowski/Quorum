@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.AdminUI.Services;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.AdminUI.Areas.Admin.Pages.Gateway;
 

@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
-using Quorum.Backend.AdminUI.Models;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.Services;
 

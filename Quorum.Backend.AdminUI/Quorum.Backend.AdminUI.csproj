@@ -28,20 +28,10 @@
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
-
   <ItemGroup>
-    <!-- Open.IdentityServer Entity Framework -->
-    <PackageReference Include="Open.IdentityServer.EntityFramework" Version="2.0.0" />
-    
-    <!-- ASP.NET Core Identity & EF Core -->
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
-
-    <!-- Bazy Danych (SQLite domyślnie + PostgreSQL + Microsoft SQL Server) -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
+    <Folder Include="Models\" />
   </ItemGroup>
-
+  <ItemGroup>
+    <ProjectReference Include="..\Quorum.Backend.EntityFramework\Quorum.Backend.EntityFramework.csproj" />
+  </ItemGroup>
 </Project>

@@ -7,7 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Open.IdentityServer.EntityFramework.DbContexts;
 using Open.IdentityServer.EntityFramework.Mappers;
 using Open.IdentityServer.Models;
-using Quorum.Backend.AdminUI.Models;
+using Quorum.Backend.EntityFramework.Data;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.AdminUI.Data;
 

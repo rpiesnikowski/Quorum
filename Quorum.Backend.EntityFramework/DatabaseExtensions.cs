@@ -2,7 +2,7 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace Quorum.Backend.AdminUI.Data;
+namespace Quorum.Backend.EntityFramework;
 
 public static class DatabaseExtensions
 {

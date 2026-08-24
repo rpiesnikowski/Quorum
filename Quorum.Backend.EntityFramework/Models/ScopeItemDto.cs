@@ -1,4 +1,4 @@
-namespace Quorum.Backend.AdminUI.Models;
+namespace Quorum.Backend.EntityFramework.Models;
 
 /// <summary>
 /// DTO reprezentujące zakres (Scope) do wyboru w interfejsie użytkownika

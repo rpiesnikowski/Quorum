@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Quorum.Backend.AdminUI.Models;
+namespace Quorum.Backend.EntityFramework.Models;
 
 /// <summary>
 /// Model reprezentujący konfigurację dynamicznego dostawcy tożsamości OpenID Connect (OIDC).

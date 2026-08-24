@@ -1,0 +1,6 @@
+@Quorum.Backend.Gateway_HostAddress = http://localhost:5089
+
+GET {{Quorum.Backend.Gateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

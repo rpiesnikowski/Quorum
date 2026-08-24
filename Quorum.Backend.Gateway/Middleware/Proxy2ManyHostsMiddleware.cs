@@ -1,10 +1,11 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
-using Quorum.Backend.AdminUI.Data;
-using Quorum.Backend.AdminUI.Models;
+using Quorum.Backend.EntityFramework.Data;
+using Quorum.Backend.EntityFramework.Models;
+using Microsoft.AspNetCore.Http.Extensions;
 
-namespace Quorum.Backend;
+namespace Quorum.Backend.Gateway.Middleware;
 
 public class Proxy2ManyHostsMiddleware
 {
@@ -24,7 +25,7 @@ public class Proxy2ManyHostsMiddleware
 
     public async Task InvokeAsync(HttpContext context, ApplicationDbContext dbContext)
     {
-        var path = context.Request.Path.Value ?? "/";
+        var uri = context.Request.GetDisplayUrl();
         var method = context.Request.Method;
 
         // 1. Pobranie aktywnych reguł z bazy, posortowanych według priorytetu
@@ -39,7 +40,7 @@ public class Proxy2ManyHostsMiddleware
         foreach (var route in activeRoutes)
         {
             if (IsHttpMethodAllowed(route.HttpMethods, method) &&
-                Regex.IsMatch(path, route.MatchPattern, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100)))
+                Regex.IsMatch(uri, route.MatchPattern, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100)))
             {
                 matchedRoute = route;
                 break;
@@ -71,7 +72,7 @@ public class Proxy2ManyHostsMiddleware
 
                 if (!userScopes.Contains(matchedRoute.ScopeName, StringComparer.OrdinalIgnoreCase))
                 {
-                    _logger.LogWarning("Brak wymaganego scope: {Scope} dla żądania {Path}", matchedRoute.ScopeName, path);
+                    _logger.LogWarning("Brak wymaganego scope: {Scope} dla żądania {Path}", matchedRoute.ScopeName, uri);
                     context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                     context.Response.Headers.Append("WWW-Authenticate", $"Bearer error=\"insufficient_scope\", scope=\"{matchedRoute.ScopeName}\"");
                     return;
@@ -80,7 +81,7 @@ public class Proxy2ManyHostsMiddleware
         }
 
         // 4. Konstruowanie docelowego URI
-        var targetUri = BuildTargetUri(context.Request, matchedRoute);
+        var targetUri = BuildTargetUri(context.Request, matchedRoute).ToString().TrimEnd('/') ??"";
 
         // 5. Przygotowanie żądania proxy (HttpRequestMessage)
         using var proxyRequest = new HttpRequestMessage(new HttpMethod(method), targetUri);
@@ -190,3 +191,4 @@ public class Proxy2ManyHostsMiddleware
         return builder.Uri;
     }
 }
+// Extension Method ułatwiająca rejestrację middleware w Program.cs

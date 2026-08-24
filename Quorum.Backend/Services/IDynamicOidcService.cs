@@ -1,4 +1,4 @@
-using Quorum.Backend.AdminUI.Models;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.Services;
 

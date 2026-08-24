@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Open.IdentityServer.Models;
 using Open.IdentityServer.Services;
-using Open.IdentityServer.Validation;
-using System.ComponentModel.DataAnnotations;
 
 namespace Quorum.Backend.Controllers;
 

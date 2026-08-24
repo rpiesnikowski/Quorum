@@ -1,9 +1,8 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Quorum.Backend.AdminUI.Data;
-using Quorum.Backend.AdminUI.Models;
-using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Quorum.Backend.EntityFramework.Data;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.AdminUI.Services;
 

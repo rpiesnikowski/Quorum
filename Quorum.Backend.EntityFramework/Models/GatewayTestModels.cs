@@ -1,6 +1,4 @@
-using System.Net;
-
-namespace Quorum.Backend.AdminUI.Models;
+namespace Quorum.Backend.EntityFramework.Models;
 
 /// <summary>
 /// Model wejściowy żądania testowego dla API Gateway.

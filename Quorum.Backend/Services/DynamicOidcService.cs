@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
-using Quorum.Backend.AdminUI.Data;
-using Quorum.Backend.AdminUI.Models;
+using Quorum.Backend.EntityFramework.Data;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.Services;
 

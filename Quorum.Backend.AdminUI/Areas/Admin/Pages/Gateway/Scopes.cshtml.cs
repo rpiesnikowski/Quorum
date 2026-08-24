@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Open.IdentityServer.EntityFramework.DbContexts;
-using Quorum.Backend.AdminUI.Data;
-using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.AdminUI.Services;
+using Quorum.Backend.EntityFramework.Data;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.AdminUI.Areas.Admin.Pages.Gateway;
 

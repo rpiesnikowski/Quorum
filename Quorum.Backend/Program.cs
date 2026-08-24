@@ -2,11 +2,12 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Open.IdentityServer.EntityFramework.DbContexts;
 using Quorum.Backend.AdminUI.Data;
 using Quorum.Backend.AdminUI.Extensions;
-using Quorum.Backend.AdminUI.Models;
+using Quorum.Backend.EntityFramework;
+using Quorum.Backend.EntityFramework.Data;
+using Quorum.Backend.EntityFramework.Models;
 using Quorum.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -1,8 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Open.IdentityServer.EntityFramework.Entities;
-
-namespace Quorum.Backend.AdminUI.Models;
+namespace Quorum.Backend.EntityFramework.Models;
 
 /// <summary>
 /// Reprezentuje regułę routingu / reverse proxy w API Gateway.

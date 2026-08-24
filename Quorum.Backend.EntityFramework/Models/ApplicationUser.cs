@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace Quorum.Backend.AdminUI.Models;
+namespace Quorum.Backend.EntityFramework.Models;
 
 public class ApplicationUser : IdentityUser
 {
