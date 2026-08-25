@@ -1,4 +1,6 @@
 @namespace Quorum.Backend.AdminUI.Components
+@using Open.IdentityServer.EntityFramework.Entities
+@inject NavigationManager NavigationManager
 
 <RadzenCard class="rz-p-0 rz-shadow-1">
     <RadzenDataGrid Data="@Clients" TItem="Client" 
@@ -73,22 +75,16 @@
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="140px">
                 <Template Context="client">
-                    <div class="btn-group btn-group-sm">
-                        <a href="Clients/Edit?id=@client.Id" class="btn btn-sm btn-outline-primary" title="Edytuj">
-                            <i class="bi bi-pencil-square me-1"></i> Edytuj
-                        </a>
-                        <form method="post" action="Clients/Index?handler=Delete&id=@client.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć klienta @client.ClientId?');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Usuń">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
-                    </div>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.25rem">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo($"Admin/Clients/Edit/{client.Id}"))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Click="@(() => OnDeleteClient.InvokeAsync(client))" />
+                    </RadzenStack>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
         <EmptyTemplate>
             <div class="text-center py-4 text-muted">
-                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                <RadzenIcon Icon="inbox" Style="font-size: 2rem; display: block; margin-bottom: 0.5rem;" />
                 Brak zarejestrowanych klientów w bazie danych.
             </div>
         </EmptyTemplate>
@@ -98,4 +94,7 @@
 @code {
     [Parameter]
     public IEnumerable<Client>? Clients { get; set; }
+
+    [Parameter]
+    public EventCallback<Client> OnDeleteClient { get; set; }
 }

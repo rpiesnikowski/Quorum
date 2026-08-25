@@ -1,0 +1,77 @@
+@page "/Admin/Grants"
+@using Microsoft.EntityFrameworkCore
+@using Open.IdentityServer.EntityFramework.DbContexts
+@using Open.IdentityServer.EntityFramework.Entities
+@inject PersistedGrantDbContext GrantContext
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Aktywne Granty (Sesje) - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Aktywne Granty i Tokeny (PersistedGrants)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Przeglądaj i unieważniaj aktywne tokeny odświeżające (Refresh Tokens), kody autoryzacyjne, sesje i zgody użytkowników.
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Odśwież Listę" Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadGrantsAsync" />
+    </RadzenStack>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <GrantsGrid Grants="@grants" OnRevokeGrant="@HandleRevokeGrant" />
+    }
+</RadzenStack>
+
+@code {
+    private List<PersistedGrant> grants = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGrantsAsync();
+    }
+
+    private async Task LoadGrantsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            grants = await GrantContext.PersistedGrants
+                .AsNoTracking()
+                .OrderByDescending(g => g.CreationTime)
+                .ToListAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleRevokeGrant(PersistedGrant grant)
+    {
+        var confirm = await DialogService.Confirm(
+            $"Czy na pewno chcesz unieważnić ten token dla klienta '{grant.ClientId}' i użytkownika '{grant.SubjectId}'?",
+            "Potwierdzenie Unieważnienia Grantu",
+            new ConfirmOptions { OkButtonText = "Unieważnij", CancelButtonText = "Anuluj" });
+
+        if (confirm == true)
+        {
+            var entity = await GrantContext.PersistedGrants.FirstOrDefaultAsync(g => g.Key == grant.Key);
+            if (entity != null)
+            {
+                GrantContext.PersistedGrants.Remove(entity);
+                await GrantContext.SaveChangesAsync();
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Token / Grant został unieważniony.");
+                await LoadGrantsAsync();
+            }
+        }
+    }
+}

@@ -1,0 +1,81 @@
+@page "/Admin/Federations"
+@using Quorum.Backend.AdminUI.Services
+@using Quorum.Backend.EntityFramework.Models
+@inject IFederationAdminService FederationService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Federacje OIDC - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Federacje Zewnętrznych Dostawców OIDC</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Dynamiczne logowanie SSO (Google, Azure AD, Microsoft, Okta, Keycloak itp.) w czasie rzeczywistym.
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Dodaj Dostawcę OIDC" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("Admin/Federations/Create"))" />
+    </RadzenStack>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <FederationsGrid Federations="@federations" OnToggleFederation="@HandleToggleFederation" OnDeleteFederation="@HandleDeleteFederation" />
+    }
+</RadzenStack>
+
+@code {
+    private List<OidcFederationProvider> federations = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFederationsAsync();
+    }
+
+    private async Task LoadFederationsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            federations = await FederationService.GetAllFederationsAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleToggleFederation(OidcFederationProvider provider)
+    {
+        var success = await FederationService.ToggleFederationStatusAsync(provider.Id);
+        if (success)
+        {
+            NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Zmieniono status dostawcy '{provider.DisplayName}'.");
+            await LoadFederationsAsync();
+        }
+    }
+
+    private async Task HandleDeleteFederation(OidcFederationProvider provider)
+    {
+        var confirm = await DialogService.Confirm(
+            $"Czy na pewno chcesz usunąć schemat federacji '{provider.Scheme}'?",
+            "Potwierdzenie Usunięcia Dostawcy",
+            new ConfirmOptions { OkButtonText = "Usuń", CancelButtonText = "Anuluj" });
+
+        if (confirm == true)
+        {
+            var success = await FederationService.DeleteFederationAsync(provider.Id);
+            if (success)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Dostawca '{provider.DisplayName}' został usunięty.");
+                await LoadFederationsAsync();
+            }
+        }
+    }
+}

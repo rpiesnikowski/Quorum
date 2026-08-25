@@ -1,0 +1,79 @@
+@page "/Admin/Clients"
+@using Microsoft.EntityFrameworkCore
+@using Open.IdentityServer.EntityFramework.DbContexts
+@using Open.IdentityServer.EntityFramework.Entities
+@inject ConfigurationDbContext ConfigContext
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Klienci OAuth / OIDC - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Klienci OpenID Connect / OAuth 2.0</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Zarządzaj aplikacjami klienckimi, poświadczeniami, dozwolonymi przepływami i zakresami.
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Dodaj Klienta" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("Admin/Clients/Create"))" />
+    </RadzenStack>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <ClientsGrid Clients="@clients" OnDeleteClient="@HandleDeleteClient" />
+    }
+</RadzenStack>
+
+@code {
+    private List<Client> clients = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClientsAsync();
+    }
+
+    private async Task LoadClientsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            clients = await ConfigContext.Clients
+                .Include(c => c.AllowedGrantTypes)
+                .Include(c => c.AllowedScopes)
+                .Include(c => c.RedirectUris)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleDeleteClient(Client client)
+    {
+        var confirm = await DialogService.Confirm(
+            $"Czy na pewno chcesz bezpowrotnie usunąć klienta '{client.ClientId}'?",
+            "Potwierdzenie Usunięcia Klienta",
+            new ConfirmOptions { OkButtonText = "Usuń", CancelButtonText = "Anuluj" });
+
+        if (confirm == true)
+        {
+            var entity = await ConfigContext.Clients.FindAsync(client.Id);
+            if (entity != null)
+            {
+                ConfigContext.Clients.Remove(entity);
+                await ConfigContext.SaveChangesAsync();
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Klient '{client.ClientId}' został usunięty.");
+                await LoadClientsAsync();
+            }
+        }
+    }
+}

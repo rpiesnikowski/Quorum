@@ -1,4 +1,6 @@
 @namespace Quorum.Backend.AdminUI.Components
+@using Quorum.Backend.AdminUI.Services
+@inject NavigationManager NavigationManager
 
 <RadzenCard class="rz-p-0 rz-shadow-1">
     <RadzenDataGrid Data="@Users" TItem="AdminUserDto" 
@@ -17,10 +19,7 @@
         <Columns>
             <RadzenDataGridColumn Property="@nameof(AdminUserDto.UserName)" Title="Login / Użytkownik" Sortable="true" Filterable="true" Width="200px">
                 <Template Context="user">
-                    <a href="Users/Edit?id=@user.Id" class="text-decoration-none fw-bold text-dark d-inline-flex align-items-center">
-                        <i class="bi bi-person-circle text-primary me-2 fs-5"></i>
-                        <span>@user.UserName</span>
-                    </a>
+                    <span class="fw-bold text-dark font-monospace">@user.UserName</span>
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Property="@nameof(AdminUserDto.FullName)" Title="Imię i Nazwisko" Sortable="true" Filterable="true" Width="200px">
@@ -83,25 +82,19 @@
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="130px">
                 <Template Context="user">
-                    <div class="btn-group btn-group-sm">
-                        <a href="Users/Edit?id=@user.Id" class="btn btn-outline-primary" title="Edytuj dane, role i hasło">
-                            <i class="bi bi-pencil-square me-1"></i> Edytuj
-                        </a>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.25rem">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo($"Admin/Users/Edit/{user.Id}"))" />
                         @if (user.UserName != "admin")
                         {
-                            <form method="post" action="Users/Index?handler=Delete&id=@user.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz bezpowrotnie usunąć konto @user.UserName?');">
-                                <button type="submit" class="btn btn-outline-danger" title="Usuń konto">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
+                            <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Click="@(() => OnDeleteUser.InvokeAsync(user))" />
                         }
-                    </div>
+                    </RadzenStack>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
         <EmptyTemplate>
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-person-x display-6 d-block mb-2 text-secondary opacity-50"></i>
+                <RadzenIcon Icon="group" Style="font-size: 2rem; display: block; margin-bottom: 0.5rem;" />
                 Nie znaleziono żadnych użytkowników spełniających kryteria.
             </div>
         </EmptyTemplate>
@@ -111,4 +104,7 @@
 @code {
     [Parameter]
     public IEnumerable<AdminUserDto>? Users { get; set; }
+
+    [Parameter]
+    public EventCallback<AdminUserDto> OnDeleteUser { get; set; }
 }

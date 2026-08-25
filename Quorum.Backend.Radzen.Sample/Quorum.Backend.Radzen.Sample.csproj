@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Radzen.Blazor" Version="11.2.7" />
+    <ProjectReference Include="..\Quorum.Backend.AdminUI\Quorum.Backend.AdminUI.csproj" />
+    <ProjectReference Include="..\Quorum.Backend.EntityFramework\Quorum.Backend.EntityFramework.csproj" />
   </ItemGroup>
 
 </Project>

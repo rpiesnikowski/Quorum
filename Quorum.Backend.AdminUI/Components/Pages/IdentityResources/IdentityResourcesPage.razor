@@ -1,0 +1,78 @@
+@page "/Admin/IdentityResources"
+@using Microsoft.EntityFrameworkCore
+@using Open.IdentityServer.EntityFramework.DbContexts
+@using Open.IdentityServer.EntityFramework.Entities
+@inject ConfigurationDbContext ConfigContext
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Zasoby Tożsamości - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Zasoby Tożsamości (IdentityResources)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Zarządzaj zasobami tożsamości użytkownika (np. openid, profile, email) i powiązanymi oświadczeniami (Claims).
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Dodaj Zasób Tożsamości" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("Admin/IdentityResources/Create"))" />
+    </RadzenStack>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <IdentityResourcesGrid Resources="@resources" OnDeleteResource="@HandleDeleteResource" />
+    }
+</RadzenStack>
+
+@code {
+    private List<IdentityResource> resources = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadResourcesAsync();
+    }
+
+    private async Task LoadResourcesAsync()
+    {
+        isLoading = true;
+        try
+        {
+            resources = await ConfigContext.IdentityResources
+                .Include(r => r.UserClaims)
+                .AsNoTracking()
+                .OrderBy(r => r.Name)
+                .ToListAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleDeleteResource(IdentityResource resource)
+    {
+        var confirm = await DialogService.Confirm(
+            $"Czy na pewno chcesz usunąć zasób tożsamości '{resource.Name}'?",
+            "Potwierdzenie Usunięcia Zasobu",
+            new ConfirmOptions { OkButtonText = "Usuń", CancelButtonText = "Anuluj" });
+
+        if (confirm == true)
+        {
+            var entity = await ConfigContext.IdentityResources.FindAsync(resource.Id);
+            if (entity != null)
+            {
+                ConfigContext.IdentityResources.Remove(entity);
+                await ConfigContext.SaveChangesAsync();
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Zasób '{resource.Name}' został usunięty.");
+                await LoadResourcesAsync();
+            }
+        }
+    }
+}

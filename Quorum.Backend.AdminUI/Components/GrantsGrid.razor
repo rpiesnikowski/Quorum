@@ -1,4 +1,5 @@
 @namespace Quorum.Backend.AdminUI.Components
+@using Open.IdentityServer.EntityFramework.Entities
 
 <RadzenCard class="rz-p-0 rz-shadow-1">
     <RadzenDataGrid Data="@Grants" TItem="PersistedGrant" 
@@ -42,17 +43,13 @@
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="140px">
                 <Template Context="grant">
-                    <form method="post" action="Grants/Index?handler=Revoke&id=@grant.Id&key=@grant.Key" class="d-inline" onsubmit="return confirm('Czy na pewno unieważnić ten token?');">
-                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                            <i class="bi bi-x-circle me-1"></i> Unieważnij
-                        </button>
-                    </form>
+                    <RadzenButton Text="Unieważnij" Icon="cancel" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Click="@(() => OnRevokeGrant.InvokeAsync(grant))" />
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
         <EmptyTemplate>
             <div class="text-center py-4 text-muted">
-                <i class="bi bi-shield-check fs-3 d-block mb-2 text-success"></i>
+                <RadzenIcon Icon="verified_user" Style="font-size: 2rem; display: block; margin-bottom: 0.5rem;" />
                 Brak aktywnych sesji tokenów w magazynie operacyjnym bazy danych.
             </div>
         </EmptyTemplate>
@@ -62,4 +59,7 @@
 @code {
     [Parameter]
     public IEnumerable<PersistedGrant>? Grants { get; set; }
+
+    [Parameter]
+    public EventCallback<PersistedGrant> OnRevokeGrant { get; set; }
 }

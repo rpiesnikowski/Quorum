@@ -1,4 +1,6 @@
 @namespace Quorum.Backend.AdminUI.Components
+@using Open.IdentityServer.EntityFramework.Entities
+@inject NavigationManager NavigationManager
 
 <RadzenCard class="rz-p-0 rz-shadow-1">
     <RadzenDataGrid Data="@Resources" TItem="IdentityResource" 
@@ -61,22 +63,16 @@
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="140px">
                 <Template Context="r">
-                    <div class="btn-group btn-group-sm">
-                        <a href="IdentityResources/Edit?id=@r.Id" class="btn btn-sm btn-outline-primary" title="Edytuj">
-                            <i class="bi bi-pencil me-1"></i> Edytuj
-                        </a>
-                        <form method="post" action="IdentityResources/Index?handler=Delete&id=@r.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć zasób tożsamości @r.Name?');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Usuń">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
-                    </div>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.25rem">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo($"Admin/IdentityResources/Edit/{r.Id}"))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Click="@(() => OnDeleteResource.InvokeAsync(r))" />
+                    </RadzenStack>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
         <EmptyTemplate>
             <div class="text-center py-4 text-muted">
-                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                <RadzenIcon Icon="inbox" Style="font-size: 2rem; display: block; margin-bottom: 0.5rem;" />
                 Brak zarejestrowanych zasobów tożsamości w bazie danych.
             </div>
         </EmptyTemplate>
@@ -86,4 +82,7 @@
 @code {
     [Parameter]
     public IEnumerable<IdentityResource>? Resources { get; set; }
+
+    [Parameter]
+    public EventCallback<IdentityResource> OnDeleteResource { get; set; }
 }

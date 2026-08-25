@@ -1,4 +1,6 @@
 @namespace Quorum.Backend.AdminUI.Components
+@using Quorum.Backend.EntityFramework.Models
+@inject NavigationManager NavigationManager
 
 <RadzenCard class="rz-p-0 rz-shadow-1">
     <RadzenDataGrid Data="@Federations" TItem="OidcFederationProvider" 
@@ -17,35 +19,14 @@
         <Columns>
             <RadzenDataGridColumn Property="@nameof(OidcFederationProvider.DisplayName)" Title="Dostawca / Schemat" Sortable="true" Filterable="true" Width="240px">
                 <Template Context="context">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-3 p-2 d-flex align-items-center justify-content-center text-white shadow-sm" 
-                             style="width: 36px; height: 36px; background-color: @(context.ButtonColor ?? (context.IconType == "microsoft" ? "#0078D4" : context.IconType == "azure" ? "#0089D6" : context.IconType == "google" ? "#4285F4" : "#6c757d"));">
-                            @if (context.IconType == "microsoft")
+                    <div>
+                        <div class="fw-bold text-dark">@context.DisplayName</div>
+                        <div class="text-muted small">
+                            <code class="text-primary">@context.Scheme</code>
+                            @if (context.AutoProvisionUsers)
                             {
-                                <i class="bi bi-microsoft fs-6"></i>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@($"Auto: {context.DefaultRole}")" IsPill="true" class="ms-1" />
                             }
-                            else if (context.IconType == "azure")
-                            {
-                                <i class="bi bi-cloud-check-fill fs-6"></i>
-                            }
-                            else if (context.IconType == "google")
-                            {
-                                <i class="bi bi-google fs-6"></i>
-                            }
-                            else
-                            {
-                                <i class="bi bi-shield-lock-fill fs-6"></i>
-                            }
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">@context.DisplayName</div>
-                            <div class="text-muted small">
-                                <code class="text-primary">@context.Scheme</code>
-                                @if (context.AutoProvisionUsers)
-                                {
-                                    <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@($"Auto: {context.DefaultRole}")" IsPill="true" Class="ms-1" />
-                                }
-                            </div>
                         </div>
                     </div>
                 </Template>
@@ -53,7 +34,7 @@
             <RadzenDataGridColumn Property="@nameof(OidcFederationProvider.Authority)" Title="Issuer (Authority URL)" Sortable="true" Filterable="true">
                 <Template Context="context">
                     <div class="text-truncate small" style="max-width: 280px;" title="@context.Authority">
-                        <i class="bi bi-link-45deg text-muted me-1"></i>@context.Authority
+                        @context.Authority
                     </div>
                     <div class="text-muted small">Callback: <code>@context.CallbackPath</code></div>
                 </Template>
@@ -82,32 +63,19 @@
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="180px">
                 <Template Context="context">
-                    <div class="btn-group btn-group-sm">
-                        <a href="Federations/Test?id=@context.Id" class="btn btn-outline-info" title="Testuj Discovery Document">
-                            <i class="bi bi-search"></i> Testuj
-                        </a>
-                        <a href="Federations/Edit?id=@context.Id" class="btn btn-outline-secondary" title="Edytuj">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <form method="post" action="Federations/Index?handler=Toggle&id=@context.Id" class="d-inline">
-                            <button type="submit" class="btn @(context.IsEnabled ? "btn-outline-warning" : "btn-outline-success")" title="@(context.IsEnabled ? "Deaktywuj" : "Aktywuj")">
-                                <i class="bi @(context.IsEnabled ? "bi-eye-slash" : "bi-eye")"></i>
-                            </button>
-                        </form>
-                        <form method="post" action="Federations/Index?handler=Delete&id=@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć schemat @context.Scheme?');">
-                            <button type="submit" class="btn btn-outline-danger" title="Usuń">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
-                    </div>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.25rem">
+                        <RadzenButton Icon="science" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Info" Click="@(() => NavigationManager.NavigateTo($"Admin/Federations/Test?id={context.Id}"))" />
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo($"Admin/Federations/Edit/{context.Id}"))" />
+                        <RadzenButton Icon="@(context.IsEnabled ? "visibility_off" : "visibility")" Size="ButtonSize.Small" ButtonStyle="@(context.IsEnabled ? ButtonStyle.Warning : ButtonStyle.Success)" Click="@(() => OnToggleFederation.InvokeAsync(context))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Click="@(() => OnDeleteFederation.InvokeAsync(context))" />
+                    </RadzenStack>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
         <EmptyTemplate>
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
-                Brak skonfigurowanych dynamicznych dostawców OIDC.<br />
-                <a href="Federations/Create" class="btn btn-sm btn-outline-primary mt-2">Dodaj pierwszą federację</a>
+                <RadzenIcon Icon="hub" Style="font-size: 2rem; display: block; margin-bottom: 0.5rem;" />
+                Brak skonfigurowanych dynamicznych dostawców OIDC.
             </div>
         </EmptyTemplate>
     </RadzenDataGrid>
@@ -116,4 +84,10 @@
 @code {
     [Parameter]
     public IEnumerable<OidcFederationProvider>? Federations { get; set; }
+
+    [Parameter]
+    public EventCallback<OidcFederationProvider> OnToggleFederation { get; set; }
+
+    [Parameter]
+    public EventCallback<OidcFederationProvider> OnDeleteFederation { get; set; }
 }

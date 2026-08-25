@@ -1,0 +1,75 @@
+@page "/Admin/Users"
+@using Quorum.Backend.AdminUI.Services
+@inject IUserAdminService UserService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Użytkownicy - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Użytkownicy (ASP.NET Core Identity)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Zarządzaj kontami użytkowników, rolami, resetem haseł, blokadami oraz dwuskładnikowym logowaniem 2FA.
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Dodaj Użytkownika" Icon="person_add" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("Admin/Users/Create"))" />
+    </RadzenStack>
+
+    @if (isLoading)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <UsersGrid Users="@users" OnDeleteUser="@HandleDeleteUser" />
+    }
+</RadzenStack>
+
+@code {
+    private List<AdminUserDto> users = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var paged = await UserService.GetUsersPagedAsync(1, 100, null, null);
+            users = paged.Items;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleDeleteUser(AdminUserDto user)
+    {
+        var confirm = await DialogService.Confirm(
+            $"Czy na pewno chcesz usunąć konto '{user.UserName}'?",
+            "Potwierdzenie Usunięcia Użytkownika",
+            new ConfirmOptions { OkButtonText = "Usuń", CancelButtonText = "Anuluj" });
+
+        if (confirm == true)
+        {
+            var (success, errors) = await UserService.DeleteUserAsync(user.Id);
+            if (success)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Użytkownik '{user.UserName}' został usunięty.");
+                await LoadUsersAsync();
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", string.Join(", ", errors));
+            }
+        }
+    }
+}

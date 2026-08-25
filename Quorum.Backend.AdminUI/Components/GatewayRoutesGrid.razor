@@ -1,4 +1,6 @@
 @namespace Quorum.Backend.AdminUI.Components
+@using Quorum.Backend.EntityFramework.Models
+@inject NavigationManager NavigationManager
 
 <RadzenCard class="rz-p-0 rz-shadow-1">
     <RadzenDataGrid Data="@Routes" TItem="GatewayRoute" 
@@ -7,7 +9,7 @@
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
                     FilterMode="FilterMode.Simple"
                     AllowPaging="true" 
-                    PageSize="@PageSize" 
+                    PageSize="10" 
                     ShowPagingSummary="true"
                     PagingSummaryFormat="Strona {0} z {1} (łącznie {2} tras)"
                     AllowColumnResize="true"
@@ -22,24 +24,20 @@
                     </span>
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="@nameof(GatewayRoute.MatchPattern)" Title="Wzorzec Dopasowania (MatchPattern Regex)" Sortable="true" Filterable="true">
+            <RadzenDataGridColumn Property="@nameof(GatewayRoute.MatchPattern)" Title="Wzorzec (MatchPattern)" Sortable="true" Filterable="true">
                 <Template Context="context">
-                    <div class="d-flex align-items-center gap-2">
+                    <div>
                         <span class="badge bg-dark-subtle text-dark border font-monospace px-2 py-1 text-break">
                             @context.MatchPattern
                         </span>
+                        @if (!string.IsNullOrWhiteSpace(context.RouteName))
+                        {
+                            <div class="fw-bold text-dark mt-1 small">@context.RouteName</div>
+                        }
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(context.RouteName))
-                    {
-                        <div class="fw-bold text-dark mt-1 small">@context.RouteName</div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(context.Description))
-                    {
-                        <div class="text-muted small text-truncate" style="max-width: 320px;">@context.Description</div>
-                    }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Cel Proxy (Host, Port, BasePath)" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Title="Cel Proxy" Sortable="false" Filterable="false">
                 <Template Context="context">
                     <div class="d-flex align-items-center gap-1 font-monospace small">
                         <RadzenBadge BadgeStyle="@(context.Scheme == "https" ? BadgeStyle.Success : BadgeStyle.Warning)" Text="@context.Scheme.ToUpper()" IsPill="true" />
@@ -47,113 +45,36 @@
                     </div>
                     @if (!string.IsNullOrWhiteSpace(context.AddressBasePath))
                     {
-                        <div class="text-muted small font-monospace">
-                            <i class="bi bi-arrow-return-right text-secondary me-1"></i>Path: <code>@context.AddressBasePath</code>
-                        </div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(context.AddressQueryString))
-                    {
-                        <div class="text-muted small font-monospace">
-                            <i class="bi bi-question-circle text-secondary me-1"></i>Query: <span class="text-truncate d-inline-block" style="max-width: 200px;">@context.AddressQueryString</span>
-                        </div>
+                        <div class="text-muted small font-monospace">Path: <code>@context.AddressBasePath</code></div>
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Zabezpieczenia &amp; Scope" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Property="@nameof(GatewayRoute.HttpMethods)" Title="Metody HTTP" Sortable="true" Width="130px">
                 <Template Context="context">
-                    @if (context.AllowAnonymous)
-                    {
-                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="AllowAnonymous" />
-                    }
-                    else
-                    {
-                        <div class="d-flex flex-column gap-1 align-items-start">
-                            <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="@(context.AuthenticationSchemes ?? "Bearer")" />
-                            @if (context.RequiredScope)
-                            {
-                                var scopesList = context.Scopes != null && context.Scopes.Any() 
-                                    ? context.Scopes.Select(s => s.Scope).ToList()
-                                    : (context.ScopeName ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-
-                                if (scopesList.Any())
-                                {
-                                    <div class="d-flex flex-wrap gap-1 mt-1" style="max-width: 220px;">
-                                        @foreach (var sc in scopesList)
-                                        {
-                                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="@sc" IsPill="true" />
-                                        }
-                                    </div>
-                                }
-                                else
-                                {
-                                    <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="Scope: Wymagany" />
-                                }
-                            }
-                        </div>
-                    }
+                    <span class="font-monospace small text-primary">@context.HttpMethods</span>
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Metody HTTP" Sortable="false" Filterable="false" Width="130px">
+            <RadzenDataGridColumn Property="@nameof(GatewayRoute.IsEnabled)" Title="Status" Sortable="true" Width="110px" TextAlign="TextAlign.Center">
                 <Template Context="context">
-                    <div class="d-flex flex-wrap gap-1">
-                        @if (context.HttpMethods == "ALL" || string.IsNullOrWhiteSpace(context.HttpMethods))
-                        {
-                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="ALL" />
-                        }
-                        else
-                        {
-                            @foreach (var m in context.HttpMethods.Split(',', StringSplitOptions.RemoveEmptyEntries))
-                            {
-                                <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@m.Trim()" IsPill="true" />
-                            }
-                        }
-                    </div>
-                    <div class="text-muted" style="font-size: 0.75rem;">Timeout: @(context.TimeoutSeconds)s</div>
+                    <RadzenBadge BadgeStyle="@(context.IsEnabled ? BadgeStyle.Success : BadgeStyle.Secondary)" 
+                                 Text="@(context.IsEnabled ? "Aktywny" : "Wyłączony")" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="@nameof(GatewayRoute.IsEnabled)" Title="Status" Sortable="true" Width="120px" TextAlign="TextAlign.Center">
+            <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="180px">
                 <Template Context="context">
-                    <form method="post" action="Gateway/Index?handler=ToggleStatus&id=@context.Id" class="d-inline">
-                        <input type="hidden" name="SearchTerm" value="@SearchTerm" />
-                        <input type="hidden" name="StatusFilter" value="@StatusFilter" />
-                        <input type="hidden" name="AuthFilter" value="@AuthFilter" />
-                        <input type="hidden" name="PageIndex" value="@PageIndex" />
-                        <input type="hidden" name="PageSize" value="@PageSize" />
-                        <button type="submit" class="btn btn-sm p-0 border-0 bg-transparent text-decoration-none" title="Kliknij, aby przełączyć status">
-                            <RadzenBadge BadgeStyle="@(context.IsEnabled ? BadgeStyle.Success : BadgeStyle.Secondary)" 
-                                         Text="@(context.IsEnabled ? "Aktywny" : "Wyłączony")" />
-                        </button>
-                    </form>
-                </Template>
-            </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="140px">
-                <Template Context="context">
-                    <div class="btn-group btn-group-sm">
-                        <a href="Gateway/Test?routeId=@context.Id" class="btn btn-outline-warning text-dark" title="Przetestuj tę trasę w Testerze">
-                            <i class="bi bi-play-circle"></i>
-                        </a>
-                        <a href="Gateway/Edit?id=@context.Id" class="btn btn-outline-secondary" title="Edytuj trasę">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <form method="post" action="Gateway/Index?handler=Delete&id=@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć tę regułę routingu API Gateway?');">
-                            <input type="hidden" name="SearchTerm" value="@SearchTerm" />
-                            <input type="hidden" name="StatusFilter" value="@StatusFilter" />
-                            <input type="hidden" name="AuthFilter" value="@AuthFilter" />
-                            <input type="hidden" name="PageIndex" value="@PageIndex" />
-                            <input type="hidden" name="PageSize" value="@PageSize" />
-                            <button type="submit" class="btn btn-outline-danger" title="Usuń trasę">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
-                    </div>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.25rem">
+                        <RadzenButton Icon="science" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Info" Click="@(() => NavigationManager.NavigateTo("Admin/Gateway/Test"))" />
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo($"Admin/Gateway/Edit/{context.Id}"))" />
+                        <RadzenButton Icon="@(context.IsEnabled ? "visibility_off" : "visibility")" Size="ButtonSize.Small" ButtonStyle="@(context.IsEnabled ? ButtonStyle.Warning : ButtonStyle.Success)" Click="@(() => OnToggleRoute.InvokeAsync(context))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Click="@(() => OnDeleteRoute.InvokeAsync(context))" />
+                    </RadzenStack>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
         <EmptyTemplate>
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-router fs-1 d-block mb-2 text-secondary"></i>
-                Nie znaleziono tras API Gateway spełniających kryteria.<br />
-                <a href="Gateway/Create" class="btn btn-sm btn-outline-primary mt-2">Dodaj pierwszą regułę routingu</a>
+                <RadzenIcon Icon="alt_route" Style="font-size: 2rem; display: block; margin-bottom: 0.5rem;" />
+                Nie znaleziono tras API Gateway spełniających kryteria.
             </div>
         </EmptyTemplate>
     </RadzenDataGrid>
@@ -164,17 +85,8 @@
     public IEnumerable<GatewayRoute>? Routes { get; set; }
 
     [Parameter]
-    public string? SearchTerm { get; set; }
+    public EventCallback<GatewayRoute> OnToggleRoute { get; set; }
 
     [Parameter]
-    public string? StatusFilter { get; set; }
-
-    [Parameter]
-    public string? AuthFilter { get; set; }
-
-    [Parameter]
-    public int PageIndex { get; set; } = 1;
-
-    [Parameter]
-    public int PageSize { get; set; } = 10;
+    public EventCallback<GatewayRoute> OnDeleteRoute { get; set; }
 }
