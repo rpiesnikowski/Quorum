@@ -59,88 +59,68 @@
 
 <div class="card shadow-sm border-0">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Nazwa Użytkownika (Login)</th>
-                    <th>Imię i Nazwisko</th>
-                    <th>Adres Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Data Utworzenia</th>
-                    <th class="text-end">Akcje</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model.Users.Count == 0)
+        <QuickGrid Items="@Model.Users.AsQueryable()" Class="table table-hover align-middle mb-0" ResizableColumns="true">
+            <TemplateColumn Title="Nazwa Użytkownika (Login)" Sortable="true" SortBy="@(GridSort<Quorum.Backend.AdminUI.Services.AdminUserDto>.ByAscending(u => u.UserName))">
+                <a asp-page="Edit" asp-route-id="@context.Id" class="text-decoration-none fw-bold text-dark d-inline-flex align-items-center">
+                    <i class="bi bi-person-circle text-primary me-2 fs-5"></i>
+                    <span>@context.UserName</span>
+                </a>
+            </TemplateColumn>
+            <PropertyColumn Property="@(u => string.IsNullOrEmpty(u.FullName) ? "-" : u.FullName)" Title="Imię i Nazwisko" Sortable="true" />
+            <TemplateColumn Title="Adres Email" Sortable="true" SortBy="@(GridSort<Quorum.Backend.AdminUI.Services.AdminUserDto>.ByAscending(u => u.Email))">
+                <span class="d-inline-flex align-items-center gap-1">
+                    @context.Email
+                    @if (context.EmailConfirmed)
+                    {
+                        <i class="bi bi-patch-check-fill text-success" title="Email potwierdzony"></i>
+                    }
+                </span>
+            </TemplateColumn>
+            <TemplateColumn Title="Role">
+                @foreach (var role in context.Roles)
                 {
-                    <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
-                            <i class="bi bi-person-x display-6 d-block mb-2 text-secondary opacity-50"></i>
-                            Nie znaleziono żadnych użytkowników spełniających kryteria.
-                        </td>
-                    </tr>
+                    var badgeClass = role == "Admin" ? "bg-danger text-white" : (role == "Manager" ? "bg-warning-subtle text-dark" : "bg-primary-subtle text-primary");
+                    <span class="badge @badgeClass me-1">@role</span>
                 }
-                @foreach (var user in Model.Users)
+            </TemplateColumn>
+            <TemplateColumn Title="Status" Sortable="true" SortBy="@(GridSort<Quorum.Backend.AdminUI.Services.AdminUserDto>.ByAscending(u => u.IsLockedOut))">
+                @if (context.IsLockedOut)
                 {
-                    <tr>
-                        <td>
-                            <a asp-page="Edit" asp-route-id="@user.Id" class="text-decoration-none fw-bold text-dark d-inline-flex align-items-center">
-                                <i class="bi bi-person-circle text-primary me-2 fs-5"></i>
-                                <span>@user.UserName</span>
-                            </a>
-                        </td>
-                        <td>@(string.IsNullOrEmpty(user.FullName) ? "-" : user.FullName)</td>
-                        <td>
-                            <span class="d-inline-flex align-items-center gap-1">
-                                @user.Email
-                                @if (user.EmailConfirmed)
-                                {
-                                    <i class="bi bi-patch-check-fill text-success" title="Email potwierdzony"></i>
-                                }
-                            </span>
-                        </td>
-                        <td>
-                            @foreach (var role in user.Roles)
-                            {
-                                var badgeClass = role == "Admin" ? "bg-danger text-white" : (role == "Manager" ? "bg-warning-subtle text-dark" : "bg-primary-subtle text-primary");
-                                <span class="badge @badgeClass me-1">@role</span>
-                            }
-                        </td>
-                        <td>
-                            @if (user.IsLockedOut)
-                            {
-                                <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Zablokowany</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle me-1"></i>Aktywny</span>
-                            }
+                    <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Zablokowany</span>
+                }
+                else
+                {
+                    <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle me-1"></i>Aktywny</span>
+                }
 
-                            @if (user.TwoFactorEnabled)
-                            {
-                                <span class="badge bg-info-subtle text-dark ms-1" title="Uwierzytelnianie dwuskładnikowe włączone">2FA</span>
-                            }
-                        </td>
-                        <td class="text-muted small">@user.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                        <td class="text-end">
-                            <div class="btn-group btn-group-sm">
-                                <a asp-page="Edit" asp-route-id="@user.Id" class="btn btn-outline-primary" title="Edytuj dane, role i hasło">
-                                    <i class="bi bi-pencil-square me-1"></i> Edytuj
-                                </a>
-                                @if (user.UserName != "admin")
-                                {
-                                    <form method="post" asp-page-handler="Delete" asp-route-id="@user.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz bezpowrotnie usunąć konto @user.UserName?');">
-                                        <button type="submit" class="btn btn-outline-danger" title="Usuń konto">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                }
-                            </div>
-                        </td>
-                    </tr>
+                @if (context.TwoFactorEnabled)
+                {
+                    <span class="badge bg-info-subtle text-dark ms-1" title="Uwierzytelnianie dwuskładnikowe włączone">2FA</span>
                 }
-            </tbody>
-        </table>
+            </TemplateColumn>
+            <PropertyColumn Property="@(u => u.CreatedAt.ToString("yyyy-MM-dd HH:mm"))" Title="Data Utworzenia" Sortable="true" Class="text-muted small" />
+            <TemplateColumn Title="Akcje" Class="text-end">
+                <div class="btn-group btn-group-sm">
+                    <a asp-page="Edit" asp-route-id="@context.Id" class="btn btn-outline-primary" title="Edytuj dane, role i hasło">
+                        <i class="bi bi-pencil-square me-1"></i> Edytuj
+                    </a>
+                    @if (context.UserName != "admin")
+                    {
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz bezpowrotnie usunąć konto @context.UserName?');">
+                            <button type="submit" class="btn btn-outline-danger" title="Usuń konto">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    }
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+        @if (Model.Users.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-person-x display-6 d-block mb-2 text-secondary opacity-50"></i>
+                Nie znaleziono żadnych użytkowników spełniających kryteria.
+            </div>
+        }
     </div>
 </div>

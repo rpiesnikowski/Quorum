@@ -100,117 +100,95 @@
 <!-- Tabela zakresów (Grid) -->
 <div class="card shadow-sm border-0">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th style="min-width: 180px;">Nazwa Scope</th>
-                    <th style="min-width: 200px;">Nazwa Wyświetlana</th>
-                    <th>Opis</th>
-                    <th style="width: 110px;">Wymagany</th>
-                    <th style="width: 110px;">Wyróżniony</th>
-                    <th style="width: 100px;">Status</th>
-                    <th class="text-end" style="min-width: 130px;">Akcje</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model.Scopes.Count == 0)
+        <QuickGrid Items="@Model.Scopes.AsQueryable()" Class="table table-hover align-middle mb-0" ResizableColumns="true">
+            <TemplateColumn Title="Nazwa Scope" Sortable="true" SortBy="@(GridSort<Open.IdentityServer.EntityFramework.Entities.ApiScope>.ByAscending(s => s.Name))">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-primary border font-monospace px-2 py-1 fs-6 me-2">@context.Name</span>
+                </div>
+            </TemplateColumn>
+            <PropertyColumn Property="@(s => s.DisplayName)" Title="Nazwa Wyświetlana" Sortable="true" Class="fw-semibold" />
+            <TemplateColumn Title="Opis">
+                @if (!string.IsNullOrWhiteSpace(context.Description))
                 {
-                    <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
-                            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
-                            @if (!string.IsNullOrWhiteSpace(Model.Search) || !string.IsNullOrWhiteSpace(Model.StatusFilter))
-                            {
-                                <span>Nie znaleziono zakresów API spełniających podane kryteria filtrowania.</span>
-                                <div class="mt-2">
-                                    <a asp-page="Index" class="btn btn-sm btn-outline-primary">Wyczyść filtry</a>
-                                </div>
-                            }
-                            else
-                            {
-                                <span>Brak zdefiniowanych zakresów API w bazie.</span>
-                            }
-                        </td>
-                    </tr>
+                    <span class="text-muted small">@context.Description</span>
                 }
-                @foreach (var scope in Model.Scopes)
+                else
                 {
-                    <tr>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-light text-primary border font-monospace px-2 py-1 fs-6 me-2">@scope.Name</span>
-                            </div>
-                        </td>
-                        <td class="fw-semibold">
-                            @scope.DisplayName
-                        </td>
-                        <td class="text-muted small" style="max-width: 320px;">
-                            @if (!string.IsNullOrWhiteSpace(scope.Description))
-                            {
-                                <span>@scope.Description</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted fst-italic">— brak opisu —</span>
-                            }
-                        </td>
-                        <td>
-                            @if (scope.Required)
-                            {
-                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
-                                    <i class="bi bi-lock-fill me-1"></i>Tak
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-light text-secondary border">Nie</span>
-                            }
-                        </td>
-                        <td>
-                            @if (scope.Emphasize)
-                            {
-                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
-                                    <i class="bi bi-star-fill me-1"></i>Tak
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-light text-secondary border">Nie</span>
-                            }
-                        </td>
-                        <td>
-                            @if (scope.Enabled)
-                            {
-                                <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                    <i class="bi bi-check-circle me-1"></i>Aktywny
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
-                                    <i class="bi bi-dash-circle me-1"></i>Wyłączony
-                                </span>
-                            }
-                        </td>
-                        <td class="text-end">
-                            <div class="btn-group btn-group-sm">
-                                <a asp-page="Edit" asp-route-id="@scope.Id" class="btn btn-outline-primary" title="Edytuj zakres">
-                                    <i class="bi bi-pencil me-1"></i> Edytuj
-                                </a>
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@scope.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć zakres API \'@scope.Name\'?');">
-                                    <input type="hidden" name="search" value="@Model.Search" />
-                                    <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
-                                    <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                    <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                                    <button type="submit" class="btn btn-outline-danger border-start-0" title="Usuń zakres">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
+                    <span class="text-muted fst-italic small">— brak opisu —</span>
                 }
-            </tbody>
-        </table>
+            </TemplateColumn>
+            <TemplateColumn Title="Wymagany" Sortable="true" SortBy="@(GridSort<Open.IdentityServer.EntityFramework.Entities.ApiScope>.ByAscending(s => s.Required))">
+                @if (context.Required)
+                {
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                        <i class="bi bi-lock-fill me-1"></i>Tak
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-light text-secondary border">Nie</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Wyróżniony" Sortable="true" SortBy="@(GridSort<Open.IdentityServer.EntityFramework.Entities.ApiScope>.ByAscending(s => s.Emphasize))">
+                @if (context.Emphasize)
+                {
+                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
+                        <i class="bi bi-star-fill me-1"></i>Tak
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-light text-secondary border">Nie</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Status" Sortable="true" SortBy="@(GridSort<Open.IdentityServer.EntityFramework.Entities.ApiScope>.ByAscending(s => s.Enabled))">
+                @if (context.Enabled)
+                {
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                        <i class="bi bi-check-circle me-1"></i>Aktywny
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                        <i class="bi bi-dash-circle me-1"></i>Wyłączony
+                    </span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Akcje" Class="text-end">
+                <div class="btn-group btn-group-sm">
+                    <a asp-page="Edit" asp-route-id="@context.Id" class="btn btn-outline-primary" title="Edytuj zakres">
+                        <i class="bi bi-pencil me-1"></i> Edytuj
+                    </a>
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć zakres API \'@context.Name\'?');">
+                        <input type="hidden" name="search" value="@Model.Search" />
+                        <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
+                        <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
+                        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                        <button type="submit" class="btn btn-outline-danger border-start-0" title="Usuń zakres">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+        @if (Model.Scopes.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                @if (!string.IsNullOrWhiteSpace(Model.Search) || !string.IsNullOrWhiteSpace(Model.StatusFilter))
+                {
+                    <span>Nie znaleziono zakresów API spełniających podane kryteria filtrowania.</span>
+                    <div class="mt-2">
+                        <a asp-page="Index" class="btn btn-sm btn-outline-primary">Wyczyść filtry</a>
+                    </div>
+                }
+                else
+                {
+                    <span>Brak zdefiniowanych zakresów API w bazie.</span>
+                }
+            </div>
+        }
     </div>
 
     <!-- Paginacja -->

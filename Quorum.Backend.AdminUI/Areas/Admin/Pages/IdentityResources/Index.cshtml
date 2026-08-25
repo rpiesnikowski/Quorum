@@ -26,71 +26,60 @@
 
 <div class="card shadow-sm border-0">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Nazwa Zasobu</th>
-                    <th>Nazwa Wyświetlana</th>
-                    <th>Opis</th>
-                    <th>Skojarzone Claims</th>
-                    <th>Wymagany</th>
-                    <th>W Discovery</th>
-                    <th class="text-end">Akcje</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var res in Model.Resources)
+        <QuickGrid Items="@Model.Resources.AsQueryable()" Class="table table-hover align-middle mb-0" ResizableColumns="true">
+            <PropertyColumn Property="@(r => r.Name)" Title="Nazwa Zasobu" Sortable="true" Class="fw-bold font-monospace text-success" />
+            <PropertyColumn Property="@(r => string.IsNullOrWhiteSpace(r.DisplayName) ? "-" : r.DisplayName)" Title="Nazwa Wyświetlana" Sortable="true" />
+            <PropertyColumn Property="@(r => string.IsNullOrWhiteSpace(r.Description) ? "-" : r.Description)" Title="Opis" Class="text-muted small" />
+            <TemplateColumn Title="Skojarzone Claims">
+                @if (context.UserClaims != null && context.UserClaims.Any())
                 {
-                    <tr>
-                        <td class="fw-bold font-monospace text-success">@res.Name</td>
-                        <td>@(string.IsNullOrWhiteSpace(res.DisplayName) ? "-" : res.DisplayName)</td>
-                        <td class="text-muted small">@(string.IsNullOrWhiteSpace(res.Description) ? "-" : res.Description)</td>
-                        <td>
-                            @if (res.UserClaims != null && res.UserClaims.Any())
-                            {
-                                @foreach (var claim in res.UserClaims)
-                                {
-                                    <span class="badge bg-secondary-subtle text-secondary me-1">@claim.Type</span>
-                                }
-                            }
-                            else
-                            {
-                                <span class="text-muted small fst-italic">Brak claims</span>
-                            }
-                        </td>
-                        <td>
-                            @if (res.Required)
-                            {
-                                <span class="badge bg-danger-subtle text-danger">Tak</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-light text-muted border">Opcjonalny</span>
-                            }
-                        </td>
-                        <td>
-                            @if (res.ShowInDiscoveryDocument)
-                            {
-                                <span class="badge bg-success-subtle text-success">Tak</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary-subtle text-secondary">Ukryty</span>
-                            }
-                        </td>
-                        <td class="text-end">
-                            <a asp-page="Edit" asp-route-id="@res.Id" class="btn btn-sm btn-outline-primary me-1">
-                                <i class="bi bi-pencil me-1"></i> Edytuj
-                            </a>
-                            <form method="post" asp-page-handler="Delete" asp-route-id="@res.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć zasób tożsamości @res.Name?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
+                    @foreach (var claim in context.UserClaims)
+                    {
+                        <span class="badge bg-secondary-subtle text-secondary me-1">@claim.Type</span>
+                    }
                 }
-            </tbody>
-        </table>
+                else
+                {
+                    <span class="text-muted small fst-italic">Brak claims</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Wymagany" Sortable="true" SortBy="@(GridSort<Open.IdentityServer.EntityFramework.Entities.IdentityResource>.ByAscending(r => r.Required))">
+                @if (context.Required)
+                {
+                    <span class="badge bg-danger-subtle text-danger">Tak</span>
+                }
+                else
+                {
+                    <span class="badge bg-light text-muted border">Opcjonalny</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="W Discovery" Sortable="true" SortBy="@(GridSort<Open.IdentityServer.EntityFramework.Entities.IdentityResource>.ByAscending(r => r.ShowInDiscoveryDocument))">
+                @if (context.ShowInDiscoveryDocument)
+                {
+                    <span class="badge bg-success-subtle text-success">Tak</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary-subtle text-secondary">Ukryty</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Akcje" Class="text-end">
+                <a asp-page="Edit" asp-route-id="@context.Id" class="btn btn-sm btn-outline-primary me-1">
+                    <i class="bi bi-pencil me-1"></i> Edytuj
+                </a>
+                <form method="post" asp-page-handler="Delete" asp-route-id="@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć zasób tożsamości @context.Name?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </TemplateColumn>
+        </QuickGrid>
+        @if (Model.Resources.Count == 0)
+        {
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                Brak zarejestrowanych zasobów tożsamości w bazie danych.
+            </div>
+        }
     </div>
 </div>

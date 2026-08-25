@@ -212,96 +212,72 @@
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 50px;" class="text-center">#</th>
-                            <th>Trasa Gateway (MatchPattern)</th>
-                            <th>Wymagany Zakres (Scope)</th>
-                            <th>Typ Scope</th>
-                            <th>Serwer Upstream</th>
-                            <th style="width: 110px;" class="text-end">Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.Mappings.Any())
-                        {
-                            <tr>
-                                <td colspan="6" class="text-center py-5">
-                                    <div class="text-muted">
-                                        <i class="bi bi-slash-circle fs-2 d-block mb-2 text-secondary"></i>
-                                        <span class="fw-semibold">Brak powiązań spełniających kryteria wyszukiwania.</span>
-                                        <p class="small text-muted mt-1">Użyj formularza po lewej stronie, aby przypisać zakresy do wybranej trasy.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                        else
-                        {
-                            @foreach (var item in Model.Mappings)
+                <QuickGrid Items="@Model.Mappings.AsQueryable()" Class="table table-hover align-middle mb-0" ResizableColumns="true">
+                    <PropertyColumn Property="@(m => m.MappingId)" Title="#" Sortable="true" Class="text-center font-monospace text-muted small" />
+                    <TemplateColumn Title="Trasa Gateway (MatchPattern)" Sortable="true" SortBy="@(GridSort<Quorum.Backend.AdminUI.Areas.Admin.Pages.Gateway.RouteScopeMappingViewModel>.ByAscending(m => m.MatchPattern))">
+                        <div class="d-flex align-items-center gap-2">
+                            <a asp-page="Edit" asp-route-id="@context.RouteId" class="fw-bold text-dark font-monospace text-decoration-none">
+                                @context.MatchPattern
+                            </a>
+                            @if (!context.RouteIsEnabled)
                             {
-                                <tr>
-                                    <td class="text-center font-monospace text-muted small">
-                                        @item.MappingId
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <a asp-page="Edit" asp-route-id="@item.RouteId" class="fw-bold text-dark font-monospace text-decoration-none">
-                                                @item.MatchPattern
-                                            </a>
-                                            @if (!item.RouteIsEnabled)
-                                            {
-                                                <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">Wyłączona</span>
-                                            }
-                                        </div>
-                                        @if (!string.IsNullOrWhiteSpace(item.RouteName))
-                                        {
-                                            <div class="text-muted small text-truncate" style="max-width: 250px;">
-                                                <i class="bi bi-tag me-1"></i>@item.RouteName
-                                            </div>
-                                        }
-                                        <div class="small">
-                                            <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.7rem;">@item.HttpMethods</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <span class="badge bg-warning text-dark font-monospace px-2 py-1 fs-6">
-                                                <i class="bi bi-key-fill me-1"></i>@item.Scope
-                                            </span>
-                                        </div>
-                                        @if (!string.IsNullOrEmpty(item.ScopeDisplayName) && item.ScopeDisplayName != item.Scope)
-                                        {
-                                            <div class="text-muted small mt-1">@item.ScopeDisplayName</div>
-                                        }
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info-subtle text-info border">
-                                            @item.ScopeType
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="font-monospace small text-muted text-truncate d-inline-block" style="max-width: 180px;" title="@item.Upstream">
-                                            @item.Upstream
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="btn-group btn-group-sm">
-                                            <a asp-page="Edit" asp-route-id="@item.RouteId" class="btn btn-outline-secondary" title="Edytuj trasę">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <form method="post" asp-page-handler="DeleteMapping" asp-route-mappingId="@item.MappingId" asp-route-routeId="@Model.RouteId" asp-route-searchTerm="@Model.SearchTerm" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć to powiązanie trasy z zakresem?');">
-                                                <button type="submit" class="btn btn-outline-danger" title="Usuń powiązanie">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">Wyłączona</span>
                             }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(context.RouteName))
+                        {
+                            <div class="text-muted small text-truncate" style="max-width: 250px;">
+                                <i class="bi bi-tag me-1"></i>@context.RouteName
+                            </div>
                         }
-                    </tbody>
-                </table>
+                        <div class="small">
+                            <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.7rem;">@context.HttpMethods</span>
+                        </div>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Wymagany Zakres (Scope)" Sortable="true" SortBy="@(GridSort<Quorum.Backend.AdminUI.Areas.Admin.Pages.Gateway.RouteScopeMappingViewModel>.ByAscending(m => m.Scope))">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge bg-warning text-dark font-monospace px-2 py-1 fs-6">
+                                <i class="bi bi-key-fill me-1"></i>@context.Scope
+                            </span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(context.ScopeDisplayName) && context.ScopeDisplayName != context.Scope)
+                        {
+                            <div class="text-muted small mt-1">@context.ScopeDisplayName</div>
+                        }
+                    </TemplateColumn>
+                    <TemplateColumn Title="Typ Scope">
+                        <span class="badge bg-info-subtle text-info border">
+                            @context.ScopeType
+                        </span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Serwer Upstream">
+                        <span class="font-monospace small text-muted text-truncate d-inline-block" style="max-width: 180px;" title="@context.Upstream">
+                            @context.Upstream
+                        </span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Akcje" Class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a asp-page="Edit" asp-route-id="@context.RouteId" class="btn btn-outline-secondary" title="Edytuj trasę">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="post" asp-page-handler="DeleteMapping" asp-route-mappingId="@context.MappingId" asp-route-routeId="@Model.RouteId" asp-route-searchTerm="@Model.SearchTerm" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć to powiązanie trasy z zakresem?');">
+                                <button type="submit" class="btn btn-outline-danger" title="Usuń powiązanie">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </TemplateColumn>
+                </QuickGrid>
+                @if (!Model.Mappings.Any())
+                {
+                    <div class="text-center py-5">
+                        <div class="text-muted">
+                            <i class="bi bi-slash-circle fs-2 d-block mb-2 text-secondary"></i>
+                            <span class="fw-semibold">Brak powiązań spełniających kryteria wyszukiwania.</span>
+                            <p class="small text-muted mt-1">Użyj formularza po lewej stronie, aby przypisać zakresy do wybranej trasy.</p>
+                        </div>
+                    </div>
+                }
             </div>
         </div>
 
@@ -315,74 +291,65 @@
             </div>
             <div class="card-body pt-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Trasa (MatchPattern)</th>
-                                <th>Przypisane Zakresy (Scopes)</th>
-                                <th style="width: 100px;" class="text-center">Wymagaj</th>
-                                <th style="width: 120px;" class="text-end">Zarządzaj</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var route in Model.AllRoutes)
+                    <QuickGrid Items="@Model.AllRoutes.AsQueryable()" Class="table table-hover align-middle mb-0" style="font-size: 0.88rem;" ResizableColumns="true">
+                        <TemplateColumn Title="Trasa (MatchPattern)" Sortable="true" SortBy="@(GridSort<Quorum.Backend.EntityFramework.Models.GatewayRoute>.ByAscending(r => r.MatchPattern))">
+                            <div class="fw-bold font-monospace text-dark">@context.MatchPattern</div>
+                            @if (!string.IsNullOrEmpty(context.RouteName))
                             {
-                                var routeScopes = route.Scopes != null && route.Scopes.Any()
-                                    ? route.Scopes.Select(s => s.Scope).ToList()
-                                    : (route.ScopeName ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-
-                                <tr>
-                                    <td>
-                                        <div class="fw-bold font-monospace text-dark">@route.MatchPattern</div>
-                                        @if (!string.IsNullOrEmpty(route.RouteName))
-                                        {
-                                            <div class="text-muted small">@route.RouteName</div>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (routeScopes.Any())
-                                        {
-                                            <div class="d-flex flex-wrap gap-1 align-items-center">
-                                                @foreach (var sc in routeScopes)
-                                                {
-                                                    <span class="badge bg-warning-subtle text-dark border border-warning-subtle font-monospace d-inline-flex align-items-center gap-1">
-                                                        <i class="bi bi-key-fill text-warning"></i> @sc
-                                                        <form method="post" asp-page-handler="RemoveScope" asp-route-routeId="@route.Id" asp-route-scopeName="@sc" class="d-inline" onsubmit="return confirm('Usunąć zakres @sc z tej trasy?');">
-                                                            <button type="submit" class="btn-close btn-close-sm ms-1" style="font-size: 0.6rem;" aria-label="Usuń"></button>
-                                                        </form>
-                                                    </span>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small fst-italic">Brak przypisanych zakresów (otwarta / publiczna)</span>
-                                        }
-                                    </td>
-                                    <td class="text-center">
-                                        @if (route.RequiredScope)
-                                        {
-                                            <span class="badge bg-success-subtle text-success border">TAK</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-light text-muted border">NIE</span>
-                                        }
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="btn-group btn-group-sm">
-                                            <button type="button" class="btn btn-outline-primary" onclick="openQuickAssignModal(@route.Id, '@Html.Raw(route.MatchPattern.Replace("'", "\\'"))', '@Html.Raw(string.Join(" ", routeScopes))')" title="Edytuj zakresy trasy">
-                                                <i class="bi bi-sliders"></i> Edytuj
-                                            </button>
-                                            <a asp-page="Edit" asp-route-id="@route.Id" class="btn btn-outline-secondary" title="Konfiguracja trasy">
-                                                <i class="bi bi-gear"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <div class="text-muted small">@context.RouteName</div>
                             }
-                        </tbody>
-                    </table>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Przypisane Zakresy (Scopes)">
+                            @{
+                                var routeScopes = context.Scopes != null && context.Scopes.Any()
+                                    ? context.Scopes.Select(s => s.Scope).ToList()
+                                    : (context.ScopeName ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                            }
+                            @if (routeScopes.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-1 align-items-center">
+                                    @foreach (var sc in routeScopes)
+                                    {
+                                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle font-monospace d-inline-flex align-items-center gap-1">
+                                            <i class="bi bi-key-fill text-warning"></i> @sc
+                                            <form method="post" asp-page-handler="RemoveScope" asp-route-routeId="@context.Id" asp-route-scopeName="@sc" class="d-inline" onsubmit="return confirm('Usunąć zakres @sc z tej trasy?');">
+                                                <button type="submit" class="btn-close btn-close-sm ms-1" style="font-size: 0.6rem;" aria-label="Usuń"></button>
+                                            </form>
+                                        </span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small fst-italic">Brak przypisanych zakresów (otwarta / publiczna)</span>
+                            }
+                        </TemplateColumn>
+                        <TemplateColumn Title="Wymagaj" Class="text-center" Sortable="true" SortBy="@(GridSort<Quorum.Backend.EntityFramework.Models.GatewayRoute>.ByAscending(r => r.RequiredScope))">
+                            @if (context.RequiredScope)
+                            {
+                                <span class="badge bg-success-subtle text-success border">TAK</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-muted border">NIE</span>
+                            }
+                        </TemplateColumn>
+                        <TemplateColumn Title="Zarządzaj" Class="text-end">
+                            @{
+                                var currentScopes = context.Scopes != null && context.Scopes.Any()
+                                    ? context.Scopes.Select(s => s.Scope).ToList()
+                                    : (context.ScopeName ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                            }
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary" onclick="openQuickAssignModal(@context.Id, '@Html.Raw(context.MatchPattern.Replace("'", "\\'"))', '@Html.Raw(string.Join(" ", currentScopes))')" title="Edytuj zakresy trasy">
+                                    <i class="bi bi-sliders"></i> Edytuj
+                                </button>
+                                <a asp-page="Edit" asp-route-id="@context.Id" class="btn btn-outline-secondary" title="Konfiguracja trasy">
+                                    <i class="bi bi-gear"></i>
+                                </a>
+                            </div>
+                        </TemplateColumn>
+                    </QuickGrid>
                 </div>
             </div>
         </div>
