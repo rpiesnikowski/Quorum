@@ -1,0 +1,147 @@
+@page "/Admin/ApiScopes/Edit/{Id:int}"
+@using Microsoft.EntityFrameworkCore
+@using Open.IdentityServer.EntityFramework.DbContexts
+@using Open.IdentityServer.EntityFramework.Entities
+@using Quorum.Backend.AdminUI.Components.Layout
+@layout AdminLayout
+@inject IConfigurationDbContext ConfigContext
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edycja Zakresu API - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Edycja Zakresu API</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Modyfikuj ustawienia i opis zakresu uprawnień.
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Powrót do listy" Icon="arrow_back" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/ApiScopes"))" />
+    </RadzenStack>
+
+    @if (model == null)
+    {
+        <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <RadzenCard>
+            <RadzenTemplateForm TItem="ApiScopeEditModel" Data="@model" Submit="@HandleSubmit">
+                <RadzenStack Gap="1rem">
+                    <RadzenRow Gaps="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Identyfikator Scope *" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.Name" Name="Name" Style="width: 100%;" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="Name" Text="Identyfikator Scope jest wymagany" />
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Nazwa Wyświetlana *" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.DisplayName" Name="DisplayName" Style="width: 100%;" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="DisplayName" Text="Nazwa wyświetlana jest wymagana" />
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenFormField Text="Opis" Style="width: 100%;">
+                        <RadzenTextArea @bind-Value="model.Description" Style="width: 100%;" Rows="2" />
+                    </RadzenFormField>
+
+                    <RadzenRow Gaps="1rem" AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <RadzenSwitch @bind-Value="model.Enabled" />
+                                <RadzenLabel Text="Scope Aktywny" />
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <RadzenSwitch @bind-Value="model.Required" />
+                                <RadzenLabel Text="Wymagany" />
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <RadzenSwitch @bind-Value="model.Emphasize" />
+                                <RadzenLabel Text="Wyróżniony na ekranie zgody" />
+                            </RadzenStack>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End" class="rz-mt-4">
+                        <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/ApiScopes"))" />
+                        <RadzenButton Text="Zapisz Zmiany" Icon="save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenTemplateForm>
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ApiScopeEditModel? model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var scope = await ConfigContext.ApiScopes.FirstOrDefaultAsync(s => s.Id == Id);
+        if (scope == null)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono zakresu API.");
+            NavigationManager.NavigateTo("Admin/ApiScopes");
+            return;
+        }
+
+        model = new ApiScopeEditModel
+        {
+            Id = scope.Id,
+            Name = scope.Name,
+            DisplayName = scope.DisplayName ?? "",
+            Description = scope.Description,
+            Required = scope.Required,
+            Emphasize = scope.Emphasize,
+            Enabled = scope.Enabled
+        };
+    }
+
+    private async Task HandleSubmit(ApiScopeEditModel scopeModel)
+    {
+        var scope = await ConfigContext.ApiScopes.FirstOrDefaultAsync(s => s.Id == Id);
+        if (scope == null) return;
+
+        var normalizedName = scopeModel.Name.Trim();
+        var duplicateExists = await ConfigContext.ApiScopes.AnyAsync(s => s.Name == normalizedName && s.Id != Id);
+        if (duplicateExists)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd", $"Inny zakres API ma już nazwę '{normalizedName}'.");
+            return;
+        }
+
+        scope.Name = normalizedName;
+        scope.DisplayName = scopeModel.DisplayName.Trim();
+        scope.Description = string.IsNullOrWhiteSpace(scopeModel.Description) ? null : scopeModel.Description.Trim();
+        scope.Required = scopeModel.Required;
+        scope.Emphasize = scopeModel.Emphasize;
+        scope.Enabled = scopeModel.Enabled;
+
+        await ConfigContext.SaveChangesAsync();
+
+        NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Zakres API został zaktualizowany.");
+        NavigationManager.NavigateTo("Admin/ApiScopes");
+    }
+
+    public class ApiScopeEditModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public bool Required { get; set; }
+        public bool Emphasize { get; set; }
+        public bool Enabled { get; set; }
+    }
+}

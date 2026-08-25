@@ -1,0 +1,197 @@
+@page "/Admin/Gateway/Create"
+@using Microsoft.EntityFrameworkCore
+@using Open.IdentityServer.EntityFramework.DbContexts
+@using Quorum.Backend.AdminUI.Components.Layout
+@using Quorum.Backend.AdminUI.Services
+@using Quorum.Backend.EntityFramework.Entities
+@layout AdminLayout
+@inject IGatewayAdminService GatewayService
+@inject IConfigurationDbContext ConfigContext
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nowa Trasa Gateway - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Nowa Trasa API Gateway</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Skonfiguruj regułę proxy, dopasowanie Regex, protokół i autoryzację tokenów Bearer.
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Powrót do listy" Icon="arrow_back" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/Gateway"))" />
+    </RadzenStack>
+
+    <RadzenCard>
+        <RadzenTemplateForm TItem="GatewayRouteInputModel" Data="@model" Submit="@HandleSubmit">
+            <RadzenStack Gap="1rem">
+                <RadzenRow Gaps="1rem">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenFormField Text="Wzorzec Regex (MatchPattern) *" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="model.MatchPattern" Name="MatchPattern" Style="width: 100%; font-family: monospace;" />
+                        </RadzenFormField>
+                        <RadzenRequiredValidator Component="MatchPattern" Text="Wzorzec Regex jest wymagany" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenFormField Text="Nazwa Przyjazna Trasy" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="model.RouteName" Style="width: 100%;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenFormField Text="Opis Funkcjonalny" Style="width: 100%;">
+                    <RadzenTextArea @bind-Value="model.Description" Style="width: 100%;" Rows="2" />
+                </RadzenFormField>
+
+                <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mt-2">Cel Proxy (Upstream):</RadzenText>
+
+                <RadzenRow Gaps="1rem">
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenFormField Text="Protokół (Scheme) *" Style="width: 100%;">
+                            <RadzenDropDown @bind-Value="model.Scheme" Data="@(new[] { "https", "http" })" Style="width: 100%;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenFormField Text="Host Docelowy (np. api.internal.local) *" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="model.AddressHost" Name="AddressHost" Style="width: 100%;" />
+                        </RadzenFormField>
+                        <RadzenRequiredValidator Component="AddressHost" Text="Host docelowy jest wymagany" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenFormField Text="Port *" Style="width: 100%;">
+                            <RadzenNumeric @bind-Value="model.AddressPort" Style="width: 100%;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenRow Gaps="1rem">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenFormField Text="Ścieżka Bazowa Docelowa (AddressBasePath)" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="model.AddressBasePath" Style="width: 100%;" Placeholder="/api/v1" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenFormField Text="Dozwolone Metody HTTP (ALL lub GET,POST)" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="model.HttpMethods" Style="width: 100%;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mt-2">Zabezpieczenia i Uprawnienia:</RadzenText>
+
+                <RadzenRow Gaps="1rem" AlignItems="AlignItems.Center">
+                    <RadzenColumn Size="12" SizeMD="4">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSwitch @bind-Value="model.IsEnabled" />
+                            <RadzenLabel Text="Trasa Włączona" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="4">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSwitch @bind-Value="model.AllowAnonymous" />
+                            <RadzenLabel Text="Dostęp Anonimowy (Bez JWT)" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="4">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSwitch @bind-Value="model.RequiredScope" />
+                            <RadzenLabel Text="Wymagaj Zakresów (Scopes)" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenRow Gaps="1rem">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenFormField Text="Wymagane Scopes (rozdzielane spacją lub przecinkiem)" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="model.Scopes" Style="width: 100%; font-family: monospace;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenFormField Text="Priorytet (mniejszy = sprawdzany wcześniej)" Style="width: 100%;">
+                            <RadzenNumeric @bind-Value="model.Priority" Style="width: 100%;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenFormField Text="Timeout (sekundy)" Style="width: 100%;">
+                            <RadzenNumeric @bind-Value="model.TimeoutSeconds" Style="width: 100%;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End" class="rz-mt-4">
+                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/Gateway"))" />
+                    <RadzenButton Text="Zapisz Trasę" Icon="save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private GatewayRouteInputModel model = new()
+    {
+        MatchPattern = @"^/api/v1/.*",
+        Scheme = "https",
+        AddressPort = 443,
+        TimeoutSeconds = 30,
+        HttpMethods = "ALL",
+        IsEnabled = true,
+        Priority = 100
+    };
+
+    private async Task HandleSubmit(GatewayRouteInputModel input)
+    {
+        var route = new GatewayRoute
+        {
+            MatchPattern = input.MatchPattern.Trim(),
+            RouteName = input.RouteName?.Trim(),
+            Description = input.Description?.Trim(),
+            Scheme = input.Scheme.Trim().ToLowerInvariant(),
+            AddressHost = input.AddressHost.Trim(),
+            AddressPort = input.AddressPort,
+            AddressBasePath = input.AddressBasePath?.Trim(),
+            TimeoutSeconds = input.TimeoutSeconds,
+            HttpMethods = string.IsNullOrWhiteSpace(input.HttpMethods) ? "ALL" : input.HttpMethods.Trim().ToUpperInvariant(),
+            AllowAnonymous = input.AllowAnonymous,
+            RequiredScope = input.RequiredScope,
+            IsEnabled = input.IsEnabled,
+            Priority = input.Priority,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        if (!string.IsNullOrWhiteSpace(input.Scopes))
+        {
+            var scopes = input.Scopes.Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            route.Scopes = scopes.Select(s => new GatewayRouteScopeMapping { Scope = s.Trim() }).ToList();
+        }
+
+        var success = await GatewayService.CreateRouteAsync(route);
+        if (!success)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie udało się utworzyć trasy Gateway.");
+            return;
+        }
+
+        NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Trasa Gateway została pomyślnie utworzona.");
+        NavigationManager.NavigateTo("Admin/Gateway");
+    }
+
+    public class GatewayRouteInputModel
+    {
+        public string MatchPattern { get; set; } = string.Empty;
+        public string? RouteName { get; set; }
+        public string? Description { get; set; }
+        public string Scheme { get; set; } = "https";
+        public string AddressHost { get; set; } = string.Empty;
+        public int AddressPort { get; set; } = 443;
+        public string? AddressBasePath { get; set; }
+        public int TimeoutSeconds { get; set; } = 30;
+        public string HttpMethods { get; set; } = "ALL";
+        public bool AllowAnonymous { get; set; }
+        public bool RequiredScope { get; set; }
+        public string? Scopes { get; set; }
+        public bool IsEnabled { get; set; } = true;
+        public int Priority { get; set; } = 100;
+    }
+}

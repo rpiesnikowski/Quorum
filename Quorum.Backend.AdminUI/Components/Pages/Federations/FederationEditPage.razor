@@ -1,0 +1,151 @@
+@page "/Admin/Federations/Edit/{Id}"
+@using Quorum.Backend.AdminUI.Components.Layout
+@using Quorum.Backend.AdminUI.Services
+@using Quorum.Backend.EntityFramework.Entities
+@layout AdminLayout
+@inject IFederationAdminService FederationService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edycja Dostawcy OIDC - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Edycja Dostawcy OIDC</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Modyfikuj konfigurację dynamicznego dostawcy federacji.
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Powrót do listy" Icon="arrow_back" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/Federations"))" />
+    </RadzenStack>
+
+    @if (model == null)
+    {
+        <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <RadzenCard>
+            <RadzenTemplateForm TItem="OidcFederationProvider" Data="@model" Submit="@HandleSubmit">
+                <RadzenStack Gap="1rem">
+                    <RadzenRow Gaps="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Identyfikator Schematu" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.Scheme" Disabled="true" Style="width: 100%;" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Nazwa Wyświetlana *" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.DisplayName" Name="DisplayName" Style="width: 100%;" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="DisplayName" Text="Nazwa wyświetlana jest wymagana" />
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow Gaps="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Adres Issuer (Authority URL) *" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.Authority" Name="Authority" Style="width: 100%;" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="Authority" Text="Authority URL jest wymagany" />
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Client ID *" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.ClientId" Name="ClientId" Style="width: 100%;" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="ClientId" Text="Client ID jest wymagany" />
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow Gaps="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Client Secret" Style="width: 100%;">
+                                <RadzenPassword @bind-Value="model.ClientSecret" Style="width: 100%;" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Scopes (np. openid profile email)" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.Scope" Style="width: 100%;" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow Gaps="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Ścieżka CallbackPath *" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.CallbackPath" Name="CallbackPath" Style="width: 100%;" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Ścieżka Wylogowania (SignedOutCallbackPath)" Style="width: 100%;">
+                                <RadzenTextBox @bind-Value="model.SignedOutCallbackPath" Style="width: 100%;" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow Gaps="1rem" AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <RadzenSwitch @bind-Value="model.IsEnabled" />
+                                <RadzenLabel Text="Dostawca Aktywny" />
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <RadzenSwitch @bind-Value="model.UsePkce" />
+                                <RadzenLabel Text="Włącz PKCE" />
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <RadzenSwitch @bind-Value="model.AutoProvisionUsers" />
+                                <RadzenLabel Text="Auto-provision" />
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenFormField Text="Domyślna Rola">
+                                <RadzenTextBox @bind-Value="model.DefaultRole" Style="width: 100%;" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End" class="rz-mt-4">
+                        <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/Federations"))" />
+                        <RadzenButton Text="Zapisz Zmiany" Icon="save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenTemplateForm>
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private OidcFederationProvider? model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model = await FederationService.GetFederationByIdAsync(Id);
+        if (model == null)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono dostawcy OIDC.");
+            NavigationManager.NavigateTo("Admin/Federations");
+        }
+    }
+
+    private async Task HandleSubmit(OidcFederationProvider provider)
+    {
+        var success = await FederationService.UpdateFederationAsync(provider);
+        if (!success)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie udało się zaktualizować dostawcy.");
+            return;
+        }
+
+        NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Konfiguracja dostawcy '{provider.DisplayName}' została zaktualizowana.");
+        NavigationManager.NavigateTo("Admin/Federations");
+    }
+}

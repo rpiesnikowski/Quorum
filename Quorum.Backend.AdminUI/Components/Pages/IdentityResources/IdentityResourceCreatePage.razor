@@ -1,0 +1,142 @@
+@page "/Admin/IdentityResources/Create"
+@using Microsoft.EntityFrameworkCore
+@using Open.IdentityServer.EntityFramework.DbContexts
+@using Open.IdentityServer.EntityFramework.Entities
+@using Quorum.Backend.AdminUI.Components.Layout
+@layout AdminLayout
+@inject IConfigurationDbContext ConfigContext
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nowy Zasób Tożsamości - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Nowy Zasób Tożsamości</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Zdefiniuj zasób OIDC (np. openid, profile, email, roles).
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Powrót do listy" Icon="arrow_back" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/IdentityResources"))" />
+    </RadzenStack>
+
+    <RadzenCard>
+        <RadzenTemplateForm TItem="IdentityResourceModel" Data="@model" Submit="@HandleSubmit">
+            <RadzenStack Gap="1rem">
+                <RadzenRow Gaps="1rem">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenFormField Text="Nazwa Zasobu (np. profile, custom_profile) *" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="model.Name" Name="Name" Style="width: 100%;" />
+                        </RadzenFormField>
+                        <RadzenRequiredValidator Component="Name" Text="Nazwa zasobu jest wymagana" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenFormField Text="Nazwa Wyświetlana" Style="width: 100%;">
+                            <RadzenTextBox @bind-Value="model.DisplayName" Style="width: 100%;" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenFormField Text="Opis" Style="width: 100%;">
+                    <RadzenTextArea @bind-Value="model.Description" Style="width: 100%;" Rows="2" />
+                </RadzenFormField>
+
+                <RadzenFormField Text="Skojarzone Typy Claims (rozdzielane spacją, przecinkiem lub nową linią)" Style="width: 100%;">
+                    <RadzenTextArea @bind-Value="model.UserClaims" Style="width: 100%; font-family: monospace;" Rows="2" Placeholder="np. sub name email role" />
+                </RadzenFormField>
+
+                <RadzenRow Gaps="1rem" AlignItems="AlignItems.Center">
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSwitch @bind-Value="model.Enabled" />
+                            <RadzenLabel Text="Zasób Aktywny" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSwitch @bind-Value="model.Required" />
+                            <RadzenLabel Text="Wymagany" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSwitch @bind-Value="model.Emphasize" />
+                            <RadzenLabel Text="Wyróżnij" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="3">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenSwitch @bind-Value="model.ShowInDiscoveryDocument" />
+                            <RadzenLabel Text="W Discovery Document" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End" class="rz-mt-4">
+                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/IdentityResources"))" />
+                    <RadzenButton Text="Zapisz Zasób" Icon="save" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private IdentityResourceModel model = new()
+    {
+        Enabled = true,
+        ShowInDiscoveryDocument = true
+    };
+
+    private async Task HandleSubmit(IdentityResourceModel resModel)
+    {
+        var trimmedName = resModel.Name.Trim().ToLowerInvariant();
+        var exists = await ConfigContext.IdentityResources.AnyAsync(r => r.Name.ToLower() == trimmedName);
+        if (exists)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd", $"Zasób tożsamości '{resModel.Name}' już istnieje.");
+            return;
+        }
+
+        var entity = new IdentityResource
+        {
+            Name = resModel.Name.Trim(),
+            DisplayName = resModel.DisplayName?.Trim(),
+            Description = resModel.Description?.Trim(),
+            Enabled = resModel.Enabled,
+            Required = resModel.Required,
+            Emphasize = resModel.Emphasize,
+            ShowInDiscoveryDocument = resModel.ShowInDiscoveryDocument,
+            Created = DateTime.UtcNow,
+            UserClaims = new List<IdentityResourceClaim>()
+        };
+
+        if (!string.IsNullOrWhiteSpace(resModel.UserClaims))
+        {
+            var claims = resModel.UserClaims.Split(new[] { ' ', ',', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct();
+            foreach (var claim in claims)
+            {
+                entity.UserClaims.Add(new IdentityResourceClaim { Type = claim });
+            }
+        }
+
+        ConfigContext.IdentityResources.Add(entity);
+        await ConfigContext.SaveChangesAsync();
+
+        NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Zasób tożsamości został utworzony.");
+        NavigationManager.NavigateTo("Admin/IdentityResources");
+    }
+
+    public class IdentityResourceModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string? Description { get; set; }
+        public bool Enabled { get; set; }
+        public bool Required { get; set; }
+        public bool Emphasize { get; set; }
+        public bool ShowInDiscoveryDocument { get; set; }
+        public string? UserClaims { get; set; }
+    }
+}

@@ -1,0 +1,103 @@
+@page "/Admin/Federations/Test"
+@using Quorum.Backend.AdminUI.Components.Layout
+@using Quorum.Backend.AdminUI.Services
+@using Quorum.Backend.EntityFramework.Entities
+@layout AdminLayout
+@inject IFederationAdminService FederationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Tester OIDC Discovery - Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="rz-mb-0">Tester OIDC Discovery Document</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-secondary-color">
+                Weryfikacja adresu Authority URL oraz pobieranie punktów końcowych OpenID Connect.
+            </RadzenText>
+        </div>
+        <RadzenButton Text="Powrót do listy" Icon="arrow_back" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("Admin/Federations"))" />
+    </RadzenStack>
+
+    <RadzenCard>
+        <RadzenStack Gap="1rem">
+            <RadzenFormField Text="Adres Issuer / Authority URL" Style="width: 100%;">
+                <RadzenTextBox @bind-Value="authorityUrl" Style="width: 100%;" Placeholder="https://accounts.google.com lub https://login.microsoftonline.com/common/v2.0" />
+            </RadzenFormField>
+
+            <RadzenButton Text="Pobierz i zweryfikuj Discovery Document" Icon="search" ButtonStyle="ButtonStyle.Info" Click="@RunTestAsync" IsBusy="@isLoading" Style="max-width: 320px;" />
+        </RadzenStack>
+    </RadzenCard>
+
+    @if (validationResult != null)
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3">Wynik Walidacji</RadzenText>
+            @if (validationResult.IsValid)
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Success" Title="Sukces" AllowClose="false">
+                    Pomyślnie pobrano i zweryfikowano dokument <code>/.well-known/openid-configuration</code>.
+                </RadzenAlert>
+
+                <RadzenStack Gap="0.5rem" class="rz-mt-3">
+                    <RadzenText TextStyle="TextStyle.Body2"><b>Issuer:</b> <code>@validationResult.Issuer</code></RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2"><b>Authorization Endpoint:</b> <code>@validationResult.AuthorizationEndpoint</code></RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2"><b>Token Endpoint:</b> <code>@validationResult.TokenEndpoint</code></RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2"><b>UserInfo Endpoint:</b> <code>@validationResult.UserinfoEndpoint</code></RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2"><b>JWKS Uri:</b> <code>@validationResult.JwksUri</code></RadzenText>
+                </RadzenStack>
+            }
+            else
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Danger" Title="Błąd weryfikacji" AllowClose="false">
+                    @validationResult.ErrorMessage
+                </RadzenAlert>
+            }
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Id { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? AuthorityUrl { get; set; }
+
+    private string authorityUrl = string.Empty;
+    private bool isLoading = false;
+    private OidcDiscoveryValidationResult? validationResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            var provider = await FederationService.GetFederationByIdAsync(Id);
+            if (provider != null)
+            {
+                authorityUrl = provider.Authority;
+                await RunTestAsync();
+            }
+        }
+        else if (!string.IsNullOrEmpty(AuthorityUrl))
+        {
+            authorityUrl = AuthorityUrl;
+            await RunTestAsync();
+        }
+    }
+
+    private async Task RunTestAsync()
+    {
+        if (string.IsNullOrWhiteSpace(authorityUrl)) return;
+
+        isLoading = true;
+        try
+        {
+            validationResult = await FederationService.ValidateDiscoveryDocumentAsync(authorityUrl);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
