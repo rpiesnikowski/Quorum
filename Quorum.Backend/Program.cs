@@ -127,16 +127,11 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
 app.UseQuorumAdminUI();
-
-app.UseRouting();
 
 // 8. Pipeline IdentityServer i autoryzacji
 app.UseIdentityServer();
-app.UseAuthorization();
 
-app.MapRazorPages();
 app.MapDefaultControllerRoute();
 
 app.Run();

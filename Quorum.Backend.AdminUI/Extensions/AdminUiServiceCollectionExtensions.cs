@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Quorum.Backend.AdminUI.Options;
 using Quorum.Backend.AdminUI.Services;
+using Microsoft.AspNetCore.Builder;
 using Radzen;
 
 namespace Quorum.Backend.AdminUI.Extensions;
@@ -85,19 +86,13 @@ public static class AdminUiServiceCollectionExtensions
                 razorOptions.Conventions.AllowAnonymousToAreaPage("Admin", "/Account/AccessDenied");
             }
         });
+        services.AddRazorPages();
         services.AddServerSideBlazor();
+        services.AddRadzenComponents();
+        services.AddRazorComponents().AddInteractiveServerComponents();
+        
 
         return services;
-    }
-
-    /// <summary>
-    /// Rejestruje usługi i strony Razor Pages panelu Quorum Admin UI w kontenerze DI z domyślnym typem IdentityUser.
-    /// </summary>
-    public static IServiceCollection AddQuorumAdminUI(
-        this IServiceCollection services,
-        Action<AdminUiOptions>? configureOptions = null)
-    {
-        return services.AddQuorumAdminUI<IdentityUser>(configureOptions);
     }
 
     /// <summary>
@@ -105,8 +100,18 @@ public static class AdminUiServiceCollectionExtensions
     /// </summary>
     public static IApplicationBuilder UseQuorumAdminUI(this IApplicationBuilder app)
     {
-        // Zapewnia obsługę Static Web Assets osadzonych w bibliotece RCL / pakiecie NuGet
-        app.UseStaticFiles();
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        
+        // ✅ Mapowanie punktów końcowych na IEndpointRouteBuilder (endpoints)
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapStaticAssets();
+            endpoints.MapRazorPages();
+            endpoints.MapBlazorHub();
+        });
+        
         return app;
     }
 }
