@@ -211,6 +211,11 @@
         NavigationManager.NavigateTo("Admin/Gateway");
     }
 
+    private class GatewayRouteScopeMapping : GatewayRouteScope
+    {
+        public int RouteId { get; set; }
+    }
+
     public class GatewayRouteEditModel
     {
         public int Id { get; set; }

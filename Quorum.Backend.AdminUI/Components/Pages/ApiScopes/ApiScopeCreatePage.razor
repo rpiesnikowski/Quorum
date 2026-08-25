@@ -1,12 +1,10 @@
 @page "/Admin/ApiScopes/Create"
 @using Microsoft.EntityFrameworkCore
 @using Open.IdentityServer.EntityFramework.DbContexts
-@using Open.IdentityServer.EntityFramework.Entities
-@using Quorum.Backend.AdminUI.Components.Layout
-@layout AdminLayout
-@inject IConfigurationDbContext ConfigContext
+
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
+@inject ConfigurationDbContext ConfigContext
 
 <PageTitle>Nowy Zakres API - Admin</PageTitle>
 
