@@ -1,11 +1,20 @@
 @using Quorum.Backend.AdminUI.Areas.Admin.Pages.Gateway
 @namespace Quorum.Backend.AdminUI.Components
 
-<div class="table-responsive">
-    <RadzenDataGrid Data="@Mappings" TItem="ScopesModel.RouteScopeMappingDto" AllowSorting="true" AllowFiltering="true" 
-                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
-                    EmptyText="Brak powiązań spełniających kryteria wyszukiwania."
-                    Class="table table-hover align-middle mb-0">
+<RadzenCard class="rz-p-0 rz-shadow-1">
+    <RadzenDataGrid Data="@Mappings" TItem="ScopesModel.RouteScopeMappingDto" 
+                    AllowSorting="true" 
+                    AllowFiltering="true" 
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                    FilterMode="FilterMode.Simple"
+                    AllowPaging="true" 
+                    PageSize="10" 
+                    ShowPagingSummary="true"
+                    PagingSummaryFormat="Strona {0} z {1} (łącznie {2} powiązań)"
+                    AllowColumnResize="true"
+                    Density="Density.Compact"
+                    Responsive="true"
+                    EmptyText="Brak powiązań spełniających kryteria wyszukiwania.">
         <Columns>
             <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.MappingId)" Title="#" Sortable="true" Filterable="true" Width="60px" TextAlign="TextAlign.Center">
                 <Template Context="context">
@@ -20,7 +29,7 @@
                         </a>
                         @if (!context.RouteIsEnabled)
                         {
-                            <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">Wyłączona</span>
+                            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="Wyłączona" IsPill="true" />
                         }
                     </div>
                     @if (!string.IsNullOrWhiteSpace(context.RouteName))
@@ -37,9 +46,7 @@
             <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.Scope)" Title="Wymagany Zakres (Scope)" Sortable="true" Filterable="true">
                 <Template Context="context">
                     <div class="d-flex align-items-center gap-1">
-                        <span class="badge bg-warning text-dark font-monospace px-2 py-1 fs-6">
-                            <i class="bi bi-key-fill me-1"></i>@context.Scope
-                        </span>
+                        <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="@context.Scope" />
                     </div>
                     @if (!string.IsNullOrEmpty(context.ScopeDisplayName) && context.ScopeDisplayName != context.Scope)
                     {
@@ -47,11 +54,9 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.ScopeType)" Title="Typ Scope" Sortable="true" Filterable="true">
+            <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.ScopeType)" Title="Typ Scope" Sortable="true" Filterable="true" Width="130px">
                 <Template Context="context">
-                    <span class="badge bg-info-subtle text-info border">
-                        @context.ScopeType
-                    </span>
+                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@context.ScopeType" IsPill="true" />
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.Upstream)" Title="Serwer Upstream" Sortable="true" Filterable="true">
@@ -61,7 +66,7 @@
                     </span>
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
+            <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="120px">
                 <Template Context="context">
                     <div class="btn-group btn-group-sm">
                         <a href="Gateway/Edit?id=@context.RouteId" class="btn btn-outline-secondary" title="Edytuj trasę">
@@ -86,7 +91,7 @@
             </div>
         </EmptyTemplate>
     </RadzenDataGrid>
-</div>
+</RadzenCard>
 
 @code {
     [Parameter]

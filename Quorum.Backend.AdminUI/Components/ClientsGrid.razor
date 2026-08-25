@@ -1,60 +1,80 @@
 @namespace Quorum.Backend.AdminUI.Components
 
-<div class="card shadow-sm border-0">
-    <div class="table-responsive">
-        <RadzenDataGrid Data="@Clients" TItem="Client" AllowSorting="true" AllowFiltering="true" 
-                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
-                        EmptyText="Brak zarejestrowanych klientów w bazie danych."
-                        Class="table table-hover align-middle mb-0">
-            <Columns>
-                <RadzenDataGridColumn Property="@nameof(Client.ClientId)" Title="Client ID" Sortable="true" Filterable="true">
-                    <Template Context="client">
-                        <span class="fw-bold font-monospace text-primary">@client.ClientId</span>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(Client.ClientName)" Title="Nazwa Klienta" Sortable="true" Filterable="true" />
-                <RadzenDataGridColumn Title="Typy Przepływów (Grant Types)" Sortable="false" Filterable="false">
-                    <Template Context="client">
-                        @if (client.AllowedGrantTypes != null)
-                        {
+<RadzenCard class="rz-p-0 rz-shadow-1">
+    <RadzenDataGrid Data="@Clients" TItem="Client" 
+                    AllowSorting="true" 
+                    AllowFiltering="true" 
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                    FilterMode="FilterMode.Simple"
+                    AllowPaging="true" 
+                    PageSize="10" 
+                    ShowPagingSummary="true"
+                    PagingSummaryFormat="Strona {0} z {1} (łącznie {2} klientów)"
+                    AllowColumnResize="true"
+                    Density="Density.Compact"
+                    Responsive="true"
+                    EmptyText="Brak zarejestrowanych klientów w bazie danych.">
+        <Columns>
+            <RadzenDataGridColumn Property="@nameof(Client.ClientId)" Title="Client ID" Sortable="true" Filterable="true" Width="200px">
+                <Template Context="client">
+                    <span class="fw-bold font-monospace text-primary">@client.ClientId</span>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(Client.ClientName)" Title="Nazwa Klienta" Sortable="true" Filterable="true" Width="220px">
+                <Template Context="client">
+                    <span>@(string.IsNullOrWhiteSpace(client.ClientName) ? client.ClientId : client.ClientName)</span>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Typy Grantów" Sortable="false" Filterable="false">
+                <Template Context="client">
+                    @if (client.AllowedGrantTypes != null && client.AllowedGrantTypes.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-1">
                             @foreach (var grant in client.AllowedGrantTypes)
                             {
-                                <span class="badge bg-secondary-subtle text-secondary me-1">@grant.GrantType</span>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="@grant.GrantType" IsPill="true" />
                             }
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Title="Dozwolone Scopes" Sortable="false" Filterable="false">
-                    <Template Context="client">
-                        @if (client.AllowedScopes != null)
-                        {
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted small fst-italic">— brak —</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Dozwolone Scopes" Sortable="false" Filterable="false">
+                <Template Context="client">
+                    @if (client.AllowedScopes != null && client.AllowedScopes.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-1">
                             @foreach (var scope in client.AllowedScopes)
                             {
-                                <span class="badge bg-info-subtle text-info me-1">@scope.Scope</span>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@scope.Scope" IsPill="true" />
                             }
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(Client.RequirePkce)" Title="PKCE" Sortable="true">
-                    <Template Context="client">
-                        @(client.RequirePkce ? "Wymagane" : "Opcjonalne")
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(Client.Enabled)" Title="Status" Sortable="true">
-                    <Template Context="client">
-                        @if (client.Enabled)
-                        {
-                            <span class="badge bg-success-subtle text-success">Aktywny</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-danger-subtle text-danger">Nieaktywny</span>
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
-                    <Template Context="client">
-                        <a href="Clients/Edit?id=@client.Id" class="btn btn-sm btn-outline-primary me-1" title="Edytuj">
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted small fst-italic">— brak —</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(Client.RequirePkce)" Title="PKCE" Sortable="true" Width="110px" TextAlign="TextAlign.Center">
+                <Template Context="client">
+                    <RadzenBadge BadgeStyle="@(client.RequirePkce ? BadgeStyle.Success : BadgeStyle.Light)" 
+                                 Text="@(client.RequirePkce ? "Wymagane" : "Opcjonalne")" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(Client.Enabled)" Title="Status" Sortable="true" Width="110px" TextAlign="TextAlign.Center">
+                <Template Context="client">
+                    <RadzenBadge BadgeStyle="@(client.Enabled ? BadgeStyle.Success : BadgeStyle.Danger)" 
+                                 Text="@(client.Enabled ? "Aktywny" : "Nieaktywny")" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="140px">
+                <Template Context="client">
+                    <div class="btn-group btn-group-sm">
+                        <a href="Clients/Edit?id=@client.Id" class="btn btn-sm btn-outline-primary" title="Edytuj">
                             <i class="bi bi-pencil-square me-1"></i> Edytuj
                         </a>
                         <form method="post" action="Clients/Index?handler=Delete&id=@client.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć klienta @client.ClientId?');">
@@ -62,18 +82,18 @@
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
-                    </Template>
-                </RadzenDataGridColumn>
-            </Columns>
-            <EmptyTemplate>
-                <div class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                    Brak zarejestrowanych klientów w bazie danych.
-                </div>
-            </EmptyTemplate>
-        </RadzenDataGrid>
-    </div>
-</div>
+                    </div>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+        <EmptyTemplate>
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                Brak zarejestrowanych klientów w bazie danych.
+            </div>
+        </EmptyTemplate>
+    </RadzenDataGrid>
+</RadzenCard>
 
 @code {
     [Parameter]

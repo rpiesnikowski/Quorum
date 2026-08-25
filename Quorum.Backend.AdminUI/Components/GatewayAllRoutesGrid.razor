@@ -1,10 +1,19 @@
 @namespace Quorum.Backend.AdminUI.Components
 
-<div class="table-responsive">
-    <RadzenDataGrid Data="@Routes" TItem="GatewayRoute" AllowSorting="true" AllowFiltering="true" 
-                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
-                    EmptyText="Brak tras API Gateway."
-                    Class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+<RadzenCard class="rz-p-0 rz-shadow-1">
+    <RadzenDataGrid Data="@Routes" TItem="GatewayRoute" 
+                    AllowSorting="true" 
+                    AllowFiltering="true" 
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                    FilterMode="FilterMode.Simple"
+                    AllowPaging="true" 
+                    PageSize="10" 
+                    ShowPagingSummary="true"
+                    PagingSummaryFormat="Strona {0} z {1} (łącznie {2} tras)"
+                    AllowColumnResize="true"
+                    Density="Density.Compact"
+                    Responsive="true"
+                    EmptyText="Brak tras API Gateway.">
         <Columns>
             <RadzenDataGridColumn Property="@nameof(GatewayRoute.MatchPattern)" Title="Trasa (MatchPattern)" Sortable="true" Filterable="true">
                 <Template Context="context">
@@ -42,19 +51,13 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="@nameof(GatewayRoute.RequiredScope)" Title="Wymagaj" Sortable="true" TextAlign="TextAlign.Center" Width="100px">
+            <RadzenDataGridColumn Property="@nameof(GatewayRoute.RequiredScope)" Title="Wymagaj" Sortable="true" TextAlign="TextAlign.Center" Width="110px">
                 <Template Context="context">
-                    @if (context.RequiredScope)
-                    {
-                        <span class="badge bg-success-subtle text-success border">TAK</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-light text-muted border">NIE</span>
-                    }
+                    <RadzenBadge BadgeStyle="@(context.RequiredScope ? BadgeStyle.Success : BadgeStyle.Light)" 
+                                 Text="@(context.RequiredScope ? "TAK" : "NIE")" />
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="Zarządzaj" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
+            <RadzenDataGridColumn Title="Zarządzaj" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="140px">
                 <Template Context="context">
                     @{
                         var currentScopes = context.Scopes != null && context.Scopes.Any()
@@ -81,7 +84,7 @@
             </div>
         </EmptyTemplate>
     </RadzenDataGrid>
-</div>
+</RadzenCard>
 
 @code {
     [Parameter]

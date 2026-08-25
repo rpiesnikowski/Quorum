@@ -1,97 +1,112 @@
 @namespace Quorum.Backend.AdminUI.Components
 
-<div class="card shadow-sm border-0">
-    <div class="table-responsive">
-        <RadzenDataGrid Data="@Users" TItem="AdminUserDto" AllowSorting="true" AllowFiltering="true" 
-                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
-                        EmptyText="Nie znaleziono żadnych użytkowników spełniających kryteria."
-                        Class="table table-hover align-middle mb-0">
-            <Columns>
-                <RadzenDataGridColumn Property="@nameof(AdminUserDto.UserName)" Title="Nazwa Użytkownika (Login)" Sortable="true" Filterable="true">
-                    <Template Context="user">
-                        <a href="Users/Edit?id=@user.Id" class="text-decoration-none fw-bold text-dark d-inline-flex align-items-center">
-                            <i class="bi bi-person-circle text-primary me-2 fs-5"></i>
-                            <span>@user.UserName</span>
-                        </a>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(AdminUserDto.FullName)" Title="Imię i Nazwisko" Sortable="true" Filterable="true">
-                    <Template Context="user">
-                        @(string.IsNullOrEmpty(user.FullName) ? "-" : user.FullName)
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(AdminUserDto.Email)" Title="Adres Email" Sortable="true" Filterable="true">
-                    <Template Context="user">
-                        <span class="d-inline-flex align-items-center gap-1">
-                            @user.Email
-                            @if (user.EmailConfirmed)
-                            {
-                                <i class="bi bi-patch-check-fill text-success" title="Email potwierdzony"></i>
-                            }
-                        </span>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Title="Role" Sortable="false" Filterable="false">
-                    <Template Context="user">
-                        @if (user.Roles != null)
+<RadzenCard class="rz-p-0 rz-shadow-1">
+    <RadzenDataGrid Data="@Users" TItem="AdminUserDto" 
+                    AllowSorting="true" 
+                    AllowFiltering="true" 
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                    FilterMode="FilterMode.Simple"
+                    AllowPaging="true" 
+                    PageSize="10" 
+                    ShowPagingSummary="true"
+                    PagingSummaryFormat="Strona {0} z {1} (łącznie {2} użytkowników)"
+                    AllowColumnResize="true"
+                    Density="Density.Compact"
+                    Responsive="true"
+                    EmptyText="Nie znaleziono żadnych użytkowników spełniających kryteria.">
+        <Columns>
+            <RadzenDataGridColumn Property="@nameof(AdminUserDto.UserName)" Title="Login / Użytkownik" Sortable="true" Filterable="true" Width="200px">
+                <Template Context="user">
+                    <a href="Users/Edit?id=@user.Id" class="text-decoration-none fw-bold text-dark d-inline-flex align-items-center">
+                        <i class="bi bi-person-circle text-primary me-2 fs-5"></i>
+                        <span>@user.UserName</span>
+                    </a>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(AdminUserDto.FullName)" Title="Imię i Nazwisko" Sortable="true" Filterable="true" Width="200px">
+                <Template Context="user">
+                    @(string.IsNullOrEmpty(user.FullName) ? "-" : user.FullName)
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(AdminUserDto.Email)" Title="Adres Email" Sortable="true" Filterable="true" Width="240px">
+                <Template Context="user">
+                    <span class="d-inline-flex align-items-center gap-1">
+                        @user.Email
+                        @if (user.EmailConfirmed)
                         {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Zweryfikowany" IsPill="true" />
+                        }
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Role" Sortable="false" Filterable="false">
+                <Template Context="user">
+                    @if (user.Roles != null && user.Roles.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-1">
                             @foreach (var role in user.Roles)
                             {
-                                var badgeClass = role == "Admin" ? "bg-danger text-white" : (role == "Manager" ? "bg-warning-subtle text-dark" : "bg-primary-subtle text-primary");
-                                <span class="badge @badgeClass me-1">@role</span>
+                                var badgeStyle = role == "Admin" ? BadgeStyle.Danger : (role == "Manager" ? BadgeStyle.Warning : BadgeStyle.Primary);
+                                <RadzenBadge BadgeStyle="@badgeStyle" Text="@role" IsPill="true" />
                             }
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(AdminUserDto.IsLockedOut)" Title="Status" Sortable="true">
-                    <Template Context="user">
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted small fst-italic">— brak ról —</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(AdminUserDto.IsLockedOut)" Title="Status" Sortable="true" Width="150px" TextAlign="TextAlign.Center">
+                <Template Context="user">
+                    <div class="d-flex align-items-center justify-content-center gap-1">
                         @if (user.IsLockedOut)
                         {
-                            <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Zablokowany</span>
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Zablokowany" />
                         }
                         else
                         {
-                            <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle me-1"></i>Aktywny</span>
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Aktywny" />
                         }
 
                         @if (user.TwoFactorEnabled)
                         {
-                            <span class="badge bg-info-subtle text-dark ms-1" title="Uwierzytelnianie dwuskładnikowe włączone">2FA</span>
+                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="2FA" IsPill="true" />
                         }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(AdminUserDto.CreatedAt)" Title="Data Utworzenia" Sortable="true">
-                    <Template Context="user">
-                        <span class="text-muted small">@user.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
-                    <Template Context="user">
-                        <div class="btn-group btn-group-sm">
-                            <a href="Users/Edit?id=@user.Id" class="btn btn-outline-primary" title="Edytuj dane, role i hasło">
-                                <i class="bi bi-pencil-square me-1"></i> Edytuj
-                            </a>
-                            @if (user.UserName != "admin")
-                            {
-                                <form method="post" action="Users/Index?handler=Delete&id=@user.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz bezpowrotnie usunąć konto @user.UserName?');">
-                                    <button type="submit" class="btn btn-outline-danger" title="Usuń konto">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            }
-                        </div>
-                    </Template>
-                </RadzenDataGridColumn>
-            </Columns>
-            <EmptyTemplate>
-                <div class="text-center py-5 text-muted">
-                    <i class="bi bi-person-x display-6 d-block mb-2 text-secondary opacity-50"></i>
-                    Nie znaleziono żadnych użytkowników spełniających kryteria.
-                </div>
-            </EmptyTemplate>
-        </RadzenDataGrid>
-    </div>
-</div>
+                    </div>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(AdminUserDto.CreatedAt)" Title="Data Utworzenia" Sortable="true" Width="160px">
+                <Template Context="user">
+                    <span class="text-muted small">@user.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="130px">
+                <Template Context="user">
+                    <div class="btn-group btn-group-sm">
+                        <a href="Users/Edit?id=@user.Id" class="btn btn-outline-primary" title="Edytuj dane, role i hasło">
+                            <i class="bi bi-pencil-square me-1"></i> Edytuj
+                        </a>
+                        @if (user.UserName != "admin")
+                        {
+                            <form method="post" action="Users/Index?handler=Delete&id=@user.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz bezpowrotnie usunąć konto @user.UserName?');">
+                                <button type="submit" class="btn btn-outline-danger" title="Usuń konto">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+        <EmptyTemplate>
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-person-x display-6 d-block mb-2 text-secondary opacity-50"></i>
+                Nie znaleziono żadnych użytkowników spełniających kryteria.
+            </div>
+        </EmptyTemplate>
+    </RadzenDataGrid>
+</RadzenCard>
 
 @code {
     [Parameter]

@@ -1,88 +1,87 @@
 @namespace Quorum.Backend.AdminUI.Components
 
-<div class="card shadow-sm border-0">
-    <div class="table-responsive">
-        <RadzenDataGrid Data="@Resources" TItem="IdentityResource" AllowSorting="true" AllowFiltering="true" 
-                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
-                        EmptyText="Brak zarejestrowanych zasobów tożsamości w bazie danych."
-                        Class="table table-hover align-middle mb-0">
-            <Columns>
-                <RadzenDataGridColumn Property="@nameof(IdentityResource.Name)" Title="Nazwa Zasobu" Sortable="true" Filterable="true">
-                    <Template Context="r">
-                        <span class="fw-bold font-monospace text-success">@r.Name</span>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(IdentityResource.DisplayName)" Title="Nazwa Wyświetlana" Sortable="true" Filterable="true">
-                    <Template Context="r">
-                        @(string.IsNullOrWhiteSpace(r.DisplayName) ? "-" : r.DisplayName)
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(IdentityResource.Description)" Title="Opis" Sortable="true" Filterable="true">
-                    <Template Context="r">
-                        <span class="text-muted small">@(string.IsNullOrWhiteSpace(r.Description) ? "-" : r.Description)</span>
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Title="Skojarzone Claims" Sortable="false" Filterable="false">
-                    <Template Context="r">
-                        @if (r.UserClaims != null && r.UserClaims.Any())
-                        {
+<RadzenCard class="rz-p-0 rz-shadow-1">
+    <RadzenDataGrid Data="@Resources" TItem="IdentityResource" 
+                    AllowSorting="true" 
+                    AllowFiltering="true" 
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" 
+                    FilterMode="FilterMode.Simple"
+                    AllowPaging="true" 
+                    PageSize="10" 
+                    ShowPagingSummary="true"
+                    PagingSummaryFormat="Strona {0} z {1} (łącznie {2} zasobów)"
+                    AllowColumnResize="true"
+                    Density="Density.Compact"
+                    Responsive="true"
+                    EmptyText="Brak zarejestrowanych zasobów tożsamości w bazie danych.">
+        <Columns>
+            <RadzenDataGridColumn Property="@nameof(IdentityResource.Name)" Title="Nazwa Zasobu" Sortable="true" Filterable="true" Width="200px">
+                <Template Context="r">
+                    <span class="fw-bold font-monospace text-success">@r.Name</span>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(IdentityResource.DisplayName)" Title="Nazwa Wyświetlana" Sortable="true" Filterable="true" Width="220px">
+                <Template Context="r">
+                    <span>@(string.IsNullOrWhiteSpace(r.DisplayName) ? r.Name : r.DisplayName)</span>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(IdentityResource.Description)" Title="Opis" Sortable="true" Filterable="true">
+                <Template Context="r">
+                    <span class="text-muted small">@(string.IsNullOrWhiteSpace(r.Description) ? "— brak opisu —" : r.Description)</span>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Skojarzone Claims" Sortable="false" Filterable="false">
+                <Template Context="r">
+                    @if (r.UserClaims != null && r.UserClaims.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-1">
                             @foreach (var claim in r.UserClaims)
                             {
-                                <span class="badge bg-secondary-subtle text-secondary me-1">@claim.Type</span>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="@claim.Type" IsPill="true" />
                             }
-                        }
-                        else
-                        {
-                            <span class="text-muted small fst-italic">Brak claims</span>
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(IdentityResource.Required)" Title="Wymagany" Sortable="true">
-                    <Template Context="r">
-                        @if (r.Required)
-                        {
-                            <span class="badge bg-danger-subtle text-danger">Tak</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-light text-muted border">Opcjonalny</span>
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Property="@nameof(IdentityResource.ShowInDiscoveryDocument)" Title="W Discovery" Sortable="true">
-                    <Template Context="r">
-                        @if (r.ShowInDiscoveryDocument)
-                        {
-                            <span class="badge bg-success-subtle text-success">Tak</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary-subtle text-secondary">Ukryty</span>
-                        }
-                    </Template>
-                </RadzenDataGridColumn>
-                <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
-                    <Template Context="r">
-                        <a href="IdentityResources/Edit?id=@r.Id" class="btn btn-sm btn-outline-primary me-1">
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted small fst-italic">Brak claims</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(IdentityResource.Required)" Title="Wymagany" Sortable="true" Width="120px" TextAlign="TextAlign.Center">
+                <Template Context="r">
+                    <RadzenBadge BadgeStyle="@(r.Required ? BadgeStyle.Danger : BadgeStyle.Light)" 
+                                 Text="@(r.Required ? "Tak" : "Opcjonalny")" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="@nameof(IdentityResource.ShowInDiscoveryDocument)" Title="W Discovery" Sortable="true" Width="120px" TextAlign="TextAlign.Center">
+                <Template Context="r">
+                    <RadzenBadge BadgeStyle="@(r.ShowInDiscoveryDocument ? BadgeStyle.Success : BadgeStyle.Secondary)" 
+                                 Text="@(r.ShowInDiscoveryDocument ? "Tak" : "Ukryty")" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right" Width="140px">
+                <Template Context="r">
+                    <div class="btn-group btn-group-sm">
+                        <a href="IdentityResources/Edit?id=@r.Id" class="btn btn-sm btn-outline-primary" title="Edytuj">
                             <i class="bi bi-pencil me-1"></i> Edytuj
                         </a>
                         <form method="post" action="IdentityResources/Index?handler=Delete&id=@r.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć zasób tożsamości @r.Name?');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Usuń">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
-                    </Template>
-                </RadzenDataGridColumn>
-            </Columns>
-            <EmptyTemplate>
-                <div class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                    Brak zarejestrowanych zasobów tożsamości w bazie danych.
-                </div>
-            </EmptyTemplate>
-        </RadzenDataGrid>
-    </div>
-</div>
+                    </div>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+        <EmptyTemplate>
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                Brak zarejestrowanych zasobów tożsamości w bazie danych.
+            </div>
+        </EmptyTemplate>
+    </RadzenDataGrid>
+</RadzenCard>
 
 @code {
     [Parameter]
