@@ -1,17 +1,18 @@
+@using Quorum.Backend.AdminUI.Areas.Admin.Pages.Gateway
 @namespace Quorum.Backend.AdminUI.Components
 
 <div class="table-responsive">
-    <RadzenDataGrid Data="@Mappings" TItem="RouteScopeMappingDto" AllowSorting="true" AllowFiltering="true" 
+    <RadzenDataGrid Data="@Mappings" TItem="ScopesModel.RouteScopeMappingDto" AllowSorting="true" AllowFiltering="true" 
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
                     EmptyText="Brak powiązań spełniających kryteria wyszukiwania."
                     Class="table table-hover align-middle mb-0">
         <Columns>
-            <RadzenDataGridColumn Property="@nameof(RouteScopeMappingDto.MappingId)" Title="#" Sortable="true" Filterable="true" Width="60px" TextAlign="TextAlign.Center">
+            <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.MappingId)" Title="#" Sortable="true" Filterable="true" Width="60px" TextAlign="TextAlign.Center">
                 <Template Context="context">
                     <span class="text-center font-monospace text-muted small">@context.MappingId</span>
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="@nameof(RouteScopeMappingDto.MatchPattern)" Title="Trasa Gateway (MatchPattern)" Sortable="true" Filterable="true">
+            <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.MatchPattern)" Title="Trasa Gateway (MatchPattern)" Sortable="true" Filterable="true">
                 <Template Context="context">
                     <div class="d-flex align-items-center gap-2">
                         <a href="Gateway/Edit?id=@context.RouteId" class="fw-bold text-dark font-monospace text-decoration-none">
@@ -33,7 +34,7 @@
                     </div>
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="@nameof(RouteScopeMappingDto.Scope)" Title="Wymagany Zakres (Scope)" Sortable="true" Filterable="true">
+            <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.Scope)" Title="Wymagany Zakres (Scope)" Sortable="true" Filterable="true">
                 <Template Context="context">
                     <div class="d-flex align-items-center gap-1">
                         <span class="badge bg-warning text-dark font-monospace px-2 py-1 fs-6">
@@ -46,14 +47,14 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="@nameof(RouteScopeMappingDto.ScopeType)" Title="Typ Scope" Sortable="true" Filterable="true">
+            <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.ScopeType)" Title="Typ Scope" Sortable="true" Filterable="true">
                 <Template Context="context">
                     <span class="badge bg-info-subtle text-info border">
                         @context.ScopeType
                     </span>
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Property="@nameof(RouteScopeMappingDto.Upstream)" Title="Serwer Upstream" Sortable="true" Filterable="true">
+            <RadzenDataGridColumn Property="@nameof(ScopesModel.RouteScopeMappingDto.Upstream)" Title="Serwer Upstream" Sortable="true" Filterable="true">
                 <Template Context="context">
                     <span class="font-monospace small text-muted text-truncate d-inline-block" style="max-width: 180px;" title="@context.Upstream">
                         @context.Upstream
@@ -89,7 +90,7 @@
 
 @code {
     [Parameter]
-    public IEnumerable<RouteScopeMappingDto>? Mappings { get; set; }
+    public IEnumerable<ScopesModel.RouteScopeMappingDto>? Mappings { get; set; }
 
     [Parameter]
     public int? RouteId { get; set; }

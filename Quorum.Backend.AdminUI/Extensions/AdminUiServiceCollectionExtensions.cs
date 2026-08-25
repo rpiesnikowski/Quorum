@@ -85,6 +85,7 @@ public static class AdminUiServiceCollectionExtensions
                 razorOptions.Conventions.AllowAnonymousToAreaPage("Admin", "/Account/AccessDenied");
             }
         });
+        services.AddServerSideBlazor();
 
         return services;
     }
