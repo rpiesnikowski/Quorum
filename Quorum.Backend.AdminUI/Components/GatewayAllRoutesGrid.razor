@@ -1,0 +1,72 @@
+@namespace Quorum.Backend.AdminUI.Components
+
+<div class="table-responsive">
+    <QuickGrid Items="@RoutesQuery" Class="table table-hover align-middle mb-0" style="font-size: 0.88rem;" ResizableColumns="true">
+        <TemplateColumn Title="Trasa (MatchPattern)" Sortable="true" SortBy="@(GridSort<GatewayRoute>.ByAscending(r => r.MatchPattern))">
+            <div class="fw-bold font-monospace text-dark">@context.MatchPattern</div>
+            @if (!string.IsNullOrEmpty(context.RouteName))
+            {
+                <div class="text-muted small">@context.RouteName</div>
+            }
+        </TemplateColumn>
+        <TemplateColumn Title="Przypisane Zakresy (Scopes)">
+            @{
+                var routeScopes = context.Scopes != null && context.Scopes.Any()
+                    ? context.Scopes.Select(s => s.Scope).ToList()
+                    : (context.ScopeName ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            }
+            @if (routeScopes.Any())
+            {
+                <div class="d-flex flex-wrap gap-1 align-items-center">
+                    @foreach (var sc in routeScopes)
+                    {
+                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle font-monospace d-inline-flex align-items-center gap-1">
+                            <i class="bi bi-key-fill text-warning"></i> @sc
+                            <form method="post" action="Gateway/Scopes?handler=RemoveScope&routeId=@context.Id&scopeName=@sc" class="d-inline" onsubmit="return confirm('Usunąć zakres @sc z tej trasy?');">
+                                <button type="submit" class="btn-close btn-close-sm ms-1" style="font-size: 0.6rem;" aria-label="Usuń"></button>
+                            </form>
+                        </span>
+                    }
+                </div>
+            }
+            else
+            {
+                <span class="text-muted small fst-italic">Brak przypisanych zakresów (otwarta / publiczna)</span>
+            }
+        </TemplateColumn>
+        <TemplateColumn Title="Wymagaj" Class="text-center" Sortable="true" SortBy="@(GridSort<GatewayRoute>.ByAscending(r => r.RequiredScope))">
+            @if (context.RequiredScope)
+            {
+                <span class="badge bg-success-subtle text-success border">TAK</span>
+            }
+            else
+            {
+                <span class="badge bg-light text-muted border">NIE</span>
+            }
+        </TemplateColumn>
+        <TemplateColumn Title="Zarządzaj" Class="text-end">
+            @{
+                var currentScopes = context.Scopes != null && context.Scopes.Any()
+                    ? context.Scopes.Select(s => s.Scope).ToList()
+                    : (context.ScopeName ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                var scopesJoined = string.Join(" ", currentScopes);
+                var matchPatternEscaped = context.MatchPattern?.Replace("'", "\\'") ?? "";
+            }
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-primary" onclick="openQuickAssignModal(@context.Id, '@matchPatternEscaped', '@scopesJoined')" title="Edytuj zakresy trasy">
+                    <i class="bi bi-sliders"></i> Edytuj
+                </button>
+                <a href="Gateway/Edit?id=@context.Id" class="btn btn-outline-secondary" title="Konfiguracja trasy">
+                    <i class="bi bi-gear"></i>
+                </a>
+            </div>
+        </TemplateColumn>
+    </QuickGrid>
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<GatewayRoute>? Routes { get; set; }
+
+    private IQueryable<GatewayRoute> RoutesQuery => (Routes ?? Enumerable.Empty<GatewayRoute>()).AsQueryable();
+}

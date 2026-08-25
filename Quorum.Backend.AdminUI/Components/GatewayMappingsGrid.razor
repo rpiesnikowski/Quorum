@@ -1,0 +1,83 @@
+@namespace Quorum.Backend.AdminUI.Components
+
+<div class="table-responsive">
+    <QuickGrid Items="@MappingsQuery" Class="table table-hover align-middle mb-0" ResizableColumns="true">
+        <PropertyColumn Property="@(m => m.MappingId)" Title="#" Sortable="true" Class="text-center font-monospace text-muted small" />
+        <TemplateColumn Title="Trasa Gateway (MatchPattern)" Sortable="true" SortBy="@(GridSort<RouteScopeMappingDto>.ByAscending(m => m.MatchPattern))">
+            <div class="d-flex align-items-center gap-2">
+                <a href="Gateway/Edit?id=@context.RouteId" class="fw-bold text-dark font-monospace text-decoration-none">
+                    @context.MatchPattern
+                </a>
+                @if (!context.RouteIsEnabled)
+                {
+                    <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">Wyłączona</span>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(context.RouteName))
+            {
+                <div class="text-muted small text-truncate" style="max-width: 250px;">
+                    <i class="bi bi-tag me-1"></i>@context.RouteName
+                </div>
+            }
+            <div class="small">
+                <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.7rem;">@context.HttpMethods</span>
+            </div>
+        </TemplateColumn>
+        <TemplateColumn Title="Wymagany Zakres (Scope)" Sortable="true" SortBy="@(GridSort<RouteScopeMappingDto>.ByAscending(m => m.Scope))">
+            <div class="d-flex align-items-center gap-1">
+                <span class="badge bg-warning text-dark font-monospace px-2 py-1 fs-6">
+                    <i class="bi bi-key-fill me-1"></i>@context.Scope
+                </span>
+            </div>
+            @if (!string.IsNullOrEmpty(context.ScopeDisplayName) && context.ScopeDisplayName != context.Scope)
+            {
+                <div class="text-muted small mt-1">@context.ScopeDisplayName</div>
+            }
+        </TemplateColumn>
+        <TemplateColumn Title="Typ Scope">
+            <span class="badge bg-info-subtle text-info border">
+                @context.ScopeType
+            </span>
+        </TemplateColumn>
+        <TemplateColumn Title="Serwer Upstream">
+            <span class="font-monospace small text-muted text-truncate d-inline-block" style="max-width: 180px;" title="@context.Upstream">
+                @context.Upstream
+            </span>
+        </TemplateColumn>
+        <TemplateColumn Title="Akcje" Class="text-end">
+            <div class="btn-group btn-group-sm">
+                <a href="Gateway/Edit?id=@context.RouteId" class="btn btn-outline-secondary" title="Edytuj trasę">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                <form method="post" action="Gateway/Scopes?handler=DeleteMapping&mappingId=@context.MappingId&routeId=@RouteId&searchTerm=@SearchTerm" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć to powiązanie trasy z zakresem?');">
+                    <button type="submit" class="btn btn-outline-danger" title="Usuń powiązanie">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </div>
+        </TemplateColumn>
+    </QuickGrid>
+    @if (Mappings == null || !Mappings.Any())
+    {
+        <div class="text-center py-5">
+            <div class="text-muted">
+                <i class="bi bi-slash-circle fs-2 d-block mb-2 text-secondary"></i>
+                <span class="fw-semibold">Brak powiązań spełniających kryteria wyszukiwania.</span>
+                <p class="small text-muted mt-1">Użyj formularza po lewej stronie, aby przypisać zakresy do wybranej trasy.</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<RouteScopeMappingDto>? Mappings { get; set; }
+
+    [Parameter]
+    public int? RouteId { get; set; }
+
+    [Parameter]
+    public string? SearchTerm { get; set; }
+
+    private IQueryable<RouteScopeMappingDto> MappingsQuery => (Mappings ?? Enumerable.Empty<RouteScopeMappingDto>()).AsQueryable();
+}

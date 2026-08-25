@@ -1,0 +1,79 @@
+@namespace Quorum.Backend.AdminUI.Components
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <QuickGrid Items="@UsersQuery" Class="table table-hover align-middle mb-0" ResizableColumns="true">
+            <TemplateColumn Title="Nazwa Użytkownika (Login)" Sortable="true" SortBy="@(GridSort<AdminUserDto>.ByAscending(u => u.UserName))">
+                <a href="Users/Edit?id=@context.Id" class="text-decoration-none fw-bold text-dark d-inline-flex align-items-center">
+                    <i class="bi bi-person-circle text-primary me-2 fs-5"></i>
+                    <span>@context.UserName</span>
+                </a>
+            </TemplateColumn>
+            <PropertyColumn Property="@(u => string.IsNullOrEmpty(u.FullName) ? "-" : u.FullName)" Title="Imię i Nazwisko" Sortable="true" />
+            <TemplateColumn Title="Adres Email" Sortable="true" SortBy="@(GridSort<AdminUserDto>.ByAscending(u => u.Email))">
+                <span class="d-inline-flex align-items-center gap-1">
+                    @context.Email
+                    @if (context.EmailConfirmed)
+                    {
+                        <i class="bi bi-patch-check-fill text-success" title="Email potwierdzony"></i>
+                    }
+                </span>
+            </TemplateColumn>
+            <TemplateColumn Title="Role">
+                @if (context.Roles != null)
+                {
+                    @foreach (var role in context.Roles)
+                    {
+                        var badgeClass = role == "Admin" ? "bg-danger text-white" : (role == "Manager" ? "bg-warning-subtle text-dark" : "bg-primary-subtle text-primary");
+                        <span class="badge @badgeClass me-1">@role</span>
+                    }
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Status" Sortable="true" SortBy="@(GridSort<AdminUserDto>.ByAscending(u => u.IsLockedOut))">
+                @if (context.IsLockedOut)
+                {
+                    <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Zablokowany</span>
+                }
+                else
+                {
+                    <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle me-1"></i>Aktywny</span>
+                }
+
+                @if (context.TwoFactorEnabled)
+                {
+                    <span class="badge bg-info-subtle text-dark ms-1" title="Uwierzytelnianie dwuskładnikowe włączone">2FA</span>
+                }
+            </TemplateColumn>
+            <PropertyColumn Property="@(u => u.CreatedAt.ToString("yyyy-MM-dd HH:mm"))" Title="Data Utworzenia" Sortable="true" Class="text-muted small" />
+            <TemplateColumn Title="Akcje" Class="text-end">
+                <div class="btn-group btn-group-sm">
+                    <a href="Users/Edit?id=@context.Id" class="btn btn-outline-primary" title="Edytuj dane, role i hasło">
+                        <i class="bi bi-pencil-square me-1"></i> Edytuj
+                    </a>
+                    @if (context.UserName != "admin")
+                    {
+                        <form method="post" action="Users/Index?handler=Delete&id=@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz bezpowrotnie usunąć konto @context.UserName?');">
+                            <button type="submit" class="btn btn-outline-danger" title="Usuń konto">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    }
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+        @if (Users == null || !Users.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-person-x display-6 d-block mb-2 text-secondary opacity-50"></i>
+                Nie znaleziono żadnych użytkowników spełniających kryteria.
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<AdminUserDto>? Users { get; set; }
+
+    private IQueryable<AdminUserDto> UsersQuery => (Users ?? Enumerable.Empty<AdminUserDto>()).AsQueryable();
+}

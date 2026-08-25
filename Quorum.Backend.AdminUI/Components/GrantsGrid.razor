@@ -1,0 +1,36 @@
+@namespace Quorum.Backend.AdminUI.Components
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <QuickGrid Items="@GrantsQuery" Class="table table-hover align-middle mb-0" ResizableColumns="true">
+            <TemplateColumn Title="Typ Grantu" Sortable="true" SortBy="@(GridSort<PersistedGrant>.ByAscending(g => g.Type))">
+                <span class="badge bg-secondary">@context.Type</span>
+            </TemplateColumn>
+            <PropertyColumn Property="@(g => g.SubjectId)" Title="Subject ID (Użytkownik)" Sortable="true" Class="font-monospace small" />
+            <PropertyColumn Property="@(g => g.ClientId)" Title="Client ID" Sortable="true" Class="fw-semibold text-primary" />
+            <PropertyColumn Property="@(g => g.CreationTime.ToString("yyyy-MM-dd HH:mm:ss"))" Title="Data Utworzenia" Sortable="true" Class="small text-muted" />
+            <PropertyColumn Property="@(g => g.Expiration.HasValue ? g.Expiration.Value.ToString("yyyy-MM-dd HH:mm:ss") : "Nigdy")" Title="Wygasa" Sortable="true" Class="small text-muted" />
+            <TemplateColumn Title="Akcje" Class="text-end">
+                <form method="post" action="Grants/Index?handler=Revoke&id=@context.Id&key=@context.Key" class="d-inline" onsubmit="return confirm('Czy na pewno unieważnić ten token?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-x-circle me-1"></i> Unieważnij
+                    </button>
+                </form>
+            </TemplateColumn>
+        </QuickGrid>
+        @if (Grants == null || !Grants.Any())
+        {
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-shield-check fs-3 d-block mb-2 text-success"></i>
+                Brak aktywnych sesji tokenów w magazynie operacyjnym bazy danych.
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<PersistedGrant>? Grants { get; set; }
+
+    private IQueryable<PersistedGrant> GrantsQuery => (Grants ?? Enumerable.Empty<PersistedGrant>()).AsQueryable();
+}
