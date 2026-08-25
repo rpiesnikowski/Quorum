@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Quorum.Backend.AdminUI.Options;
 using Quorum.Backend.AdminUI.Services;
-using Microsoft.AspNetCore.Builder;
 using Radzen;
 
 namespace Quorum.Backend.AdminUI.Extensions;
@@ -88,7 +87,6 @@ public static class AdminUiServiceCollectionExtensions
         });
         services.AddRazorPages();
         services.AddServerSideBlazor();
-        services.AddRadzenComponents();
         services.AddRazorComponents().AddInteractiveServerComponents();
         
 

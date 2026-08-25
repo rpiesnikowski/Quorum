@@ -165,7 +165,7 @@
             RequiredScope = route.RequiredScope,
             IsEnabled = route.IsEnabled,
             Priority = route.Priority,
-            Scopes = string.Join(" ", (route.Scopes ?? new List<GatewayRouteScopeMapping>()).Select(s => s.Scope))
+            Scopes = string.Join(" ", (route.Scopes ?? new List<GatewayRouteScope>()).Select(s => s.Scope))
         };
     }
 
@@ -189,14 +189,14 @@
         route.Priority = input.Priority;
         route.UpdatedAt = DateTime.UtcNow;
 
-        route.Scopes ??= new List<GatewayRouteScopeMapping>();
+        route.Scopes ??= new List<GatewayRouteScope>();
         route.Scopes.Clear();
         if (!string.IsNullOrWhiteSpace(input.Scopes))
         {
             var scopes = input.Scopes.Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var s in scopes)
             {
-                route.Scopes.Add(new GatewayRouteScopeMapping { Scope = s.Trim(), RouteId = route.Id });
+                route.Scopes.Add(new GatewayRouteScope { Scope = s.Trim(), GatewayRouteId = route.Id });
             }
         }
 
@@ -209,11 +209,6 @@
 
         NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Trasa Gateway została zaktualizowana.");
         NavigationManager.NavigateTo("Admin/Gateway");
-    }
-
-    private class GatewayRouteScopeMapping : GatewayRouteScope
-    {
-        public int RouteId { get; set; }
     }
 
     public class GatewayRouteEditModel

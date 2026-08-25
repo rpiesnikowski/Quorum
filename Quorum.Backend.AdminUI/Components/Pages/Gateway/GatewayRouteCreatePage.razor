@@ -156,7 +156,7 @@
         if (!string.IsNullOrWhiteSpace(input.Scopes))
         {
             var scopes = input.Scopes.Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-            route.Scopes = scopes.Select(s => new GatewayRouteScopeMapping { Scope = s.Trim() }).ToList();
+            route.Scopes = scopes.Select(s => new GatewayRouteScope { Scope = s.Trim() }).ToList();
         }
 
         var success = await GatewayService.CreateRouteAsync(route);

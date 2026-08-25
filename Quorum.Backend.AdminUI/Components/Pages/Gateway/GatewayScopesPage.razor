@@ -1,14 +1,13 @@
 @page "/Admin/Gateway/Scopes"
 @using Microsoft.EntityFrameworkCore
 @using Open.IdentityServer.EntityFramework.DbContexts
-@using Quorum.Backend.AdminUI.Components.Layout
+@using Quorum.Backend.AdminUI.Areas.Admin.Pages.Gateway
 @using Quorum.Backend.AdminUI.Services
-@using Quorum.Backend.EntityFramework.DbContexts
-@using Quorum.Backend.EntityFramework.Entities
-@layout AdminLayout
+@using Quorum.Backend.EntityFramework.Data
+@using Quorum.Backend.EntityFramework.Models
 @inject IGatewayAdminService GatewayService
-@inject IConfigurationDbContext ConfigContext
-@inject QuorumGatewayDbContext GatewayContext
+@inject ConfigurationDbContext ConfigContext
+@inject ApplicationDbContext AppContext
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
 
@@ -49,7 +48,7 @@
 
 @code {
     private List<GatewayRoute> routes = new();
-    private List<GatewayRouteScopeMapping> mappings = new();
+    private List<ScopesModel.RouteScopeMappingDto> mappings = new();
     private int selectedRouteId;
     private string newScopeName = string.Empty;
 
@@ -61,10 +60,52 @@
     private async Task LoadDataAsync()
     {
         routes = await GatewayService.GetAllRoutesAsync();
-        mappings = await GatewayContext.GatewayRouteScopeMappings
-            .Include(m => m.Route)
+        
+        var identityScopes = await ConfigContext.IdentityResources
+            .AsNoTracking()
+            .Where(r => r.Enabled)
+            .OrderBy(r => r.Name)
+            .Select(r => new { r.Name, DisplayName = r.DisplayName ?? r.Name, r.Description, Type = "Tożsamość (Identity)" })
+            .ToListAsync();
+
+        var apiScopes = await ConfigContext.ApiScopes
+            .AsNoTracking()
+            .Where(s => s.Enabled)
+            .OrderBy(s => s.Name)
+            .Select(s => new { s.Name, DisplayName = s.DisplayName ?? s.Name, s.Description, Type = "API Scope" })
+            .ToListAsync();
+
+        var availableScopes = identityScopes.Concat(apiScopes).ToList();
+        var scopeDict = availableScopes.ToDictionary(s => s.Name, s => s, StringComparer.OrdinalIgnoreCase);
+
+        var rawMappings = await AppContext.GatewayRouteScopes
+            .Include(s => s.GatewayRoute)
             .AsNoTracking()
             .ToListAsync();
+
+        mappings = rawMappings.Select(m =>
+        {
+            var route = m.GatewayRoute;
+            scopeDict.TryGetValue(m.Scope, out var matchedScope);
+
+            return new ScopesModel.RouteScopeMappingDto
+            {
+                MappingId = m.Id,
+                RouteId = m.GatewayRouteId,
+                MatchPattern = route?.MatchPattern ?? $"(Route #{m.GatewayRouteId})",
+                RouteName = route?.RouteName,
+                HttpMethods = route?.HttpMethods ?? "ALL",
+                Upstream = route != null ? $"{route.Scheme}://{route.AddressHost}:{route.AddressPort}{route.AddressBasePath}" : "-",
+                Scope = m.Scope,
+                ScopeType = matchedScope?.Type ?? "Custom / External",
+                ScopeDisplayName = matchedScope?.DisplayName,
+                ScopeDescription = matchedScope?.Description,
+                RouteIsEnabled = route?.IsEnabled ?? false,
+                RouteRequiredScope = route?.RequiredScope ?? false,
+                RouteAllowAnonymous = route?.AllowAnonymous ?? false,
+                CreatedAt = route?.CreatedAt ?? DateTime.UtcNow
+            };
+        }).ToList();
 
         if (routes.Any() && selectedRouteId == 0)
         {
