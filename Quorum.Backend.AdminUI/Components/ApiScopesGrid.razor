@@ -2,95 +2,109 @@
 
 <div class="card shadow-sm border-0">
     <div class="table-responsive">
-        <QuickGrid Items="@ScopesQuery" Class="table table-hover align-middle mb-0" ResizableColumns="true">
-            <TemplateColumn Title="Nazwa Scope" Sortable="true" SortBy="@(GridSort<ApiScope>.ByAscending(s => s.Name))">
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-light text-primary border font-monospace px-2 py-1 fs-6 me-2">@context.Name</span>
+        <RadzenDataGrid Data="@Scopes" TItem="ApiScope" AllowSorting="true" AllowFiltering="true" 
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
+                        EmptyText="Brak zdefiniowanych zakresów API w bazie."
+                        Class="table table-hover align-middle mb-0">
+            <Columns>
+                <RadzenDataGridColumn Property="@nameof(ApiScope.Name)" Title="Nazwa Scope" Sortable="true" Filterable="true">
+                    <Template Context="scope">
+                        <span class="badge bg-light text-primary border font-monospace px-2 py-1 fs-6 me-2">@scope.Name</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Property="@nameof(ApiScope.DisplayName)" Title="Nazwa Wyświetlana" Sortable="true" Filterable="true" />
+                <RadzenDataGridColumn Property="@nameof(ApiScope.Description)" Title="Opis" Sortable="true" Filterable="true">
+                    <Template Context="scope">
+                        @if (!string.IsNullOrWhiteSpace(scope.Description))
+                        {
+                            <span class="text-muted small">@scope.Description</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted fst-italic small">— brak opisu —</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Property="@nameof(ApiScope.Required)" Title="Wymagany" Sortable="true">
+                    <Template Context="scope">
+                        @if (scope.Required)
+                        {
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                                <i class="bi bi-lock-fill me-1"></i>Tak
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-light text-secondary border">Nie</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Property="@nameof(ApiScope.Emphasize)" Title="Wyróżniony" Sortable="true">
+                    <Template Context="scope">
+                        @if (scope.Emphasize)
+                        {
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
+                                <i class="bi bi-star-fill me-1"></i>Tak
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-light text-secondary border">Nie</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Property="@nameof(ApiScope.Enabled)" Title="Status" Sortable="true">
+                    <Template Context="scope">
+                        @if (scope.Enabled)
+                        {
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="bi bi-check-circle me-1"></i>Aktywny
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                <i class="bi bi-dash-circle me-1"></i>Wyłączony
+                            </span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
+                    <Template Context="scope">
+                        <div class="btn-group btn-group-sm">
+                            <a href="ApiScopes/Edit?id=@scope.Id" class="btn btn-outline-primary" title="Edytuj zakres">
+                                <i class="bi bi-pencil me-1"></i> Edytuj
+                            </a>
+                            <form method="post" action="ApiScopes/Index?handler=Delete&id=@scope.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć zakres API \'@scope.Name\'?');">
+                                <input type="hidden" name="search" value="@Search" />
+                                <input type="hidden" name="statusFilter" value="@StatusFilter" />
+                                <input type="hidden" name="currentPage" value="@CurrentPage" />
+                                <input type="hidden" name="pageSize" value="@PageSize" />
+                                <button type="submit" class="btn btn-outline-danger border-start-0" title="Usuń zakres">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+            <EmptyTemplate>
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                    @if (!string.IsNullOrWhiteSpace(Search) || !string.IsNullOrWhiteSpace(StatusFilter))
+                    {
+                        <span>Nie znaleziono zakresów API spełniających podane kryteria filtrowania.</span>
+                        <div class="mt-2">
+                            <a href="ApiScopes" class="btn btn-sm btn-outline-primary">Wyczyść filtry</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <span>Brak zdefiniowanych zakresów API w bazie.</span>
+                    }
                 </div>
-            </TemplateColumn>
-            <PropertyColumn Property="@(s => s.DisplayName)" Title="Nazwa Wyświetlana" Sortable="true" Class="fw-semibold" />
-            <TemplateColumn Title="Opis">
-                @if (!string.IsNullOrWhiteSpace(context.Description))
-                {
-                    <span class="text-muted small">@context.Description</span>
-                }
-                else
-                {
-                    <span class="text-muted fst-italic small">— brak opisu —</span>
-                }
-            </TemplateColumn>
-            <TemplateColumn Title="Wymagany" Sortable="true" SortBy="@(GridSort<ApiScope>.ByAscending(s => s.Required))">
-                @if (context.Required)
-                {
-                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
-                        <i class="bi bi-lock-fill me-1"></i>Tak
-                    </span>
-                }
-                else
-                {
-                    <span class="badge bg-light text-secondary border">Nie</span>
-                }
-            </TemplateColumn>
-            <TemplateColumn Title="Wyróżniony" Sortable="true" SortBy="@(GridSort<ApiScope>.ByAscending(s => s.Emphasize))">
-                @if (context.Emphasize)
-                {
-                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
-                        <i class="bi bi-star-fill me-1"></i>Tak
-                    </span>
-                }
-                else
-                {
-                    <span class="badge bg-light text-secondary border">Nie</span>
-                }
-            </TemplateColumn>
-            <TemplateColumn Title="Status" Sortable="true" SortBy="@(GridSort<ApiScope>.ByAscending(s => s.Enabled))">
-                @if (context.Enabled)
-                {
-                    <span class="badge bg-success-subtle text-success border border-success-subtle">
-                        <i class="bi bi-check-circle me-1"></i>Aktywny
-                    </span>
-                }
-                else
-                {
-                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
-                        <i class="bi bi-dash-circle me-1"></i>Wyłączony
-                    </span>
-                }
-            </TemplateColumn>
-            <TemplateColumn Title="Akcje" Class="text-end">
-                <div class="btn-group btn-group-sm">
-                    <a href="ApiScopes/Edit?id=@context.Id" class="btn btn-outline-primary" title="Edytuj zakres">
-                        <i class="bi bi-pencil me-1"></i> Edytuj
-                    </a>
-                    <form method="post" action="ApiScopes/Index?handler=Delete&id=@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć zakres API \'@context.Name\'?');">
-                        <input type="hidden" name="search" value="@Search" />
-                        <input type="hidden" name="statusFilter" value="@StatusFilter" />
-                        <input type="hidden" name="currentPage" value="@CurrentPage" />
-                        <input type="hidden" name="pageSize" value="@PageSize" />
-                        <button type="submit" class="btn btn-outline-danger border-start-0" title="Usuń zakres">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </form>
-                </div>
-            </TemplateColumn>
-        </QuickGrid>
-        @if (Scopes == null || !Scopes.Any())
-        {
-            <div class="text-center py-5 text-muted">
-                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
-                @if (!string.IsNullOrWhiteSpace(Search) || !string.IsNullOrWhiteSpace(StatusFilter))
-                {
-                    <span>Nie znaleziono zakresów API spełniających podane kryteria filtrowania.</span>
-                    <div class="mt-2">
-                        <a href="ApiScopes" class="btn btn-sm btn-outline-primary">Wyczyść filtry</a>
-                    </div>
-                }
-                else
-                {
-                    <span>Brak zdefiniowanych zakresów API w bazie.</span>
-                }
-            </div>
-        }
+            </EmptyTemplate>
+        </RadzenDataGrid>
     </div>
 </div>
 
@@ -109,6 +123,4 @@
 
     [Parameter]
     public int PageSize { get; set; } = 10;
-
-    private IQueryable<ApiScope> ScopesQuery => (Scopes ?? Enumerable.Empty<ApiScope>()).AsQueryable();
 }

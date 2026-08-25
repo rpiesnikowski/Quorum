@@ -2,35 +2,57 @@
 
 <div class="card shadow-sm border-0">
     <div class="table-responsive">
-        <QuickGrid Items="@GrantsQuery" Class="table table-hover align-middle mb-0" ResizableColumns="true">
-            <TemplateColumn Title="Typ Grantu" Sortable="true" SortBy="@(GridSort<PersistedGrant>.ByAscending(g => g.Type))">
-                <span class="badge bg-secondary">@context.Type</span>
-            </TemplateColumn>
-            <PropertyColumn Property="@(g => g.SubjectId)" Title="Subject ID (Użytkownik)" Sortable="true" Class="font-monospace small" />
-            <PropertyColumn Property="@(g => g.ClientId)" Title="Client ID" Sortable="true" Class="fw-semibold text-primary" />
-            <PropertyColumn Property="@(g => g.CreationTime.ToString("yyyy-MM-dd HH:mm:ss"))" Title="Data Utworzenia" Sortable="true" Class="small text-muted" />
-            <PropertyColumn Property="@(g => g.Expiration.HasValue ? g.Expiration.Value.ToString("yyyy-MM-dd HH:mm:ss") : "Nigdy")" Title="Wygasa" Sortable="true" Class="small text-muted" />
-            <TemplateColumn Title="Akcje" Class="text-end">
-                <form method="post" action="Grants/Index?handler=Revoke&id=@context.Id&key=@context.Key" class="d-inline" onsubmit="return confirm('Czy na pewno unieważnić ten token?');">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-x-circle me-1"></i> Unieważnij
-                    </button>
-                </form>
-            </TemplateColumn>
-        </QuickGrid>
-        @if (Grants == null || !Grants.Any())
-        {
-            <div class="text-center py-4 text-muted">
-                <i class="bi bi-shield-check fs-3 d-block mb-2 text-success"></i>
-                Brak aktywnych sesji tokenów w magazynie operacyjnym bazy danych.
-            </div>
-        }
+        <RadzenDataGrid Data="@Grants" TItem="PersistedGrant" AllowSorting="true" AllowFiltering="true" 
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
+                        EmptyText="Brak aktywnych sesji tokenów w magazynie operacyjnym bazy danych."
+                        Class="table table-hover align-middle mb-0">
+            <Columns>
+                <RadzenDataGridColumn Property="@nameof(PersistedGrant.Type)" Title="Typ Grantu" Sortable="true" Filterable="true">
+                    <Template Context="grant">
+                        <span class="badge bg-secondary">@grant.Type</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Property="@nameof(PersistedGrant.SubjectId)" Title="Subject ID (Użytkownik)" Sortable="true" Filterable="true">
+                    <Template Context="grant">
+                        <span class="font-monospace small">@grant.SubjectId</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Property="@nameof(PersistedGrant.ClientId)" Title="Client ID" Sortable="true" Filterable="true">
+                    <Template Context="grant">
+                        <span class="fw-semibold text-primary">@grant.ClientId</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Property="@nameof(PersistedGrant.CreationTime)" Title="Data Utworzenia" Sortable="true" Filterable="true">
+                    <Template Context="grant">
+                        <span class="small text-muted">@grant.CreationTime.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Property="@nameof(PersistedGrant.Expiration)" Title="Wygasa" Sortable="true" Filterable="true">
+                    <Template Context="grant">
+                        <span class="small text-muted">@(grant.Expiration.HasValue ? grant.Expiration.Value.ToString("yyyy-MM-dd HH:mm:ss") : "Nigdy")</span>
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
+                    <Template Context="grant">
+                        <form method="post" action="Grants/Index?handler=Revoke&id=@grant.Id&key=@grant.Key" class="d-inline" onsubmit="return confirm('Czy na pewno unieważnić ten token?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-x-circle me-1"></i> Unieważnij
+                            </button>
+                        </form>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+            <EmptyTemplate>
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-shield-check fs-3 d-block mb-2 text-success"></i>
+                    Brak aktywnych sesji tokenów w magazynie operacyjnym bazy danych.
+                </div>
+            </EmptyTemplate>
+        </RadzenDataGrid>
     </div>
 </div>
 
 @code {
     [Parameter]
     public IEnumerable<PersistedGrant>? Grants { get; set; }
-
-    private IQueryable<PersistedGrant> GrantsQuery => (Grants ?? Enumerable.Empty<PersistedGrant>()).AsQueryable();
 }

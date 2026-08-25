@@ -3,99 +3,117 @@
 <div class="card border-0 shadow-sm rounded-4 mb-4">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <QuickGrid Items="@FederationsQuery" Class="table table-hover align-middle mb-0" ResizableColumns="true">
-                <TemplateColumn Title="Dostawca / Schemat" Class="ps-4" Sortable="true" SortBy="@(GridSort<OidcFederationProvider>.ByAscending(f => f.DisplayName))">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-3 p-2 d-flex align-items-center justify-content-center text-white" 
-                             style="width: 42px; height: 42px; background-color: @(context.ButtonColor ?? (context.IconType == "microsoft" ? "#0078D4" : context.IconType == "azure" ? "#0089D6" : context.IconType == "google" ? "#4285F4" : "#6c757d"));">
-                            @if (context.IconType == "microsoft")
+            <RadzenDataGrid Data="@Federations" TItem="OidcFederationProvider" AllowSorting="true" AllowFiltering="true" 
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterMode="FilterMode.Simple"
+                            EmptyText="Brak skonfigurowanych dynamicznych dostawców OIDC."
+                            Class="table table-hover align-middle mb-0">
+                <Columns>
+                    <RadzenDataGridColumn Property="@nameof(OidcFederationProvider.DisplayName)" Title="Dostawca / Schemat" Sortable="true" Filterable="true">
+                        <Template Context="context">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-3 p-2 d-flex align-items-center justify-content-center text-white" 
+                                     style="width: 42px; height: 42px; background-color: @(context.ButtonColor ?? (context.IconType == "microsoft" ? "#0078D4" : context.IconType == "azure" ? "#0089D6" : context.IconType == "google" ? "#4285F4" : "#6c757d"));">
+                                    @if (context.IconType == "microsoft")
+                                    {
+                                        <i class="bi bi-microsoft fs-5"></i>
+                                    }
+                                    else if (context.IconType == "azure")
+                                    {
+                                        <i class="bi bi-cloud-check-fill fs-5"></i>
+                                    }
+                                    else if (context.IconType == "google")
+                                    {
+                                        <i class="bi bi-google fs-5"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-shield-lock-fill fs-5"></i>
+                                    }
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark">@context.DisplayName</div>
+                                    <div class="text-muted small">
+                                        <code class="text-primary">@context.Scheme</code>
+                                        @if (context.AutoProvisionUsers)
+                                        {
+                                            <span class="badge bg-light text-secondary border ms-1">Auto-provision: @context.DefaultRole</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Property="@nameof(OidcFederationProvider.Authority)" Title="Issuer (Authority URL)" Sortable="true" Filterable="true">
+                        <Template Context="context">
+                            <div class="text-truncate small" style="max-width: 280px;" title="@context.Authority">
+                                <i class="bi bi-link-45deg text-muted me-1"></i>@context.Authority
+                            </div>
+                            <div class="text-muted small">Callback: <code>@context.CallbackPath</code></div>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Property="@nameof(OidcFederationProvider.ClientId)" Title="Client ID" Sortable="true" Filterable="true">
+                        <Template Context="context">
+                            <span class="small text-secondary font-monospace">@context.ClientId</span>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Zabezpieczenia" Sortable="false" Filterable="false">
+                        <Template Context="context">
+                            <div class="d-flex flex-wrap gap-1">
+                                @if (context.UsePkce)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">PKCE</span>
+                                }
+                                <span class="badge bg-info-subtle text-info border border-info-subtle">@context.ResponseType</span>
+                            </div>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Property="@nameof(OidcFederationProvider.IsEnabled)" Title="Status" Sortable="true">
+                        <Template Context="context">
+                            @if (context.IsEnabled)
                             {
-                                <i class="bi bi-microsoft fs-5"></i>
-                            }
-                            else if (context.IconType == "azure")
-                            {
-                                <i class="bi bi-cloud-check-fill fs-5"></i>
-                            }
-                            else if (context.IconType == "google")
-                            {
-                                <i class="bi bi-google fs-5"></i>
+                                <span class="badge bg-success d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-check-circle-fill"></i> Aktywny
+                                </span>
                             }
                             else
                             {
-                                <i class="bi bi-shield-lock-fill fs-5"></i>
+                                <span class="badge bg-secondary d-inline-flex align-items-center gap-1">
+                                    <i class="bi bi-pause-circle"></i> Wyłączony
+                                </span>
                             }
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">@context.DisplayName</div>
-                            <div class="text-muted small">
-                                <code class="text-primary">@context.Scheme</code>
-                                @if (context.AutoProvisionUsers)
-                                {
-                                    <span class="badge bg-light text-secondary border ms-1">Auto-provision: @context.DefaultRole</span>
-                                }
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Akcje" Sortable="false" Filterable="false" TextAlign="TextAlign.Right">
+                        <Template Context="context">
+                            <div class="btn-group btn-group-sm">
+                                <a href="Federations/Test?id=@context.Id" class="btn btn-outline-info" title="Testuj Discovery Document">
+                                    <i class="bi bi-search"></i> Testuj
+                                </a>
+                                <a href="Federations/Edit?id=@context.Id" class="btn btn-outline-secondary" title="Edytuj">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="post" action="Federations/Index?handler=Toggle&id=@context.Id" class="d-inline">
+                                    <button type="submit" class="btn @(context.IsEnabled ? "btn-outline-warning" : "btn-outline-success")" title="@(context.IsEnabled ? "Deaktywuj" : "Aktywuj")">
+                                        <i class="bi @(context.IsEnabled ? "bi-eye-slash" : "bi-eye")"></i>
+                                    </button>
+                                </form>
+                                <form method="post" action="Federations/Index?handler=Delete&id=@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć schemat @context.Scheme?');">
+                                    <button type="submit" class="btn btn-outline-danger" title="Usuń">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                             </div>
-                        </div>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+                <EmptyTemplate>
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                        Brak skonfigurowanych dynamicznych dostawców OIDC.<br />
+                        <a href="Federations/Create" class="btn btn-sm btn-outline-primary mt-2">Dodaj pierwszą federację</a>
                     </div>
-                </TemplateColumn>
-                <TemplateColumn Title="Issuer (Authority URL)">
-                    <div class="text-truncate small" style="max-width: 280px;" title="@context.Authority">
-                        <i class="bi bi-link-45deg text-muted me-1"></i>@context.Authority
-                    </div>
-                    <div class="text-muted small">Callback: <code>@context.CallbackPath</code></div>
-                </TemplateColumn>
-                <PropertyColumn Property="@(f => f.ClientId)" Title="Client ID" Sortable="true" Class="small text-secondary font-monospace" />
-                <TemplateColumn Title="Zabezpieczenia">
-                    <div class="d-flex flex-wrap gap-1">
-                        @if (context.UsePkce)
-                        {
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">PKCE</span>
-                        }
-                        <span class="badge bg-info-subtle text-info border border-info-subtle">@context.ResponseType</span>
-                    </div>
-                </TemplateColumn>
-                <TemplateColumn Title="Status" Sortable="true" SortBy="@(GridSort<OidcFederationProvider>.ByAscending(f => f.IsEnabled))">
-                    @if (context.IsEnabled)
-                    {
-                        <span class="badge bg-success d-inline-flex align-items-center gap-1">
-                            <i class="bi bi-check-circle-fill"></i> Aktywny
-                        </span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-secondary d-inline-flex align-items-center gap-1">
-                            <i class="bi bi-pause-circle"></i> Wyłączony
-                        </span>
-                    }
-                </TemplateColumn>
-                <TemplateColumn Title="Akcje" Class="text-end pe-4">
-                    <div class="btn-group btn-group-sm">
-                        <a href="Federations/Test?id=@context.Id" class="btn btn-outline-info" title="Testuj Discovery Document">
-                            <i class="bi bi-search"></i> Testuj
-                        </a>
-                        <a href="Federations/Edit?id=@context.Id" class="btn btn-outline-secondary" title="Edytuj">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <form method="post" action="Federations/Index?handler=Toggle&id=@context.Id" class="d-inline">
-                            <button type="submit" class="btn @(context.IsEnabled ? "btn-outline-warning" : "btn-outline-success")" title="@(context.IsEnabled ? "Deaktywuj" : "Aktywuj")">
-                                <i class="bi @(context.IsEnabled ? "bi-eye-slash" : "bi-eye")"></i>
-                            </button>
-                        </form>
-                        <form method="post" action="Federations/Index?handler=Delete&id=@context.Id" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć schemat @context.Scheme?');">
-                            <button type="submit" class="btn btn-outline-danger" title="Usuń">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
-                    </div>
-                </TemplateColumn>
-            </QuickGrid>
-            @if (Federations == null || !Federations.Any())
-            {
-                <div class="text-center py-5 text-muted">
-                    <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
-                    Brak skonfigurowanych dynamicznych dostawców OIDC.<br />
-                    <a href="Federations/Create" class="btn btn-sm btn-outline-primary mt-2">Dodaj pierwszą federację</a>
-                </div>
-            }
+                </EmptyTemplate>
+            </RadzenDataGrid>
         </div>
     </div>
 </div>
@@ -103,6 +121,4 @@
 @code {
     [Parameter]
     public IEnumerable<OidcFederationProvider>? Federations { get; set; }
-
-    private IQueryable<OidcFederationProvider> FederationsQuery => (Federations ?? Enumerable.Empty<OidcFederationProvider>()).AsQueryable();
 }
