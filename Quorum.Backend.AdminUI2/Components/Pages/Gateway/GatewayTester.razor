@@ -1,0 +1,126 @@
+@page "/admin/gateway/test"
+@layout AdminLayout
+@inject IAdminGatewayStore GatewayStore
+@inject IAdminApiScopeStore ApiScopeStore
+@inject NavigationManager NavigationManager
+
+<PageTitle>Symulator API Gateway | Quorum Admin UI 2</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Symulator & Tester API Gateway</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Interaktywna weryfikacja dopasowania tras URL, priorytetów oraz kontroli uprawnień (Scopes) w czasie rzeczywistym.</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="arrow_back" Text="Powrót do tras" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/gateway"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenStack Gap="1.5rem">
+            <RadzenRow Gap="1rem">
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="Metoda HTTP" Class="w-100">
+                        <RadzenDropDown @bind-Value="testRequest.HttpMethod" Data="@httpMethods" Class="w-100" />
+                    </RadzenFormField>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12" SizeMD="9">
+                    <RadzenFormField Text="Ścieżka Żądania (Request Path)" Class="w-100">
+                        <RadzenTextBox @bind-Value="testRequest.RequestPath" Class="w-100" Placeholder="/api/orders/123" />
+                    </RadzenFormField>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12">
+                    <RadzenFormField Text="Scopes dostarczone w Tokenie JWT" Class="w-100">
+                        <RadzenDropDown @bind-Value="testRequest.ProvidedScopes" Data="@availableScopes" Multiple="true" AllowClear="true" Placeholder="Wybierz scopes symulowanego użytkownika..." Class="w-100" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+
+            <div class="d-flex justify-content-end">
+                <RadzenButton Text="Uruchom Test Routingu" Icon="play_arrow" ButtonStyle="ButtonStyle.Primary" Click="@RunTestAsync" IsBusy="@isRunning" />
+            </div>
+        </RadzenStack>
+    </RadzenCard>
+
+    @if (testResult != null)
+    {
+        <RadzenCard Class="rz-p-4">
+            <RadzenText TextStyle="TextStyle.H6" Class="fw-bold mb-3">Wynik Symulacji Routingu</RadzenText>
+            
+            <RadzenAlert AlertStyle="@(testResult.IsMatch && testResult.IsAuthorized ? AlertStyle.Success : (!testResult.IsMatch ? AlertStyle.Danger : AlertStyle.Warning))" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
+                <div class="fw-bold fs-6">@testResult.Explanation</div>
+            </RadzenAlert>
+
+            @if (testResult.IsMatch && testResult.MatchedRoute != null)
+            {
+                <RadzenRow Gap="1rem" Class="mt-3">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenCard Class="rz-p-3" Style="background: #f8fafc;">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold">Dopasowana Trasa</RadzenText>
+                            <div><strong>Wzorzec:</strong> <code>@testResult.MatchedRoute.PathPattern</code></div>
+                            <div><strong>Nazwa:</strong> @(testResult.MatchedRoute.Name ?? "-")</div>
+                            <div><strong>Priorytet:</strong> @testResult.MatchedRoute.Priority</div>
+                        </RadzenCard>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenCard Class="rz-p-3" Style="background: #f8fafc;">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold">Docelowy URL Przekierowania</RadzenText>
+                            <div class="text-truncate" style="font-family: monospace; color: #2563eb;">@testResult.TargetUri</div>
+                            <div class="mt-2">
+                                <strong>Status Autoryzacji:</strong>
+                                @if (testResult.IsAuthorized)
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Autoryzacja Przyznana (200 OK)" IsPill="true" />
+                                }
+                                else
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Odmowa Dostępu (403 Forbidden)" IsPill="true" />
+                                }
+                            </div>
+                        </RadzenCard>
+                    </RadzenColumn>
+                </RadzenRow>
+            }
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    private GatewayTestRequest testRequest = new()
+    {
+        HttpMethod = "GET",
+        RequestPath = "/api/orders/55",
+        ProvidedScopes = new List<string>()
+    };
+    private GatewayTestResult? testResult;
+    private List<string> httpMethods = new() { "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" };
+    private List<string> availableScopes = new();
+    private bool isRunning = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 100);
+        availableScopes = scopesRes.Items.Select(s => s.Name).ToList();
+        if (availableScopes.Count == 0)
+        {
+            availableScopes = new List<string> { "openid", "profile", "email", "api1", "orders.read", "orders.write" };
+        }
+    }
+
+    private async Task RunTestAsync()
+    {
+        isRunning = true;
+        try
+        {
+            testResult = await GatewayStore.TestRouteAsync(testRequest);
+        }
+        finally
+        {
+            isRunning = false;
+        }
+    }
+}

@@ -1,0 +1,15 @@
+@page "/Error"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Błąd Systemowy | Quorum Backend 2</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <RadzenCard Class="rz-p-5 text-center" Style="max-width: 520px;">
+        <RadzenIcon Icon="error_outline" Style="font-size: 3.5rem; color: #ef4444;" />
+        <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mt-3 mb-2">Wystąpił Błąd</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" Class="text-muted mb-4">
+            Przepraszamy, podczas przetwarzania żądania wystąpił nieoczekiwany błąd.
+        </RadzenText>
+        <RadzenButton Text="Strona Główna" Icon="home" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("/"))" />
+    </RadzenCard>
+</div>

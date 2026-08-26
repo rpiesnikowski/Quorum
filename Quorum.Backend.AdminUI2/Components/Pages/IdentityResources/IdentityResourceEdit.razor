@@ -1,0 +1,165 @@
+@page "/admin/identityresources/create"
+@page "/admin/identityresources/{Id:int}/edit"
+@layout AdminLayout
+@inject IAdminIdentityResourceStore IdentityResourceStore
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(IsNew ? "Nowy Zasób Tożsamości" : "Edycja Zasobu Tożsamości") | Quorum Admin UI 2</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">
+                @(IsNew ? "Dodaj Nowy Zasób Tożsamości" : $"Edycja Zasobu: {model.Name}")
+            </RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                Konfiguracja zasobu tożsamości OIDC i powiązanych roszczeń użytkownika zwracanych w tokenie ID Token / UserInfo.
+            </RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="arrow_back" Text="Powrót do listy" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/identityresources"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenTemplateForm TItem="IdentityResourceAdminModel" Data="@model" Submit="@HandleSubmitAsync">
+            <RadzenStack Gap="1.5rem">
+                <RadzenFieldset Text="Dane Identyfikacyjne">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Nazwa Zasobu (Name)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.Name" Name="Name" Class="w-100" Disabled="@(!IsNew)" Placeholder="np. openid, profile, custom_profile" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="Name" Text="Nazwa zasobu jest wymagana." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Nazwa Wyświetlana (DisplayName)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.DisplayName" Class="w-100" Placeholder="np. Profil użytkownika" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12">
+                            <RadzenFormField Text="Opis" Class="w-100">
+                                <RadzenTextArea @bind-Value="model.Description" Rows="2" Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Roszczenia Użytkownika (User Claims)">
+                    <RadzenFormField Text="Lista powiązanych Claims (jeden na linię)" Class="w-100">
+                        <RadzenTextArea @bind-Value="model.UserClaimsText" Rows="4" Class="w-100" Placeholder="name&#10;given_name&#10;family_name&#10;email" />
+                    </RadzenFormField>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Flagi i Widoczność">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.Enabled" Name="Enabled" />
+                                <RadzenLabel Text="Zasób aktywny" Component="Enabled" />
+                            </div>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.ShowInDiscoveryDocument" Name="ShowInDiscoveryDocument" />
+                                <RadzenLabel Text="Widoczny w Discovery" Component="ShowInDiscoveryDocument" />
+                            </div>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.Required" Name="Required" />
+                                <RadzenLabel Text="Wymagany" Component="Required" />
+                            </div>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.Emphasize" Name="Emphasize" />
+                                <RadzenLabel Text="Wyróżniony" Component="Emphasize" />
+                            </div>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/identityresources"))" />
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Zasób" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
+                </div>
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsNew => !Id.HasValue || Id.Value == 0;
+    private IdentityResourceAdminModel model = new();
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsNew)
+        {
+            var res = await IdentityResourceStore.GetResourceByIdAsync(Id!.Value);
+            if (res != null)
+            {
+                model = res;
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono wskazanego zasobu.");
+                NavigationManager.NavigateTo("admin/identityresources");
+            }
+        }
+        else
+        {
+            model = new IdentityResourceAdminModel
+            {
+                Enabled = true,
+                ShowInDiscoveryDocument = true
+            };
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsNew)
+            {
+                var result = await IdentityResourceStore.CreateResourceAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Zasób '{model.Name}' został utworzony.");
+                    NavigationManager.NavigateTo("admin/identityresources");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się utworzyć zasobu.");
+                }
+            }
+            else
+            {
+                var result = await IdentityResourceStore.UpdateResourceAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Zaktualizowano dane zasobu.");
+                    NavigationManager.NavigateTo("admin/identityresources");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się zaktualizować zasobu.");
+                }
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

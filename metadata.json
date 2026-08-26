@@ -1,6 +1,6 @@
 {
   "name": "Quorum .NET 10 Identity Solution",
-  "description": "Kompletna solucja Quorum z projektami Quorum.Backend (.NET 10) oraz wydzieloną biblioteką Razor Class Library / paczką NuGet Quorum.Backend.AdminUI dla Open.IdentityServer i ASP.NET Core Identity.",
+  "description": "Kompletna solucja Quorum z projektami Quorum.Backend (.NET 10), biblioteką Razor Class Library Quorum.Backend.AdminUI2 (100% Radzen Blazor) oraz aplikacją webapp Quorum.Backend2 (Pure Blazor) dla Open.IdentityServer i ASP.NET Core Identity.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

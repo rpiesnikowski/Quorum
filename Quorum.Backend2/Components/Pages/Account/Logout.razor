@@ -1,0 +1,26 @@
+@page "/account/logout"
+@page "/Account/Logout"
+@using Microsoft.AspNetCore.Identity
+@using Quorum.Backend.EntityFramework.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager NavigationManager
+
+<PageTitle>Wylogowano | Quorum Backend 2</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <RadzenCard Class="rz-p-5 text-center" Style="max-width: 480px;">
+        <RadzenIcon Icon="check_circle" Style="font-size: 3.5rem; color: #10b981;" />
+        <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mt-3 mb-2">Pomyślnie Wylogowano</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" Class="text-muted mb-4">
+            Twoja sesja w Quorum Identity Server 2 została zakończona.
+        </RadzenText>
+        <RadzenButton Text="Powrót do strony głównej" Icon="home" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("/"))" />
+    </RadzenCard>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await SignInManager.SignOutAsync();
+    }
+}

@@ -4,4 +4,6 @@
   <Project Path="Quorum.Backend.Radzen.Sample/Quorum.Backend.Radzen.Sample.csproj" />
   <Project Path="Quorum.Backend/Quorum.Backend.csproj" />
   <Project Path="Quorum.Backend.AdminUI/Quorum.Backend.AdminUI.csproj" />
+  <Project Path="Quorum.Backend.AdminUI2/Quorum.Backend.AdminUI2.csproj" />
+  <Project Path="Quorum.Backend2/Quorum.Backend2.csproj" />
 </Solution>

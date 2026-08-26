@@ -1,0 +1,166 @@
+@page "/admin/federations"
+@layout AdminLayout
+@inject IAdminFederationStore FederationStore
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Federacje OIDC (SSO) | Quorum Admin UI 2</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Dostawcy Federacji OIDC (Single Sign-On)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Dynamiczna integracja z zewnętrznymi dostawcami tożsamości (Microsoft Entra ID, Google, Okta, Auth0) bez konieczności restartu serwera.</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="add" Text="Dodaj Dostawcę OIDC" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/federations/create"))" />
+            <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-3">
+        <RadzenRow AlignItems="AlignItems.Center" Gap="1rem" Class="mb-3">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenTextBox Placeholder="Szukaj po nazwie, schemacie, adresie Authority..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenDataGrid Data="@providers" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25 })" IsLoading="@isLoading" TItem="FederationAdminModel" EmptyText="Brak skonfigurowanych dostawców federacji.">
+            <Columns>
+                <RadzenDataGridColumn TItem="FederationAdminModel" Property="DisplayName" Title="Dostawca OIDC" Width="200px">
+                    <Template Context="fed">
+                        <div class="d-flex align-items-center gap-2">
+                            <RadzenIcon Icon="hub" Style="font-size: 1.5rem; color: #0284c7;" />
+                            <div>
+                                <div class="fw-bold">@fed.DisplayName</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Schemat: <span class="badge bg-light text-dark">@fed.Scheme</span></div>
+                            </div>
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FederationAdminModel" Property="Authority" Title="Authority & Client ID">
+                    <Template Context="fed">
+                        <div class="text-truncate" style="max-width: 340px; font-family: monospace; font-size: 0.85rem;" title="@fed.Authority">
+                            @fed.Authority
+                        </div>
+                        <div class="text-muted" style="font-size: 0.78rem;">Client ID: @fed.ClientId</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FederationAdminModel" Title="Auto-Provisioning" Width="180px">
+                    <Template Context="fed">
+                        @if (fed.AutoProvisionUsers)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Auto-Provisioning" IsPill="true" />
+                            <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">Rola: @(fed.DefaultRoles ?? "User")</div>
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="Tylko powiązane" IsPill="true" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FederationAdminModel" Property="IsEnabled" Title="Status" Width="130px">
+                    <Template Context="fed">
+                        @if (fed.IsEnabled)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Włączony" IsPill="true" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Wyłączony" IsPill="true" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FederationAdminModel" Title="Akcje" Width="180px" Sortable="false" TextAlign="TextAlign.End">
+                    <Template Context="fed">
+                        <div class="d-flex justify-content-end gap-1">
+                            <RadzenButton Icon="@(fed.IsEnabled ? "toggle_on" : "toggle_off")" ButtonStyle="@(fed.IsEnabled ? ButtonStyle.Success : ButtonStyle.Light)" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ToggleStatusAsync(fed))" Tooltip="@(fed.IsEnabled ? "Wyłącz dostawcę" : "Włącz dostawcę")" />
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/federations/{fed.Id}/edit"))" Tooltip="Edytuj dostawcę" />
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ConfirmDeleteAsync(fed))" Tooltip="Usuń dostawcę" />
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private IEnumerable<FederationAdminModel> providers = new List<FederationAdminModel>();
+    private int totalCount;
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+    private int currentPage = 1;
+    private int currentPageSize = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnLoadData(LoadDataArgs args)
+    {
+        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
+        currentPageSize = args.Top ?? 10;
+        await LoadDataAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await FederationStore.GetProvidersAsync(searchTerm, currentPage, currentPageSize);
+            providers = result.Items;
+            totalCount = result.TotalCount;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ToggleStatusAsync(FederationAdminModel fed)
+    {
+        var result = await FederationStore.ToggleStatusAsync(fed.Id, !fed.IsEnabled);
+        if (result.Success)
+        {
+            NotificationService.Notify(NotificationSeverity.Success, "Sukces", !fed.IsEnabled ? "Dostawca został aktywowany." : "Dostawca został dezaktywowany.");
+            await LoadDataAsync();
+        }
+        else
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się zmienić statusu.");
+        }
+    }
+
+    private async Task ConfirmDeleteAsync(FederationAdminModel fed)
+    {
+        var confirmed = await DialogService.Confirm($"Czy na pewno chcesz usunąć federację '{fed.DisplayName}' ({fed.Scheme})?", "Potwierdzenie usunięcia", new ConfirmOptions { OkButtonText = "Tak, usuń", CancelButtonText = "Anuluj" });
+        if (confirmed == true)
+        {
+            var result = await FederationStore.DeleteProviderAsync(fed.Id);
+            if (result.Success)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Federacja '{fed.DisplayName}' została usunięta.");
+                await LoadDataAsync();
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się usunąć federacji.");
+            }
+        }
+    }
+}

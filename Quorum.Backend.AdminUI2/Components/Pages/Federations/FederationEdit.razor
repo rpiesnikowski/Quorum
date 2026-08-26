@@ -1,0 +1,246 @@
+@page "/admin/federations/create"
+@page "/admin/federations/{Id:int}/edit"
+@layout AdminLayout
+@inject IAdminFederationStore FederationStore
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(IsNew ? "Nowy Dostawca OIDC" : "Edycja Dostawcy OIDC") | Quorum Admin UI 2</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">
+                @(IsNew ? "Dodaj Nowego Dostawcę OIDC SSO" : $"Edycja Dostawcy: {model.DisplayName}")
+            </RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                Konfiguracja dynamicznej federacji tożsamości OpenID Connect z automatyczną walidacją punktu końcowego Discovery.
+            </RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="arrow_back" Text="Powrót do listy" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/federations"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenTemplateForm TItem="FederationAdminModel" Data="@model" Submit="@HandleSubmitAsync">
+            <RadzenStack Gap="1.5rem">
+                <!-- Podstawowa konfiguracja dostawcy -->
+                <RadzenFieldset Text="Podstawowe Informacje o Dostawcy">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenFormField Text="Schemat Uwierzytelniania (Scheme)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.Scheme" Name="Scheme" Class="w-100" Disabled="@(!IsNew)" Placeholder="np. microsoft, google, okta" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="Scheme" Text="Schemat jest wymagany." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenFormField Text="Nazwa Wyświetlana (Display Name)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.DisplayName" Name="DisplayName" Class="w-100" Placeholder="np. Zaloguj przez Microsoft Entra ID" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="DisplayName" Text="Nazwa wyświetlana jest wymagana." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenFormField Text="Domyślne Role dla Nowych Użytkowników" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.DefaultRoles" Class="w-100" Placeholder="User" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <!-- Adres Authority i Testowanie Discovery -->
+                <RadzenFieldset Text="Konfiguracja OpenID Connect Discovery">
+                    <RadzenStack Gap="1rem">
+                        <RadzenRow Gap="1rem" AlignItems="AlignItems.Center">
+                            <RadzenColumn Size="12" SizeMD="9">
+                                <RadzenFormField Text="Adres Authority (Wydawca OIDC)" Class="w-100">
+                                    <RadzenTextBox @bind-Value="model.Authority" Name="Authority" Class="w-100" Placeholder="https://login.microsoftonline.com/{tenant-id}/v2.0" />
+                                </RadzenFormField>
+                                <RadzenRequiredValidator Component="Authority" Text="Adres Authority jest wymagany." />
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="12" SizeMD="3">
+                                <RadzenButton Text="Testuj Discovery" Icon="network_check" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Class="w-100" Click="@TestDiscoveryEndpointAsync" IsBusy="@isTestingDisco" />
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                        @if (discoveryResult != null)
+                        {
+                            <RadzenAlert AlertStyle="@(discoveryResult.Success ? AlertStyle.Success : AlertStyle.Danger)" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
+                                <div class="fw-bold mb-1">@discoveryResult.Message</div>
+                                @if (discoveryResult.Success)
+                                {
+                                    <div style="font-size: 0.85rem; font-family: monospace;">
+                                        <div><strong>Issuer:</strong> @discoveryResult.Issuer</div>
+                                        <div><strong>Authorization:</strong> @discoveryResult.AuthorizationEndpoint</div>
+                                        <div><strong>Token:</strong> @discoveryResult.TokenEndpoint</div>
+                                        <div><strong>Obsługiwane Scopes:</strong> @string.Join(", ", discoveryResult.SupportedScopes)</div>
+                                    </div>
+                                }
+                            </RadzenAlert>
+                        }
+                    </RadzenStack>
+                </RadzenFieldset>
+
+                <!-- Poświadczenia Klienta -->
+                <RadzenFieldset Text="Poświadczenia Klienta (Client Credentials)">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Client ID (Application ID)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.ClientId" Name="ClientId" Class="w-100" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="ClientId" Text="Client ID jest wymagany." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Client Secret" Class="w-100">
+                                <RadzenPassword @bind-Value="model.ClientSecret" Class="w-100" Placeholder="@(IsNew ? "Wpisz Client Secret..." : "Pozostaw puste, aby zachować obecny")" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenFormField Text="Scopes (oddzielone spacją)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.Scopes" Class="w-100" Placeholder="openid profile email" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenFormField Text="Ścieżka Callback (CallbackPath)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.CallbackPath" Class="w-100" Placeholder="/signin-oidc" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenFormField Text="Ścieżka Wylogowania (SignedOutCallbackPath)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.SignedOutCallbackPath" Class="w-100" Placeholder="/signout-callback-oidc" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <!-- Opcje i Rejestracja Użytkowników -->
+                <RadzenFieldset Text="Opcje i Prowizjonowanie Kont">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.IsEnabled" Name="IsEnabled" />
+                                <RadzenLabel Text="Dostawca federacji aktywny (widoczny na ekranie logowania)" Component="IsEnabled" />
+                            </div>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.AutoProvisionUsers" Name="AutoProvisionUsers" />
+                                <RadzenLabel Text="Automatycznie twórz konto użytkownika w Identity przy pierwszym logowaniu" Component="AutoProvisionUsers" />
+                            </div>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/federations"))" />
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Dostawcę" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
+                </div>
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsNew => !Id.HasValue || Id.Value == 0;
+    private FederationAdminModel model = new();
+    private DiscoveryValidationResult? discoveryResult;
+    private bool isTestingDisco = false;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsNew)
+        {
+            var fed = await FederationStore.GetProviderByIdAsync(Id!.Value);
+            if (fed != null)
+            {
+                model = fed;
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono wskazanego dostawcy.");
+                NavigationManager.NavigateTo("admin/federations");
+            }
+        }
+        else
+        {
+            model = new FederationAdminModel
+            {
+                IsEnabled = true,
+                AutoProvisionUsers = true,
+                ResponseType = "code",
+                Scopes = "openid profile email",
+                CallbackPath = "/signin-oidc",
+                SignedOutCallbackPath = "/signout-callback-oidc",
+                DefaultRoles = "User"
+            };
+        }
+    }
+
+    private async Task TestDiscoveryEndpointAsync()
+    {
+        if (string.IsNullOrWhiteSpace(model.Authority))
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Uwaga", "Wprowadź adres URL Authority przed testem.");
+            return;
+        }
+
+        isTestingDisco = true;
+        try
+        {
+            discoveryResult = await FederationStore.TestDiscoveryAsync(model.Authority);
+        }
+        finally
+        {
+            isTestingDisco = false;
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsNew)
+            {
+                var result = await FederationStore.CreateProviderAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Dostawca federacji '{model.DisplayName}' został utworzony.");
+                    NavigationManager.NavigateTo("admin/federations");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się utworzyć dostawcy.");
+                }
+            }
+            else
+            {
+                var result = await FederationStore.UpdateProviderAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Zaktualizowano konfigurację dostawcy.");
+                    NavigationManager.NavigateTo("admin/federations");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się zapisać zmian.");
+                }
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

@@ -1,0 +1,35 @@
+@namespace Quorum.Backend.AdminUI2.Components.Layout
+
+<RadzenPanelMenu Style="width: 100%; border: none;">
+    <div class="px-3 py-3 d-flex align-items-center gap-2 border-bottom border-secondary border-opacity-25 mb-2">
+        <RadzenIcon Icon="security" Style="color: #3b82f6; font-size: 1.75rem;" />
+        <div>
+            <div class="fw-bold text-white fs-6">Quorum Admin 2</div>
+            <div class="text-white-50" style="font-size: 0.72rem; letter-spacing: 0.05em;">PURE BLAZOR & RADZEN</div>
+        </div>
+    </div>
+
+    <RadzenPanelMenuItem Text="Pulpit (Dashboard)" Path="admin" Icon="dashboard" />
+    
+    <div class="px-3 pt-3 pb-1 text-uppercase fw-bold text-white-50" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+        Tożsamość & Bezpieczeństwo
+    </div>
+
+    <RadzenPanelMenuItem Text="Klienci OAuth / OIDC" Path="admin/clients" Icon="devices" />
+    <RadzenPanelMenuItem Text="Zakresy API (Scopes)" Path="admin/scopes" Icon="vpn_key" />
+    <RadzenPanelMenuItem Text="Zasoby Tożsamości" Path="admin/identityresources" Icon="badge" />
+    <RadzenPanelMenuItem Text="Użytkownicy (Identity)" Path="admin/users" Icon="people" />
+    <RadzenPanelMenuItem Text="Federacje OIDC (SSO)" Path="admin/federations" Icon="hub" />
+
+    <div class="px-3 pt-3 pb-1 text-uppercase fw-bold text-white-50" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+        Bramka & Operacje
+    </div>
+
+    <RadzenPanelMenuItem Text="API Gateway & Trasy" Path="admin/gateway" Icon="alt_route" />
+    <RadzenPanelMenuItem Text="Symulator Gateway" Path="admin/gateway/test" Icon="science" />
+    <RadzenPanelMenuItem Text="Aktywne Granty / Tokeny" Path="admin/grants" Icon="token" />
+
+    <hr class="border-secondary border-opacity-25 mx-3 my-3" />
+
+    <RadzenPanelMenuItem Text="Powrót do Portalu" Path="" Icon="home" />
+</RadzenPanelMenu>

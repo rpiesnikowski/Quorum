@@ -1,0 +1,154 @@
+@page "/admin/identityresources"
+@layout AdminLayout
+@inject IAdminIdentityResourceStore IdentityResourceStore
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Zasoby Tożsamości | Quorum Admin UI 2</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="7">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Zasoby Tożsamości (Identity Resources)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Standardowe i niestandardowe oświadczenia tożsamości OIDC (openid, profile, email, address, phone).</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="5" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="auto_fix_high" Text="Zainicjuj Standardowe" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@SeedStandardAsync" />
+            <RadzenButton Icon="add" Text="Dodaj Zasób" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/identityresources/create"))" />
+            <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-3">
+        <RadzenRow AlignItems="AlignItems.Center" Gap="1rem" Class="mb-3">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenTextBox Placeholder="Szukaj po nazwie zasobu..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenDataGrid Data="@resources" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25 })" IsLoading="@isLoading" TItem="IdentityResourceAdminModel" EmptyText="Brak zasobów tożsamości.">
+            <Columns>
+                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Property="Name" Title="Nazwa Zasobu" Width="180px">
+                    <Template Context="res">
+                        <div class="fw-bold text-primary">@res.Name</div>
+                        <div class="text-muted" style="font-size: 0.78rem;">@(res.DisplayName ?? "-")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Property="Description" Title="Opis" />
+
+                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Title="Skojarzone Claims" Width="260px">
+                    <Template Context="res">
+                        <div class="d-flex flex-wrap gap-1">
+                            @if (res.UserClaims != null && res.UserClaims.Count > 0)
+                            {
+                                @foreach (var c in res.UserClaims.Take(5))
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@c" IsPill="true" />
+                                }
+                                @if (res.UserClaims.Count > 5)
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="@($"+{res.UserClaims.Count - 5}")" IsPill="true" />
+                                }
+                            }
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Property="Enabled" Title="Status" Width="130px">
+                    <Template Context="res">
+                        @if (res.Enabled)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Aktywny" IsPill="true" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Wyłączony" IsPill="true" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Title="Akcje" Width="140px" Sortable="false" TextAlign="TextAlign.End">
+                    <Template Context="res">
+                        <div class="d-flex justify-content-end gap-1">
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/identityresources/{res.Id}/edit"))" Tooltip="Edytuj zasób" />
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ConfirmDeleteAsync(res))" Tooltip="Usuń zasób" />
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private IEnumerable<IdentityResourceAdminModel> resources = new List<IdentityResourceAdminModel>();
+    private int totalCount;
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+    private int currentPage = 1;
+    private int currentPageSize = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnLoadData(LoadDataArgs args)
+    {
+        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
+        currentPageSize = args.Top ?? 10;
+        await LoadDataAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await IdentityResourceStore.GetResourcesAsync(searchTerm, currentPage, currentPageSize);
+            resources = result.Items;
+            totalCount = result.TotalCount;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SeedStandardAsync()
+    {
+        var result = await IdentityResourceStore.SeedStandardResourcesAsync();
+        if (result.Success)
+        {
+            NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Standardowe zasoby (openid, profile, email, address, phone) zostały zainicjowane.");
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task ConfirmDeleteAsync(IdentityResourceAdminModel res)
+    {
+        var confirmed = await DialogService.Confirm($"Czy na pewno chcesz usunąć zasób tożsamości '{res.Name}'?", "Potwierdzenie usunięcia", new ConfirmOptions { OkButtonText = "Tak, usuń", CancelButtonText = "Anuluj" });
+        if (confirmed == true)
+        {
+            var result = await IdentityResourceStore.DeleteResourceAsync(res.Id);
+            if (result.Success)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Zasób '{res.Name}' został usunięty.");
+                await LoadDataAsync();
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się usunąć zasobu.");
+            }
+        }
+    }
+}

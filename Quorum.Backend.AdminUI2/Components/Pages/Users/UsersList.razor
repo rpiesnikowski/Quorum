@@ -1,0 +1,191 @@
+@page "/admin/users"
+@layout AdminLayout
+@inject IAdminUserStore UserStore
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Użytkownicy | Quorum Admin UI 2</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Zarządzanie Użytkownikami (Identity)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Konta użytkowników w ASP.NET Core Identity, przypisane role, statusy 2FA i blokad.</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="person_add" Text="Dodaj Użytkownika" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/users/create"))" />
+            <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-3">
+        <RadzenRow AlignItems="AlignItems.Center" Gap="1rem" Class="mb-3">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenTextBox Placeholder="Szukaj po nazwie użytkownika, e-mailu..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenDataGrid Data="@users" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25, 50 })" IsLoading="@isLoading" TItem="UserAdminModel" EmptyText="Brak użytkowników spełniających kryteria.">
+            <Columns>
+                <RadzenDataGridColumn TItem="UserAdminModel" Property="UserName" Title="Użytkownik" Width="200px">
+                    <Template Context="user">
+                        <div class="d-flex align-items-center gap-2">
+                            <RadzenIcon Icon="account_circle" Style="font-size: 1.5rem; color: #64748b;" />
+                            <div>
+                                <div class="fw-bold">@user.UserName</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">ID: @(user.Id.Length > 8 ? user.Id[..8] + "..." : user.Id)</div>
+                            </div>
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="UserAdminModel" Property="Email" Title="E-mail" Width="220px">
+                    <Template Context="user">
+                        <div>@user.Email</div>
+                        @if (user.EmailConfirmed)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Potwierdzony" IsPill="true" Class="mt-1" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="Niepotwierdzony" IsPill="true" Class="mt-1" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="UserAdminModel" Title="Role" Width="180px">
+                    <Template Context="user">
+                        <div class="d-flex flex-wrap gap-1">
+                            @if (user.Roles != null && user.Roles.Count > 0)
+                            {
+                                @foreach (var r in user.Roles)
+                                {
+                                    <RadzenBadge BadgeStyle="@(r == "Admin" ? BadgeStyle.Danger : BadgeStyle.Primary)" Text="@r" IsPill="true" />
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size: 0.85rem;">Brak ról</span>
+                            }
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="UserAdminModel" Title="Status & 2FA" Width="160px">
+                    <Template Context="user">
+                        <div class="d-flex flex-column gap-1">
+                            @if (user.IsLockedOut)
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Zablokowany" IsPill="true" />
+                            }
+                            else
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Aktywny" IsPill="true" />
+                            }
+
+                            @if (user.TwoFactorEnabled)
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="2FA Włączone" IsPill="true" />
+                            }
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="UserAdminModel" Title="Akcje" Width="200px" Sortable="false" TextAlign="TextAlign.End">
+                    <Template Context="user">
+                        <div class="d-flex justify-content-end gap-1">
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/users/{user.Id}/edit"))" Tooltip="Edytuj użytkownika" />
+                            
+                            @if (user.IsLockedOut)
+                            {
+                                <RadzenButton Icon="lock_open" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ToggleLockAsync(user, false))" Tooltip="Odblokuj konto" />
+                            }
+                            else
+                            {
+                                <RadzenButton Icon="lock" ButtonStyle="ButtonStyle.Warning" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ToggleLockAsync(user, true))" Tooltip="Zablokuj konto" />
+                            }
+
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ConfirmDeleteAsync(user))" Tooltip="Usuń użytkownika" />
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private IEnumerable<UserAdminModel> users = new List<UserAdminModel>();
+    private int totalCount;
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+    private int currentPage = 1;
+    private int currentPageSize = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnLoadData(LoadDataArgs args)
+    {
+        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
+        currentPageSize = args.Top ?? 10;
+        await LoadDataAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await UserStore.GetUsersAsync(searchTerm, currentPage, currentPageSize);
+            users = result.Items;
+            totalCount = result.TotalCount;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ToggleLockAsync(UserAdminModel user, bool lockAccount)
+    {
+        var result = await UserStore.ToggleLockoutAsync(user.Id, lockAccount);
+        if (result.Success)
+        {
+            NotificationService.Notify(NotificationSeverity.Success, "Sukces", lockAccount ? "Konto zostało zablokowane." : "Konto zostało odblokowane.");
+            await LoadDataAsync();
+        }
+        else
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się zmienić statusu blokady.");
+        }
+    }
+
+    private async Task ConfirmDeleteAsync(UserAdminModel user)
+    {
+        var confirmed = await DialogService.Confirm($"Czy na pewno chcesz bezpowrotnie usunąć użytkownika '{user.UserName}'?", "Potwierdzenie usunięcia", new ConfirmOptions { OkButtonText = "Tak, usuń", CancelButtonText = "Anuluj" });
+        if (confirmed == true)
+        {
+            var result = await UserStore.DeleteUserAsync(user.Id);
+            if (result.Success)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Użytkownik '{user.UserName}' został usunięty.");
+                await LoadDataAsync();
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się usunąć użytkownika.");
+            }
+        }
+    }
+}

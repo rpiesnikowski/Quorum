@@ -1,0 +1,19 @@
+@page "/account/accessdenied"
+@page "/Account/AccessDenied"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Brak Uprawnień | Quorum Backend 2</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <RadzenCard Class="rz-p-5 text-center" Style="max-width: 480px;">
+        <RadzenIcon Icon="gpp_bad" Style="font-size: 3.5rem; color: #ef4444;" />
+        <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mt-3 mb-2">Brak Uprawnień</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" Class="text-muted mb-4">
+            Nie posiadasz wystarczających uprawnień (wymagana rola Administratora), aby uzyskać dostęp do tego zasobu.
+        </RadzenText>
+        <div class="d-flex justify-content-center gap-2">
+            <RadzenButton Text="Strona Główna" Icon="home" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("/"))" />
+            <RadzenButton Text="Zaloguj Ponownie" Icon="login" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("/Account/Login"))" />
+        </div>
+    </RadzenCard>
+</div>

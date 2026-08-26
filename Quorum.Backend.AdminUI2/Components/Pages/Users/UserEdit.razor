@@ -1,0 +1,171 @@
+@page "/admin/users/create"
+@page "/admin/users/{Id}/edit"
+@layout AdminLayout
+@inject IAdminUserStore UserStore
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(IsNew ? "Nowy Użytkownik" : "Edycja Użytkownika") | Quorum Admin UI 2</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">
+                @(IsNew ? "Dodaj Nowego Użytkownika" : $"Edycja Użytkownika: {model.UserName}")
+            </RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                Zarządzanie kontem w ASP.NET Core Identity, przypisaniem ról oraz danymi uwierzytelniania.
+            </RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="arrow_back" Text="Powrót do listy" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/users"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenTemplateForm TItem="UserAdminModel" Data="@model" Submit="@HandleSubmitAsync">
+            <RadzenStack Gap="1.5rem">
+                <!-- Podstawowe dane -->
+                <RadzenFieldset Text="Podstawowe Informacje">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Nazwa Użytkownika (UserName)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.UserName" Name="UserName" Class="w-100" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="UserName" Text="Nazwa użytkownika jest wymagana." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Adres E-mail" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.Email" Name="Email" Class="w-100" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="Email" Text="E-mail jest wymagany." />
+                            <RadzenEmailValidator Component="Email" Text="Podaj poprawny adres e-mail." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Numer Telefonu" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.PhoneNumber" Name="PhoneNumber" Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Role w Systemie" Class="w-100">
+                                <RadzenDropDown @bind-Value="model.Roles" Data="@availableRoles" Multiple="true" AllowClear="true" Placeholder="Wybierz role..." Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <!-- Bezpieczeństwo i Hasło -->
+                <RadzenFieldset Text="Bezpieczeństwo i Hasło">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="@(IsNew ? "Hasło Początkowe" : "Nowe Hasło (opcjonalnie)")" Class="w-100">
+                                <RadzenPassword @bind-Value="model.NewPassword" Name="NewPassword" Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <div class="d-flex flex-column gap-2 pt-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <RadzenCheckBox @bind-Value="model.EmailConfirmed" Name="EmailConfirmed" />
+                                    <RadzenLabel Text="E-mail zweryfikowany" Component="EmailConfirmed" />
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <RadzenCheckBox @bind-Value="model.TwoFactorEnabled" Name="TwoFactorEnabled" />
+                                    <RadzenLabel Text="Włącz uwierzytelnianie dwuskładnikowe (2FA)" Component="TwoFactorEnabled" />
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <RadzenCheckBox @bind-Value="model.LockoutEnabled" Name="LockoutEnabled" />
+                                    <RadzenLabel Text="Zezwalaj na blokadę po nieudanych próbach logowania" Component="LockoutEnabled" />
+                                </div>
+                            </div>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/users"))" />
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Użytkownika" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
+                </div>
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private bool IsNew => string.IsNullOrEmpty(Id);
+    private UserAdminModel model = new();
+    private List<string> availableRoles = new() { "Admin", "User", "Manager", "Developer" };
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        availableRoles = await UserStore.GetAllRolesAsync();
+
+        if (!IsNew && !string.IsNullOrEmpty(Id))
+        {
+            var user = await UserStore.GetUserByIdAsync(Id);
+            if (user != null)
+            {
+                model = user;
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono wskazanego użytkownika.");
+                NavigationManager.NavigateTo("admin/users");
+            }
+        }
+        else
+        {
+            model = new UserAdminModel
+            {
+                EmailConfirmed = true,
+                LockoutEnabled = true,
+                Roles = new List<string> { "User" }
+            };
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsNew)
+            {
+                var result = await UserStore.CreateUserAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Pomyślnie utworzono użytkownika '{model.UserName}'.");
+                    NavigationManager.NavigateTo("admin/users");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd tworzenia", result.Error ?? "Wystąpił błąd.");
+                }
+            }
+            else
+            {
+                var result = await UserStore.UpdateUserAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Zaktualizowano dane użytkownika.");
+                    NavigationManager.NavigateTo("admin/users");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd aktualizacji", result.Error ?? "Wystąpił błąd.");
+                }
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

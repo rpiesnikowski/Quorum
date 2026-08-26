@@ -1,0 +1,144 @@
+@page "/admin/scopes"
+@page "/admin/apiscopes"
+@layout AdminLayout
+@inject IAdminApiScopeStore ApiScopeStore
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Zakresy API (Scopes) | Quorum Admin UI 2</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Zakresy API (ApiScopes)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Definicje uprawnień do chronionych zasobów i endpointów API oraz powiązane roszczenia (User Claims).</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="add" Text="Dodaj Scope" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/scopes/create"))" />
+            <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-3">
+        <RadzenRow AlignItems="AlignItems.Center" Gap="1rem" Class="mb-3">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenTextBox Placeholder="Szukaj po nazwie zakresu, opisie..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenDataGrid Data="@scopes" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25, 50 })" IsLoading="@isLoading" TItem="ApiScopeAdminModel" EmptyText="Brak zakresów API.">
+            <Columns>
+                <RadzenDataGridColumn TItem="ApiScopeAdminModel" Property="Name" Title="Nazwa Zakresu (Scope)" Width="220px">
+                    <Template Context="sc">
+                        <div class="fw-bold text-success">@sc.Name</div>
+                        <div class="text-muted" style="font-size: 0.78rem;">@(sc.DisplayName ?? "-")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="ApiScopeAdminModel" Property="Description" Title="Opis" />
+
+                <RadzenDataGridColumn TItem="ApiScopeAdminModel" Title="User Claims" Width="200px">
+                    <Template Context="sc">
+                        <div class="d-flex flex-wrap gap-1">
+                            @if (sc.UserClaims != null && sc.UserClaims.Count > 0)
+                            {
+                                @foreach (var c in sc.UserClaims)
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@c" IsPill="true" />
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size: 0.8rem;">Brak specyficznych roszczeń</span>
+                            }
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="ApiScopeAdminModel" Property="Enabled" Title="Status" Width="130px">
+                    <Template Context="sc">
+                        @if (sc.Enabled)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Aktywny" IsPill="true" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Wyłączony" IsPill="true" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="ApiScopeAdminModel" Title="Akcje" Width="140px" Sortable="false" TextAlign="TextAlign.End">
+                    <Template Context="sc">
+                        <div class="d-flex justify-content-end gap-1">
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/scopes/{sc.Id}/edit"))" Tooltip="Edytuj zakres" />
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ConfirmDeleteAsync(sc))" Tooltip="Usuń zakres" />
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private IEnumerable<ApiScopeAdminModel> scopes = new List<ApiScopeAdminModel>();
+    private int totalCount;
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+    private int currentPage = 1;
+    private int currentPageSize = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnLoadData(LoadDataArgs args)
+    {
+        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
+        currentPageSize = args.Top ?? 10;
+        await LoadDataAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await ApiScopeStore.GetScopesAsync(searchTerm, currentPage, currentPageSize);
+            scopes = result.Items;
+            totalCount = result.TotalCount;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ConfirmDeleteAsync(ApiScopeAdminModel scope)
+    {
+        var confirmed = await DialogService.Confirm($"Czy na pewno chcesz usunąć zakres API '{scope.Name}'?", "Potwierdzenie usunięcia", new ConfirmOptions { OkButtonText = "Tak, usuń", CancelButtonText = "Anuluj" });
+        if (confirmed == true)
+        {
+            var result = await ApiScopeStore.DeleteScopeAsync(scope.Id);
+            if (result.Success)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Zakres '{scope.Name}' został usunięty.");
+                await LoadDataAsync();
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się usunąć zakresu.");
+            }
+        }
+    }
+}
