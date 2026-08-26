@@ -14,6 +14,8 @@ using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 // 1. Obsługa nagłówków X-Forwarded-Proto / X-Forwarded-For dla Reverse Proxy (Docker/Nginx/Caddy)
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
