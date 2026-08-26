@@ -12,8 +12,8 @@
     <Version>2.0.0</Version>
     <Authors>Quorum</Authors>
     <Company>Quorum</Company>
-    <Product>Quorum IdentityServer Admin UI 2 (Pure Blazor & Radzen)</Product>
-    <Title>Quorum Admin UI 2 - Pure Blazor & Radzen for Open.IdentityServer</Title>
+    <Product>Quorum IdentityServer Admin UI 2 (Pure Blazor Radzen)</Product>
+    <Title>Quorum Admin UI 2 - Pure Blazor Radzen for Open.IdentityServer</Title>
     <Description>Nowoczesny, w 100% oparty o Blazor i Radzen Blazor pakiet RCL (Razor Class Library) dostarczający kompletny panel administracyjny CRUD dla Open.IdentityServer, ASP.NET Identity, OIDC Federations i API Gateway. Architektura oparta o abstrakcyjne interfejsy modeli dziedzinowych z gotową implementacją Entity Framework Core.</Description>
     <PackageTags>identityserver;openidentityserver;admin;adminui;blazor;radzen;radzen-blazor;oidc;oauth2;dotnet10;rcl</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -30,8 +30,6 @@
 
   <ItemGroup>
     <PackageReference Include="Radzen.Blazor" Version="11.2.7" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>

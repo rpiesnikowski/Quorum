@@ -21,11 +21,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-
-    <!-- Radzen Blazor Components -->
-    <PackageReference Include="Radzen.Blazor" Version="7.3.2" />
   </ItemGroup>
-
+<ItemGroup>
+  <PackageReference Include="Radzen.Blazor" Version="11.2.7" />
+</ItemGroup>
   <ItemGroup>
     <!-- Referencje do projektów wewnętrznych Quorum -->
     <ProjectReference Include="..\Quorum.Backend.AdminUI2\Quorum.Backend.AdminUI2.csproj" />

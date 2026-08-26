@@ -5,6 +5,7 @@ using Quorum.Backend.AdminUI2.Services.Interfaces;
 using Quorum.Backend.EntityFramework.Data;
 using Quorum.Backend.EntityFramework.Models;
 using System.Text.RegularExpressions;
+using GatewayTestRequest = Quorum.Backend.AdminUI2.Models.GatewayTestRequest;
 
 namespace Quorum.Backend.AdminUI2.Services.EntityFramework;
 

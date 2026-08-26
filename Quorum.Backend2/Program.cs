@@ -13,7 +13,7 @@ using Quorum.Backend2.Services;
 using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.WebHost.UseStaticWebAssets();
 // 1. Obsługa nagłówków X-Forwarded-Proto / X-Forwarded-For dla Reverse Proxy (Docker/Nginx/Caddy)
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -104,7 +104,8 @@ builder.Services.AddQuorumAdminUI2<ApplicationUser>(options =>
 builder.Services.AddQuorumAdminUI2EntityFrameworkStore<ApplicationUser>();
 
 var app = builder.Build();
-
+app.UseStaticFiles();
+app.MapStaticAssets();
 // Przetwarzanie nagłówków Proxy przed routingiem
 app.UseForwardedHeaders();
 
