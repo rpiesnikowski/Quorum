@@ -96,17 +96,129 @@
                                 <RadzenDropDown @bind-Value="model.AllowedGrantTypes" Data="@availableGrantTypes" Multiple="true" AllowClear="true" Placeholder="Wybierz typy przepływów..." Class="w-100" />
                             </RadzenFormField>
 
-                            <div class="d-flex gap-2">
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <span class="text-muted small me-1">Szybkie Szablony:</span>
                                 <RadzenButton Text="Szablon: SPA (PKCE)" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@SetSpaTemplate" />
                                 <RadzenButton Text="Szablon: Web App (Code Flow)" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@SetWebAppTemplate" />
                                 <RadzenButton Text="Szablon: M2M (Client Credentials)" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@SetM2MTemplate" />
                             </div>
 
-                            <RadzenFormField Text="Dozwolone Zakresy (Allowed Scopes)" Class="w-100">
-                                <RadzenDropDown @bind-Value="model.AllowedScopes" Data="@allAvailableScopes" Multiple="true" AllowClear="true" Placeholder="Wybierz scopes..." Class="w-100" />
-                            </RadzenFormField>
+                            <!-- Sekcja Dozwolonych Zakresów: ChipList -->
+                            <RadzenFieldset Text="Wybrane Dozwolone Zakresy (Allowed Scopes)" Class="rz-p-3">
+                                @if (model.AllowedScopes == null || model.AllowedScopes.Count == 0)
+                                {
+                                    <div class="d-flex align-items-center gap-2 p-3 text-muted bg-light rounded border border-dashed">
+                                        <RadzenIcon Icon="info" Style="font-size: 1.25rem; color: #64748b;" />
+                                        <span>Brak przypisanych zakresów. Kliknij wiersz w poniższej tabeli, aby dodać uprawnienia dla tego klienta.</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex flex-wrap gap-2 align-items-center p-3 rounded border bg-light">
+                                        @foreach (var scope in model.AllowedScopes)
+                                        {
+                                            var scopeInfo = allScopesList.FirstOrDefault(s => s.Name.Equals(scope, StringComparison.OrdinalIgnoreCase));
+                                            var isIdentity = scopeInfo?.IsIdentity ?? (scope == "openid" || scope == "profile" || scope == "email" || scope == "roles" || scope == "offline_access");
 
-                            <RadzenRow Gap="1rem">
+                                            <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill shadow-sm border bg-white" style="font-size: 0.875rem;">
+                                                <RadzenIcon Icon="@(isIdentity ? "badge" : "api")" Style="@(isIdentity ? "font-size: 1.1rem; color: var(--rz-primary);" : "font-size: 1.1rem; color: var(--rz-info);")" />
+                                                <span class="fw-semibold text-dark">@scope</span>
+                                                @if (scopeInfo != null && !string.IsNullOrWhiteSpace(scopeInfo.DisplayName) && scopeInfo.DisplayName != scope)
+                                                {
+                                                    <span class="text-muted" style="font-size: 0.75rem;">(@scopeInfo.DisplayName)</span>
+                                                }
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-link text-danger p-0 ms-1 d-inline-flex align-items-center" 
+                                                        style="text-decoration: none; line-height: 1;" 
+                                                        title="Usuń zakres @scope" 
+                                                        @onclick="@(() => RemoveScope(scope))" 
+                                                        @onclick:stopPropagation="true">
+                                                    <RadzenIcon Icon="close" Style="font-size: 1rem;" />
+                                                </button>
+                                            </div>
+                                        }
+                                        <div class="ms-auto d-flex gap-2">
+                                            <RadzenButton Text="Wyczyść wszystkie" 
+                                                          Icon="clear_all" 
+                                                          Size="ButtonSize.ExtraSmall" 
+                                                          ButtonStyle="ButtonStyle.Light" 
+                                                          Variant="Variant.Outlined" 
+                                                          Click="@ClearAllScopes" />
+                                        </div>
+                                    </div>
+                                }
+                            </RadzenFieldset>
+
+                            <!-- Tabela dostępnych zakresów pod spodem z opcją dodawania po kliknięciu w wiersz -->
+                            <RadzenStack Gap="0.75rem">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div>
+                                        <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-0">Dostępne Zakresy i Zasoby Tożsamości</RadzenText>
+                                        <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">Kliknij w wiersz w tabeli, aby dodać lub odpiąć zakres z listy uprawnień klienta.</RadzenText>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenTextBox @bind-Value="scopeSearchTerm" 
+                                                       Placeholder="Filtruj zakresy..." 
+                                                       @oninput="@((ChangeEventArgs e) => scopeSearchTerm = e.Value?.ToString() ?? string.Empty)" 
+                                                       Class="rz-textbox-sm" 
+                                                       Style="width: 220px;" />
+                                        @if (!string.IsNullOrEmpty(scopeSearchTerm))
+                                        {
+                                            <RadzenButton Icon="close" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => scopeSearchTerm = string.Empty)" />
+                                        }
+                                    </div>
+                                </div>
+
+                                <RadzenDataGrid @ref="scopesGrid"
+                                                Data="@FilteredScopes"
+                                                TItem="ScopeItemModel"
+                                                AllowPaging="true"
+                                                PageSize="6"
+                                                AllowSorting="true"
+                                                RowClick="@OnScopeRowClick"
+                                                Style="cursor: pointer;"
+                                                Class="rz-shadow-1">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Property="Name" Title="Nazwa (Scope)" Width="180px">
+                                            <Template Context="s">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <RadzenIcon Icon="@(s.IsIdentity ? "badge" : "api")" Style="@(s.IsIdentity ? "color: var(--rz-primary);" : "color: var(--rz-info);")" />
+                                                    <span class="fw-bold">@s.Name</span>
+                                                </div>
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Property="DisplayName" Title="Nazwa Wyświetlana" Width="200px">
+                                            <Template Context="s">
+                                                @(string.IsNullOrWhiteSpace(s.DisplayName) ? s.Name : s.DisplayName)
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Property="Type" Title="Typ" Width="150px">
+                                            <Template Context="s">
+                                                <RadzenBadge BadgeStyle="@(s.IsIdentity ? BadgeStyle.Primary : BadgeStyle.Info)" Text="@s.Type" IsPill="true" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Property="Description" Title="Opis">
+                                            <Template Context="s">
+                                                <span class="text-muted small">@(string.IsNullOrWhiteSpace(s.Description) ? "Brak opisu" : s.Description)</span>
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Title="Status / Akcja" Width="150px" TextAlign="TextAlign.Center" Sortable="false">
+                                            <Template Context="s">
+                                                @if (model.AllowedScopes.Contains(s.Name))
+                                                {
+                                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Przypisany ✓" IsPill="true" />
+                                                }
+                                                else
+                                                {
+                                                    <RadzenButton Icon="add" Text="Dodaj" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Click="@(() => AddScope(s.Name))" @onclick:stopPropagation="true" />
+                                                }
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                    </Columns>
+                                </RadzenDataGrid>
+                            </RadzenStack>
+
+                            <RadzenRow Gap="1rem" Class="mt-2">
                                 <RadzenColumn Size="12" SizeMD="6">
                                     <div class="d-flex align-items-center gap-2">
                                         <RadzenCheckBox @bind-Value="model.AllowOfflineAccess" Name="AllowOfflineAccess" />
@@ -213,26 +325,87 @@
     [Parameter]
     public int? Id { get; set; }
 
+    public class ScopeItemModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string? Description { get; set; }
+        public string Type { get; set; } = "Zakres API";
+        public bool IsIdentity { get; set; }
+        public bool Required { get; set; }
+        public bool Emphasize { get; set; }
+        public List<string> UserClaims { get; set; } = new();
+    }
+
     private bool IsNew => !Id.HasValue || Id.Value == 0;
     private ClientAdminModel model = new();
     private List<string> availableGrantTypes = new() { "authorization_code", "client_credentials", "password", "implicit", "hybrid", "urn:ietf:params:oauth:grant-type:device_code" };
-    private List<string> allAvailableScopes = new();
+    private List<ScopeItemModel> allScopesList = new();
+    private RadzenDataGrid<ScopeItemModel>? scopesGrid;
+    private string scopeSearchTerm = string.Empty;
     private bool isSubmitting = false;
+
+    private IEnumerable<ScopeItemModel> FilteredScopes
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(scopeSearchTerm))
+            {
+                return allScopesList;
+            }
+
+            return allScopesList.Where(s => 
+                s.Name.Contains(scopeSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(s.DisplayName) && s.DisplayName.Contains(scopeSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(s.Description) && s.Description.Contains(scopeSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                s.Type.Contains(scopeSearchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        // Load available scopes from DB
-        var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 100);
-        var idRes = await IdentityResourceStore.GetResourcesAsync(pageSize: 100);
+        // Załaduj dostępne zakresy API i zasoby tożsamości z bazy danych
+        var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 500);
+        var idRes = await IdentityResourceStore.GetResourcesAsync(pageSize: 500);
         
-        allAvailableScopes = idRes.Items.Select(i => i.Name)
-            .Concat(scopesRes.Items.Select(s => s.Name))
-            .Distinct()
-            .ToList();
-
-        if (allAvailableScopes.Count == 0)
+        allScopesList = idRes.Items.Select(i => new ScopeItemModel
         {
-            allAvailableScopes = new List<string> { "openid", "profile", "email", "roles", "offline_access", "api1", "quorum_api" };
+            Name = i.Name,
+            DisplayName = i.DisplayName,
+            Description = i.Description,
+            Type = "Zasób Tożsamości",
+            IsIdentity = true,
+            Required = i.Required,
+            Emphasize = i.Emphasize,
+            UserClaims = i.UserClaims
+        })
+        .Concat(scopesRes.Items.Select(s => new ScopeItemModel
+        {
+            Name = s.Name,
+            DisplayName = s.DisplayName,
+            Description = s.Description,
+            Type = "Zakres API",
+            IsIdentity = false,
+            Required = s.Required,
+            Emphasize = s.Emphasize,
+            UserClaims = s.UserClaims
+        }))
+        .OrderBy(s => s.IsIdentity ? 0 : 1)
+        .ThenBy(s => s.Name)
+        .ToList();
+
+        if (allScopesList.Count == 0)
+        {
+            allScopesList = new List<ScopeItemModel>
+            {
+                new() { Name = "openid", DisplayName = "OpenID Connect", Description = "Wymagany do autoryzacji OIDC i wystawiania ID Tokena", Type = "Zasób Tożsamości", IsIdentity = true },
+                new() { Name = "profile", DisplayName = "Profil Użytkownika", Description = "Imię, nazwisko, preferencje konta", Type = "Zasób Tożsamości", IsIdentity = true },
+                new() { Name = "email", DisplayName = "Adres E-mail", Description = "Dostęp do adresu email i statusu weryfikacji", Type = "Zasób Tożsamości", IsIdentity = true },
+                new() { Name = "roles", DisplayName = "Role Użytkownika", Description = "Dostęp do ról i uprawnień RBAC", Type = "Zasób Tożsamości", IsIdentity = true },
+                new() { Name = "offline_access", DisplayName = "Dostęp Offline", Description = "Umożliwia wystawianie długoterminowych Refresh Tokenów", Type = "Zasób Tożsamości", IsIdentity = true },
+                new() { Name = "quorum_api", DisplayName = "Quorum Core API", Description = "Główny interfejs API usług zaplecza", Type = "Zakres API", IsIdentity = false },
+                new() { Name = "gateway_routing", DisplayName = "Gateway Routing API", Description = "Dostęp do reguł i bramki proxy", Type = "Zakres API", IsIdentity = false }
+            };
         }
 
         if (!IsNew)
@@ -241,6 +414,7 @@
             if (client != null)
             {
                 model = client;
+                model.AllowedScopes ??= new List<string>();
             }
             else
             {
@@ -254,6 +428,58 @@
         }
     }
 
+    private void AddScope(string scopeName)
+    {
+        if (string.IsNullOrWhiteSpace(scopeName)) return;
+
+        model.AllowedScopes ??= new List<string>();
+
+        if (!model.AllowedScopes.Contains(scopeName, StringComparer.OrdinalIgnoreCase))
+        {
+            model.AllowedScopes.Add(scopeName);
+            NotificationService.Notify(NotificationSeverity.Success, "Dodano Zakres", $"Zakres '{scopeName}' został dodany do klienta.");
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveScope(string scopeName)
+    {
+        if (model.AllowedScopes != null && model.AllowedScopes.Remove(scopeName))
+        {
+            NotificationService.Notify(NotificationSeverity.Info, "Usunięto Zakres", $"Zakres '{scopeName}' został usunięty z klienta.");
+            StateHasChanged();
+        }
+    }
+
+    private void ClearAllScopes()
+    {
+        if (model.AllowedScopes != null && model.AllowedScopes.Count > 0)
+        {
+            model.AllowedScopes.Clear();
+            NotificationService.Notify(NotificationSeverity.Warning, "Wyczyszczono Zakresy", "Usunięto wszystkie przypisane zakresy.");
+            StateHasChanged();
+        }
+    }
+
+    private void OnScopeRowClick(DataGridRowMouseEventArgs<ScopeItemModel> args)
+    {
+        if (args?.Data == null) return;
+        var scopeName = args.Data.Name;
+
+        model.AllowedScopes ??= new List<string>();
+
+        if (!model.AllowedScopes.Contains(scopeName, StringComparer.OrdinalIgnoreCase))
+        {
+            model.AllowedScopes.Add(scopeName);
+            NotificationService.Notify(NotificationSeverity.Success, "Dodano Zakres", $"Zakres '{scopeName}' został dodany do klienta.");
+        }
+        else
+        {
+            NotificationService.Notify(NotificationSeverity.Info, "Informacja", $"Zakres '{scopeName}' jest już dodany do tego klienta.");
+        }
+        StateHasChanged();
+    }
+
     private void SetSpaTemplate()
     {
         model.AllowedGrantTypes = new List<string> { "authorization_code" };
@@ -261,6 +487,7 @@
         model.RequireClientSecret = false;
         model.AllowedScopes = new List<string> { "openid", "profile", "email", "offline_access" };
         model.AllowOfflineAccess = true;
+        StateHasChanged();
     }
 
     private void SetWebAppTemplate()
@@ -270,6 +497,7 @@
         model.RequireClientSecret = true;
         model.AllowedScopes = new List<string> { "openid", "profile", "email", "offline_access" };
         model.AllowOfflineAccess = true;
+        StateHasChanged();
     }
 
     private void SetM2MTemplate()
@@ -277,8 +505,9 @@
         model.AllowedGrantTypes = new List<string> { "client_credentials" };
         model.RequirePkce = false;
         model.RequireClientSecret = true;
-        model.AllowedScopes = new List<string> { "api1", "quorum_api" };
+        model.AllowedScopes = new List<string> { "quorum_api" };
         model.AllowOfflineAccess = false;
+        StateHasChanged();
     }
 
     private async Task RemoveSecretAsync(int secretId)
