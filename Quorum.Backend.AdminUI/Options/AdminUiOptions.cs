@@ -38,9 +38,9 @@ public class AdminUiOptions
     public string RequiredRole { get; set; } = "Admin";
 
     /// <summary>
-    /// Nazwa polityki autoryzacyjnej (domyślnie "RequireAdministratorRole").
+    /// Nazwa polityki autoryzacyjnej (domyślnie "RequireAdminRole").
     /// </summary>
-    public string PolicyName { get; set; } = "RequireAdministratorRole";
+    public string PolicyName { get; set; } = "RequireAdminRole";
 
     /// <summary>
     /// Ścieżka bazowa dla obszaru administracyjnego (domyślnie "/").

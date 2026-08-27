@@ -49,6 +49,12 @@ public static class AdminUiServiceCollectionExtensions
         // Rejestracja dedykowanej polityki autoryzacji opartej o schemat administratora i wymaganą rolę
         services.AddAuthorization(authOptions =>
         {
+            authOptions.AddPolicy("RequireAdminRole", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole("Admin");
+            });
+
             authOptions.AddPolicy("AdminOnly", policy =>
             {
                 policy.RequireAuthenticatedUser();

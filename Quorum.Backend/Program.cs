@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -90,10 +91,27 @@ builder.Services.AddIdentityServer(options =>
 })
 .AddDeveloperSigningCredential();
 
+// 7. Konfiguracja polityk autoryzacji
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdminRole", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Admin");
+    });
+
+    options.AddPolicy("AdminOnly", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Admin");
+    });
+});
+
 // 8. Konfiguracja Quorum AdminUI (Nuget RCL oparty w 100% o Radzen)
 builder.Services.AddQuorumAdminUI<ApplicationUser>(options =>
 {
     options.RequiredRole = "Admin";
+    options.PolicyName = "RequireAdminRole";
     options.EnableAuthorization = true;
 });
 
@@ -127,6 +145,34 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Middleware wymuszający sprawdzanie polityki 'RequireAdminRole' dla wszystkich endpointów pod ścieżką /Admin
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    if (path.StartsWithSegments("/admin", StringComparison.OrdinalIgnoreCase))
+    {
+        var authService = context.RequestServices.GetRequiredService<IAuthorizationService>();
+        var authResult = await authService.AuthorizeAsync(context.User, "RequireAdminRole");
+        if (!authResult.Succeeded)
+        {
+            var returnUrl = Uri.EscapeDataString(path + context.Request.QueryString);
+            if (!context.User.Identity?.IsAuthenticated ?? true)
+            {
+                context.Response.Redirect($"/account/login?returnUrl={returnUrl}");
+            }
+            else
+            {
+                // Użytkownik jest zalogowany, ale nie posiada roli Administratora
+                context.Response.Redirect($"/account/login?error={Uri.EscapeDataString("Brak uprawnień administratora. Zaloguj się na konto z rolą Admin.")}&returnUrl={returnUrl}");
+            }
+            return;
+        }
+    }
+
+    await next();
+});
+
 app.UseAntiforgery();
 
 // 10. Pipeline IdentityServer

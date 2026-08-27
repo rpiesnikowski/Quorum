@@ -12,4 +12,4 @@
 @using Quorum.Backend.AdminUI.Models
 @using Quorum.Backend.AdminUI.Services.Interfaces
 @using Quorum.Backend.AdminUI.Components.Layout
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = "RequireAdminRole")]
