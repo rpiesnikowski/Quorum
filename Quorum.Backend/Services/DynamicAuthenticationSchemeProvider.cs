@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Text.Json;
@@ -9,9 +10,7 @@ using Quorum.Backend.EntityFramework.Models;
 namespace Quorum.Backend.Services;
 
 /// <summary>
-/// Dynamiczny dostawca schematów autentykacji ASP.NET Core.
-/// Rozszerza domyślny AuthenticationSchemeProvider o możliwość rejestrowania i odświeżania
-/// dostawców OpenID Connect w czasie rzeczywistym (bez restartu procesu/serwera).
+/// Dynamiczny dostawca schematów autentykacji ASP.NET Core dla Quorum.Backend.
 /// </summary>
 public class DynamicAuthenticationSchemeProvider : AuthenticationSchemeProvider
 {
@@ -45,7 +44,6 @@ public class DynamicAuthenticationSchemeProvider : AuthenticationSchemeProvider
             return cachedScheme;
         }
 
-        // Próba załadowania schematu z bazy danych
         var provider = await LoadProviderFromDatabaseAsync(name);
         if (provider != null && provider.IsEnabled)
         {
@@ -126,7 +124,6 @@ public class DynamicAuthenticationSchemeProvider : AuthenticationSchemeProvider
 
         _dynamicSchemes[schemeName] = scheme;
 
-        // Dynamiczna konfiguracja opcji OpenIdConnectOptions w IOptionsMonitorCache
         _openIdConnectOptionsCache.GetOrAdd(schemeName, () =>
         {
             var options = new OpenIdConnectOptions
@@ -150,7 +147,6 @@ public class DynamicAuthenticationSchemeProvider : AuthenticationSchemeProvider
                 options.Scope.Add(scope);
             }
 
-            // Obsługa dodatkowych parametrów OIDC (np. prompt, Azure B2C custom user flows)
             options.Events.OnRedirectToIdentityProvider = context =>
             {
                 if (!string.IsNullOrEmpty(provider.Prompt))
@@ -173,7 +169,6 @@ public class DynamicAuthenticationSchemeProvider : AuthenticationSchemeProvider
                     }
                     catch
                     {
-                        // ignoruj błędy parsowania jsona dodatkowych parametrów
                     }
                 }
 

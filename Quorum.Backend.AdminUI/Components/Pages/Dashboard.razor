@@ -1,0 +1,186 @@
+@page "/admin"
+@page "/admin/dashboard"
+@attribute [Authorize(Roles = "Admin")]
+
+@layout AdminLayout
+@inject IAdminDashboardStore DashboardStore
+@inject NavigationManager NavigationManager
+
+<PageTitle>Pulpit Główny | Quorum Admin UI</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <!-- Header banner -->
+    <RadzenCard Class="rz-p-4" Style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border-radius: 12px;">
+        <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" Class="text-white fw-bold mb-1">
+                    Panel Administracyjny Quorum
+                </RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1" Class="text-white-50">
+                    Architektura Blazor .NET 10 oparta w 100% o komponenty Radzen. Pełne zarządzanie Open.IdentityServer, ASP.NET Identity, OIDC SSO i API Gateway.
+                </RadzenText>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2 mt-3 mt-md-0">
+                <RadzenButton Text="Nowy Klient" Icon="add" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@(() => NavigationManager.NavigateTo("admin/clients/create"))" />
+                <RadzenButton Text="Nowy Użytkownik" Icon="person_add" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Flat" Click="@(() => NavigationManager.NavigateTo("admin/users/create"))" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+
+    @if (stats == null)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <!-- Stats cards -->
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenCard Class="rz-p-3" Style="cursor: pointer;" @onclick="@(() => NavigationManager.NavigateTo("admin/clients"))">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Klienci OAuth</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 text-primary">@stats.ClientsCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="devices" Style="font-size: 2.2rem; color: #3b82f6;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenCard Class="rz-p-3" Style="cursor: pointer;" @onclick="@(() => NavigationManager.NavigateTo("admin/scopes"))">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Zakresy API (Scopes)</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 text-success">@stats.ApiScopesCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="vpn_key" Style="font-size: 2.2rem; color: #10b981;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenCard Class="rz-p-3" Style="cursor: pointer;" @onclick="@(() => NavigationManager.NavigateTo("admin/users"))">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Użytkownicy</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 text-warning">@stats.UsersCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="people" Style="font-size: 2.2rem; color: #f59e0b;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenCard Class="rz-p-3" Style="cursor: pointer;" @onclick="@(() => NavigationManager.NavigateTo("admin/federations"))">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Federacje OIDC</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 text-info">@stats.ActiveFederationsCount / @stats.FederationsCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="hub" Style="font-size: 2.2rem; color: #06b6d4;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="4">
+                <RadzenCard Class="rz-p-3" Style="cursor: pointer;" @onclick="@(() => NavigationManager.NavigateTo("admin/identityresources"))">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Zasoby Tożsamości</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-0">@stats.IdentityResourcesCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="badge" Style="font-size: 1.8rem; color: #8b5cf6;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="4">
+                <RadzenCard Class="rz-p-3" Style="cursor: pointer;" @onclick="@(() => NavigationManager.NavigateTo("admin/gateway"))">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Trasy API Gateway</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-0">@stats.GatewayRoutesCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="alt_route" Style="font-size: 1.8rem; color: #ec4899;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="4">
+                <RadzenCard Class="rz-p-3" Style="cursor: pointer;" @onclick="@(() => NavigationManager.NavigateTo("admin/grants"))">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Aktywne Granty / Tokeny</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-0">@stats.ActiveGrantsCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="token" Style="font-size: 1.8rem; color: #14b8a6;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Quick actions & System summary -->
+        <RadzenRow Gap="1.5rem">
+            <RadzenColumn Size="12" SizeLG="8">
+                <RadzenCard Class="rz-p-4">
+                    <RadzenText TextStyle="TextStyle.H6" Class="fw-bold mb-3">Aktywność i Status Podsystemów</RadzenText>
+                    <RadzenStack Gap="1rem">
+                        @foreach (var act in stats.RecentActivities)
+                        {
+                            <div class="d-flex align-items-start gap-3 p-2 border-bottom border-light">
+                                <RadzenIcon Icon="@act.Icon" Style="font-size: 1.5rem; color: #3b82f6; margin-top: 2px;" />
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold">@act.Title</span>
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@act.Category" IsPill="true" />
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.88rem;">@act.Description</div>
+                                </div>
+                            </div>
+                        }
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeLG="4">
+                <RadzenCard Class="rz-p-4">
+                    <RadzenText TextStyle="TextStyle.H6" Class="fw-bold mb-3">Szybkie Akcje CRUD</RadzenText>
+                    <RadzenStack Gap="0.75rem">
+                        <RadzenButton Icon="add_circle" Text="Dodaj Klienta OAuth" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/clients/create"))" />
+                        <RadzenButton Icon="vpn_key" Text="Utwórz Zakres API (Scope)" ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/scopes/create"))" />
+                        <RadzenButton Icon="person_add" Text="Dodaj Użytkownika Identity" ButtonStyle="ButtonStyle.Warning" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/users/create"))" />
+                        <RadzenButton Icon="hub" Text="Skonfiguruj OIDC SSO" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/federations/create"))" />
+                        <RadzenButton Icon="alt_route" Text="Nowa Trasa Gateway" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/gateway/create"))" />
+                        <RadzenButton Icon="science" Text="Symulator API Gateway" ButtonStyle="ButtonStyle.Dark" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/gateway/test"))" />
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+    }
+</RadzenStack>
+
+@code {
+    private DashboardStatsModel? stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = await DashboardStore.GetStatsAsync();
+    }
+}

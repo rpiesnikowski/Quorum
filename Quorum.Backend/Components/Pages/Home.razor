@@ -1,0 +1,98 @@
+@page "/"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Quorum Backend | Portal Tożsamości</PageTitle>
+
+<RadzenStack Gap="2rem">
+    <!-- Hero Banner -->
+    <RadzenCard Class="rz-p-5 text-white" Style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3b82f6 100%); border-radius: 16px;">
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="NOWA GENERACJA BLAZOR .NET 10" IsPill="true" Class="mb-2" />
+                <RadzenText TextStyle="TextStyle.H3" Class="text-white fw-bold mb-2">
+                    Quorum Backend
+                </RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1" Class="text-white-50 mb-4" Style="max-width: 650px;">
+                    Zaawansowany serwer tożsamości OpenID Connect / OAuth 2.0 oparty na Open.IdentityServer oraz interfejs administracyjny zbudowany w 100% w oparciu o komponenty Radzen Blazor.
+                </RadzenText>
+                <div class="d-flex flex-wrap gap-2">
+                    <RadzenButton Icon="admin_panel_settings" Text="Otwórz Panel AdminUI" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Large" Click="@(() => NavigationManager.NavigateTo("admin"))" />
+                    <RadzenButton Icon="vpn_key" Text="Dokument Discovery (.well-known)" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" Size="ButtonSize.Large" Click="@(() => NavigationManager.NavigateTo("/.well-known/openid-configuration", true))" />
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4" Class="text-center d-none d-md-block">
+                <RadzenIcon Icon="verified_user" Style="font-size: 8rem; color: rgba(255,255,255,0.2);" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+
+    <!-- Key Architectural Pillars -->
+    <RadzenRow Gap="1.5rem">
+        <RadzenColumn Size="12" SizeMD="4">
+            <RadzenCard Class="rz-p-4 h-100">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <RadzenIcon Icon="layers" Style="color: #3b82f6; font-size: 2rem;" />
+                    <RadzenText TextStyle="TextStyle.H6" Class="fw-bold mb-0">Czysta Abstrakcja Magazynów</RadzenText>
+                </div>
+                <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                    Interfejsy serwisów (<code>IAdminUserStore</code>, <code>IAdminClientStore</code>, <code>IAdminFederationStore</code>, etc.) operują na modelach dziedzinowych DTO. Domyślnie zaimplementowane w Entity Framework Core, lecz w 100% niezależne i wymienne.
+                </RadzenText>
+            </RadzenCard>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="4">
+            <RadzenCard Class="rz-p-4 h-100">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <RadzenIcon Icon="widgets" Style="color: #10b981; font-size: 2rem;" />
+                    <RadzenText TextStyle="TextStyle.H6" Class="fw-bold mb-0">100% Radzen Blazor UI</RadzenText>
+                </div>
+                <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                    Nowoczesny interfejs GUI zbudowany całkowicie z komponentów Radzen (DataGrid, TemplateForm, DropDown, DialogService, NotificationService, Stats) bez klasycznych stron Razor MVC.
+                </RadzenText>
+            </RadzenCard>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="4">
+            <RadzenCard Class="rz-p-4 h-100">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <RadzenIcon Icon="alt_route" Style="color: #8b5cf6; font-size: 2rem;" />
+                    <RadzenText TextStyle="TextStyle.H6" Class="fw-bold mb-0">Dynamiczne SSO & Gateway</RadzenText>
+                </div>
+                <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                    Obsługa dynamicznych federacji OIDC (Entra ID, Google) przeładowywanych w locie bez restartu aplikacji oraz konfigurowalny silnik routingu API Gateway z symulatorem.
+                </RadzenText>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <!-- Quick Navigation Matrix -->
+    <RadzenCard Class="rz-p-4">
+        <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-3">Moduły Panelu Administracyjnego</RadzenText>
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenButton Text="Klienci OAuth" Icon="devices" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/clients"))" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenButton Text="Zakresy API (Scopes)" Icon="vpn_key" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/scopes"))" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenButton Text="Użytkownicy (Identity)" Icon="people" ButtonStyle="ButtonStyle.Warning" Variant="Variant.Flat" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/users"))" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenButton Text="Federacje OIDC (SSO)" Icon="hub" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/federations"))" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenButton Text="Zasoby Tożsamości" Icon="badge" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Flat" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/identityresources"))" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenButton Text="Trasy API Gateway" Icon="alt_route" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/gateway"))" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenButton Text="Aktywne Granty / Tokeny" Icon="token" ButtonStyle="ButtonStyle.Dark" Variant="Variant.Flat" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/grants"))" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenButton Text="Symulator Gateway" Icon="science" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/gateway/test"))" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+</RadzenStack>

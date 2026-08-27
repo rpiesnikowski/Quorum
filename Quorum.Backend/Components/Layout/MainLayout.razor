@@ -1,0 +1,30 @@
+@inherits LayoutComponentBase
+
+<RadzenLayout Style="min-height: 100vh;">
+    <RadzenHeader Style="background: #0f172a;">
+        <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Class="rz-px-4 rz-py-2 w-100">
+            <RadzenColumn Size="6" Class="d-flex align-items-center gap-3">
+                <RadzenIcon Icon="security" Style="color: #38bdf8; font-size: 1.8rem;" />
+                <div>
+                    <span class="fw-bold text-white fs-5">Quorum Identity Server</span>
+                    <span class="badge bg-primary text-white ms-2">.NET 10 Blazor</span>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="6" Class="d-flex justify-content-end align-items-center gap-3">
+                <RadzenLink Path="admin" Text="Panel Admin UI" Icon="admin_panel_settings" Class="btn btn-sm btn-primary text-white fw-bold d-flex align-items-center gap-1" />
+                <RadzenLink Path="account/login" Text="Zaloguj" Icon="login" Class="btn btn-sm btn-outline-light d-flex align-items-center gap-1" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenHeader>
+
+    <RadzenBody Class="rz-p-4">
+        @Body
+    </RadzenBody>
+
+    <RadzenFooter Style="background: #ffffff; border-top: 1px solid #e2e8f0;">
+        <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Class="rz-px-4 rz-py-2">
+            <RadzenText TextStyle="TextStyle.Caption">Quorum.Backend • Open.IdentityServer & Blazor AdminUI © 2026</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">Pure Blazor Architecture (Zero MVC / Razor Views)</RadzenText>
+        </RadzenRow>
+    </RadzenFooter>
+</RadzenLayout>

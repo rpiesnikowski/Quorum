@@ -1,0 +1,52 @@
+@namespace Quorum.Backend.AdminUI.Components.Layout
+@inherits LayoutComponentBase
+
+<RadzenLayout Style="grid-template-areas: 'rz-sidebar rz-header' 'rz-sidebar rz-body' 'rz-sidebar rz-footer';">
+    <RadzenHeader>
+        <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Gap="0" Class="rz-px-4 rz-py-2 w-100">
+            <RadzenColumn Size="6" Class="d-flex align-items-center gap-3">
+                <RadzenSidebarToggle />
+                <RadzenBreadcrumb>
+                    <RadzenBreadcrumbItem Text="Admin UI" Path="admin" />
+                    <RadzenBreadcrumbItem Text="Zarządzanie Tożsamością i Bramką" />
+                </RadzenBreadcrumb>
+            </RadzenColumn>
+            <RadzenColumn Size="6" Class="d-flex justify-content-end align-items-center gap-3">
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="d-flex align-items-center gap-2">
+                            <RadzenIcon Icon="account_circle" Style="color: #3b82f6;" />
+                            <span class="text-white fw-bold" style="font-size: 0.85rem;">@context.User.Identity?.Name</span>
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" IsPill="true" Text="Admin" />
+                            <a href="/account/logout" class="btn btn-sm btn-outline-light ms-2 d-flex align-items-center gap-1" style="font-size: 0.8rem;">
+                                <i class="material-icons" style="font-size: 1rem;">logout</i> Wyloguj
+                            </a>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/account/login" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
+                            <i class="material-icons" style="font-size: 1rem;">login</i> Zaloguj
+                        </a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenHeader>
+
+    <RadzenSidebar Style="background-color: #1e293b;">
+        <AdminNavMenu />
+    </RadzenSidebar>
+
+    <RadzenBody Class="rz-p-4">
+        @Body
+    </RadzenBody>
+
+    <RadzenFooter>
+        <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Class="rz-px-4 rz-py-1">
+            <RadzenText TextStyle="TextStyle.Caption">Quorum IdentityServer & API Gateway Admin UI © 2026</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">Pure Blazor + Radzen Architecture</RadzenText>
+        </RadzenRow>
+    </RadzenFooter>
+</RadzenLayout>
+
+<RadzenComponents />

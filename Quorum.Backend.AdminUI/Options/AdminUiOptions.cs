@@ -1,8 +1,5 @@
 namespace Quorum.Backend.AdminUI.Options;
 
-/// <summary>
-/// Opcje konfiguracyjne panelu administracyjnego Quorum Admin UI.
-/// </summary>
 public class AdminUiOptions
 {
     /// <summary>
@@ -61,3 +58,6 @@ public class AdminUiOptions
     public bool SeedData { get; set; }
 }
 
+public class AdminUiOptions2 : AdminUiOptions
+{
+}

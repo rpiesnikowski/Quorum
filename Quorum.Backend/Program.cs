@@ -2,15 +2,18 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Open.IdentityServer.EntityFramework.DbContexts;
-using Quorum.Backend.AdminUI.Data;
 using Quorum.Backend.AdminUI.Extensions;
 using Quorum.Backend.EntityFramework;
 using Quorum.Backend.EntityFramework.Data;
 using Quorum.Backend.EntityFramework.Models;
+using Quorum.Backend.Components;
+using Quorum.Backend.Data;
 using Quorum.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.UseStaticWebAssets();
 
 // 1. Obsługa nagłówków X-Forwarded-Proto / X-Forwarded-For dla Reverse Proxy (Docker/Nginx/Caddy)
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -20,11 +23,10 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-// 2. Rejestracja bazy danych dla kont użytkowników i dynamicznych federacji (ApplicationDbContext)
+// 2. Rejestracja bazy danych dla kont użytkowników, federacji OIDC i tras API Gateway (ApplicationDbContext)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.ConfigureDatabase<ApplicationDbContext>(builder.Configuration, typeof(Program)));
 
-// Rejestracja interfejsu IFederationDbContext dla panelu AdminUI
 builder.Services.AddScoped<IFederationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 builder.Services.AddScoped<IGatewayDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
@@ -40,7 +42,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// 4. Konfiguracja ciasteczek logowania i sesji (elastyczna obsługa HTTP / HTTPS w Development i Produkcji)
+// 4. Konfiguracja ciasteczek sesyjnych i logowania
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
@@ -54,13 +56,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
-builder.Services.Configure<CookiePolicyOptions>(options =>
-{
-    options.MinimumSameSitePolicy = SameSiteMode.Lax;
-    options.Secure = CookieSecurePolicy.SameAsRequest;
-});
-
-// 5. Konfiguracja Dynamicznych Dostawców Tożsamości OIDC (bez restartu serwera)
+// 5. Dynamiczne Federacje OIDC (przeładowywanie w locie bez restartu serwera)
 builder.Services.AddScoped<IDynamicOidcService, DynamicOidcService>();
 builder.Services.AddSingleton<IAuthenticationSchemeProvider, DynamicAuthenticationSchemeProvider>();
 builder.Services.AddTransient<OpenIdConnectHandler>();
@@ -77,17 +73,15 @@ builder.Services.AddIdentityServer(options =>
     options.UserInteraction.LoginUrl = "/Account/Login";
     options.UserInteraction.LogoutUrl = "/Account/Logout";
     options.UserInteraction.ConsentUrl = "/Consent";
-    options.UserInteraction.ErrorUrl = "/Home/Error";
+    options.UserInteraction.ErrorUrl = "/Error";
 
     options.Authentication.CookieSameSiteMode = SameSiteMode.Lax;
 })
 .AddAspNetIdentity<ApplicationUser>()
-// Magazyn konfiguracji w bazie danych (Klienci, Scopes, IdentityResources)
 .AddConfigurationStore(options =>
 {
     options.ConfigureDbContext = b => b.ConfigureDatabase<ConfigurationDbContext>(builder.Configuration, typeof(Program));
 })
-// Magazyn operacyjny w bazie danych (Tokeny, Kody OIDC, Zgody użytkowników)
 .AddOperationalStore(options =>
 {
     options.ConfigureDbContext = b => b.ConfigureDatabase<PersistedGrantDbContext>(builder.Configuration, typeof(Program));
@@ -96,21 +90,24 @@ builder.Services.AddIdentityServer(options =>
 })
 .AddDeveloperSigningCredential();
 
-// 7. Konfiguracja kontrolerów MVC i Quorum Admin UI (RCL / NuGet)
-builder.Services.AddControllersWithViews();
+// 8. Konfiguracja Quorum AdminUI (Nuget RCL oparty w 100% o Radzen)
 builder.Services.AddQuorumAdminUI<ApplicationUser>(options =>
 {
     options.RequiredRole = "Admin";
     options.EnableAuthorization = true;
-    options.SeedData = true;
 });
+
+// Rejestracja abstrakcyjnej implementacji Entity Framework Core dla magazynów CRUD
+builder.Services.AddQuorumAdminUIEntityFrameworkStore<ApplicationUser>();
 
 var app = builder.Build();
 
+app.UseStaticFiles();
+app.MapStaticAssets();
 // Przetwarzanie nagłówków Proxy przed routingiem
 app.UseForwardedHeaders();
 
-// 8. Automatyczna migracja i Seedowanie danych początkowych (w tym federacji Entra ID, Azure B2C, Google OIDC)
+// 9. Automatyczna migracja i Seedowanie danych początkowych
 await SeedData.EnsureSeedDataAsync(app);
 
 // Inicjalizacja i załadowanie dynamicznych schematów OIDC do pamięci
@@ -122,16 +119,131 @@ using (var scope = app.Services.CreateScope())
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-app.UseQuorumAdminUI();
 
-// 8. Pipeline IdentityServer i autoryzacji
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseAntiforgery();
+
+// 10. Pipeline IdentityServer
 app.UseIdentityServer();
 
-app.MapDefaultControllerRoute();
+// 11. Endpointy logowania, wylogowania i federacji OIDC
+app.MapPost("/account/login", async (
+    SignInManager<ApplicationUser> signInManager,
+    UserManager<ApplicationUser> userManager,
+    [FromForm] string userName,
+    [FromForm] string password,
+    [FromForm] bool? rememberMe,
+    [FromForm] string? returnUrl) =>
+{
+    var user = await userManager.FindByNameAsync(userName) ?? await userManager.FindByEmailAsync(userName);
+    if (user != null)
+    {
+        var result = await signInManager.PasswordSignInAsync(user.UserName!, password, rememberMe ?? false, lockoutOnFailure: false);
+        if (result.Succeeded)
+        {
+            var target = !string.IsNullOrWhiteSpace(returnUrl) && returnUrl.StartsWith("/") ? returnUrl : "/admin";
+            return Results.LocalRedirect(target);
+        }
+    }
+
+    var encodedError = Uri.EscapeDataString("Nieprawidłowa nazwa użytkownika lub hasło.");
+    var redirectUrl = $"/account/login?error={encodedError}&returnUrl={Uri.EscapeDataString(returnUrl ?? "/admin")}";
+    return Results.LocalRedirect(redirectUrl);
+}).DisableAntiforgery();
+
+app.MapGet("/account/logout", async (
+    SignInManager<ApplicationUser> signInManager,
+    [FromQuery] string? returnUrl) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.LocalRedirect(returnUrl ?? "/");
+});
+
+app.MapPost("/account/logout", async (
+    SignInManager<ApplicationUser> signInManager,
+    [FromForm] string? returnUrl) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.LocalRedirect(returnUrl ?? "/");
+}).DisableAntiforgery();
+
+app.MapGet("/Account/ExternalLogin", (
+    SignInManager<ApplicationUser> signInManager,
+    [FromQuery] string provider,
+    [FromQuery] string? returnUrl) =>
+{
+    var redirectUrl = $"/Account/ExternalLoginCallback?returnUrl={Uri.EscapeDataString(returnUrl ?? "/admin")}";
+    var properties = signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+    return Results.Challenge(properties, [provider]);
+});
+
+app.MapGet("/Account/ExternalLoginCallback", async (
+    SignInManager<ApplicationUser> signInManager,
+    UserManager<ApplicationUser> userManager,
+    [FromQuery] string? returnUrl,
+    [FromQuery] string? remoteError) =>
+{
+    if (remoteError != null)
+    {
+        return Results.LocalRedirect($"/account/login?error={Uri.EscapeDataString($"Błąd zewnętrznego dostawcy: {remoteError}")}");
+    }
+
+    var info = await signInManager.GetExternalLoginInfoAsync();
+    if (info == null)
+    {
+        return Results.LocalRedirect("/account/login?error=Nie+udalo+sie+pobrac+danych+logowania+zewnetrznego");
+    }
+
+    var signInResult = await signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: true, bypassTwoFactor: true);
+    if (signInResult.Succeeded)
+    {
+        return Results.LocalRedirect(returnUrl ?? "/admin");
+    }
+
+    var email = info.Principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    var name = info.Principal.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? email;
+
+    if (!string.IsNullOrEmpty(email))
+    {
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser == null)
+        {
+            existingUser = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                FullName = name,
+                EmailConfirmed = true
+            };
+            var createResult = await userManager.CreateAsync(existingUser);
+            if (createResult.Succeeded)
+            {
+                await userManager.AddToRoleAsync(existingUser, "User");
+            }
+        }
+
+        if (existingUser != null)
+        {
+            await userManager.AddLoginAsync(existingUser, info);
+            await signInManager.SignInAsync(existingUser, isPersistent: true);
+            return Results.LocalRedirect(returnUrl ?? "/admin");
+        }
+    }
+
+    return Results.LocalRedirect("/account/login?error=Nie+udalo+sie+zalogowac+przez+SSO");
+});
+
+// 12. Mapowanie komponentów Blazor (z automatycznym wykrywaniem stron i komponentów z Quorum.Backend.AdminUI)
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(
+        typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly
+    );
 
 app.Run();

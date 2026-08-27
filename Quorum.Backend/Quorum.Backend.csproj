@@ -21,17 +21,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    
   </ItemGroup>
-
+<ItemGroup>
+  <PackageReference Include="Radzen.Blazor" Version="11.2.7" />
+</ItemGroup>
   <ItemGroup>
-    <!-- Referencja do projektu / pakietu Quorum.Backend.AdminUI (RCL) -->
+    <!-- Referencje do projektów wewnętrznych Quorum -->
     <ProjectReference Include="..\Quorum.Backend.AdminUI\Quorum.Backend.AdminUI.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Data\" />
-    <Folder Include="Models\" />
+    <ProjectReference Include="..\Quorum.Backend.EntityFramework\Quorum.Backend.EntityFramework.csproj" />
   </ItemGroup>
 
 </Project>

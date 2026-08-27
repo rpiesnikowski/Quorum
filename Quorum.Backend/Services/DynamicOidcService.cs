@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Quorum.Backend.EntityFramework.Data;
 using Quorum.Backend.EntityFramework.Models;
 
@@ -47,7 +48,7 @@ public class DynamicOidcService : IDynamicOidcService
             {
                 dynamicProvider.RefreshDynamicScheme(fed);
             }
-            _logger.LogInformation("Przeładowano {Count} dynamicznych federacji OIDC w pamięci serwera", active.Count);
+            _logger.LogInformation("Przeładowano {Count} dynamicznych federacji OIDC w pamięci serwera Quorum.Backend", active.Count);
         }
     }
 

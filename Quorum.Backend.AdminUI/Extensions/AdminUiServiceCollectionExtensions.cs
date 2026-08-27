@@ -1,10 +1,10 @@
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Quorum.Backend.AdminUI.Options;
-using Quorum.Backend.AdminUI.Services;
+using Quorum.Backend.AdminUI.Services.EntityFramework;
+using Quorum.Backend.AdminUI.Services.Interfaces;
 using Radzen;
 
 namespace Quorum.Backend.AdminUI.Extensions;
@@ -12,8 +12,7 @@ namespace Quorum.Backend.AdminUI.Extensions;
 public static class AdminUiServiceCollectionExtensions
 {
     /// <summary>
-    /// Rejestruje usługi i strony Razor Pages panelu Quorum Admin UI w kontenerze DI dla wskazanego typu użytkownika.
-    /// Konfiguruje dedykowany, odizolowany schemat uwierzytelniania dla administratorów (Sposób nr 1).
+    /// Rejestruje usługi bazowe dla panelu Blazor AdminUI (Radzen, HttpClient, opcje).
     /// </summary>
     public static IServiceCollection AddQuorumAdminUI<TUser>(
         this IServiceCollection services,
@@ -22,25 +21,15 @@ public static class AdminUiServiceCollectionExtensions
     {
         var options = new AdminUiOptions();
         configureOptions?.Invoke(options);
-
-        // Rejestracja opcji w DI
         services.AddSingleton(options);
 
-        // Rejestracja serwisów komponentów Radzen Blazor (DataGrid, Dialog, Notification itp.)
+        services.AddRazorComponents()
+            .AddInteractiveServerComponents();
+        
+        // Rejestracja serwisów komponentów Radzen Blazor (DataGrid, DialogService, NotificationService, TooltipService, ContextMenuService)
         services.AddRadzenComponents();
-
-        // Rejestracja serwisu zarządzania użytkownikami dla panelu AdminUI
-        services.TryAddScoped<IUserAdminService, IdentityUserAdminService<TUser>>();
-
-        // Rejestracja klienta HTTP do walidacji endpointów OIDC Discovery (.well-known)
         services.AddHttpClient();
-
-        // Rejestracja serwisu zarządzania dynamicznymi federacjami OIDC
-        services.TryAddScoped<IFederationAdminService, IdentityFederationAdminService>();
-
-        // Rejestracja serwisu zarządzania API Gateway
-        services.TryAddScoped<IGatewayAdminService, GatewayAdminService>();
-
+        
         // Rejestracja dedykowanego schematu uwierzytelniania ciasteczkowego dla administratorów
         services.AddAuthentication()
             .AddCookie(options.AuthenticationScheme, cookieOptions =>
@@ -56,13 +45,18 @@ public static class AdminUiServiceCollectionExtensions
                 cookieOptions.Cookie.SameSite = SameSiteMode.Lax;
                 cookieOptions.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             });
-
+        
         // Rejestracja dedykowanej polityki autoryzacji opartej o schemat administratora i wymaganą rolę
         services.AddAuthorization(authOptions =>
         {
+            authOptions.AddPolicy("AdminOnly", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole("Admin");
+            });
+
             authOptions.AddPolicy(options.PolicyName, policy =>
             {
-                policy.AddAuthenticationSchemes(options.AuthenticationScheme);
                 policy.RequireAuthenticatedUser();
                 if (!string.IsNullOrEmpty(options.RequiredRole))
                 {
@@ -71,45 +65,39 @@ public static class AdminUiServiceCollectionExtensions
             });
         });
 
-        // Konfiguracja konwencji Razor Pages dla obszaru Admin
-        services.AddRazorPages(razorOptions =>
-        {
-            if (options.EnableAuthorization)
-            {
-                // Zabezpieczenie całego obszaru /Admin polityką administratora
-                razorOptions.Conventions.AuthorizeAreaFolder("Admin", options.AreaFolder, options.PolicyName);
-
-                // Dostęp anonimowy dla dedykowanych stron uwierzytelniania AdminUI
-                razorOptions.Conventions.AllowAnonymousToAreaPage("Admin", "/Account/Login");
-                razorOptions.Conventions.AllowAnonymousToAreaPage("Admin", "/Account/Logout");
-                razorOptions.Conventions.AllowAnonymousToAreaPage("Admin", "/Account/AccessDenied");
-            }
-        });
-        services.AddRazorPages();
-        services.AddServerSideBlazor();
-        services.AddRazorComponents().AddInteractiveServerComponents();
+        services.AddCascadingAuthenticationState();
         
-
         return services;
     }
 
     /// <summary>
-    /// Konfiguruje potok middleware dla Quorum Admin UI (pliki statyczne, routing).
+    /// Rejestruje domyślną implementację magazynu Entity Framework Core dla wszystkich sekcji CRUD w panelu AdminUI.
     /// </summary>
-    public static IApplicationBuilder UseQuorumAdminUI(this IApplicationBuilder app)
+    public static IServiceCollection AddQuorumAdminUIEntityFrameworkStore<TUser>(
+        this IServiceCollection services)
+        where TUser : IdentityUser, new()
     {
-        app.UseRouting();
-        app.UseAuthentication();
-        app.UseAuthorization();
-        
-        // ✅ Mapowanie punktów końcowych na IEndpointRouteBuilder (endpoints)
-        app.UseEndpoints(endpoints =>
-        {
-            endpoints.MapStaticAssets();
-            endpoints.MapRazorPages();
-            endpoints.MapBlazorHub();
-        });
-        
-        return app;
+        services.TryAddScoped<IAdminUserStore, EfAdminUserStore<TUser>>();
+        services.TryAddScoped<IAdminClientStore, EfAdminClientStore>();
+        services.TryAddScoped<IAdminApiScopeStore, EfAdminApiScopeStore>();
+        services.TryAddScoped<IAdminIdentityResourceStore, EfAdminIdentityResourceStore>();
+        services.TryAddScoped<IAdminFederationStore, EfAdminFederationStore>();
+        services.TryAddScoped<IAdminGatewayStore, EfAdminGatewayStore>();
+        services.TryAddScoped<IAdminGrantStore, EfAdminGrantStore>();
+        services.TryAddScoped<IAdminDashboardStore, EfAdminDashboardStore<TUser>>();
+
+        return services;
     }
+
+    // Aliasy dla zgodności wstecznej
+    public static IServiceCollection AddQuorumAdminUI2<TUser>(
+        this IServiceCollection services,
+        Action<AdminUiOptions>? configureOptions = null)
+        where TUser : IdentityUser, new()
+        => AddQuorumAdminUI<TUser>(services, configureOptions);
+
+    public static IServiceCollection AddQuorumAdminUI2EntityFrameworkStore<TUser>(
+        this IServiceCollection services)
+        where TUser : IdentityUser, new()
+        => AddQuorumAdminUIEntityFrameworkStore<TUser>(services);
 }

@@ -1,0 +1,95 @@
+@page "/account/login"
+@using Microsoft.AspNetCore.Identity
+@using Quorum.Backend.EntityFramework.Models
+@using Quorum.Backend.Services
+@inject IDynamicOidcService DynamicOidcService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Logowanie | Quorum Backend</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 75vh;">
+    <RadzenCard Class="rz-p-4" Style="width: 100%; max-width: 460px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border-radius: 14px;">
+        <div class="text-center mb-4">
+            <RadzenIcon Icon="lock" Style="font-size: 2.5rem; color: #3b82f6;" />
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mt-2 mb-1">Logowanie</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Quorum Identity Server & Panel Admina</RadzenText>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" Class="mb-3">
+                @Error
+            </RadzenAlert>
+        }
+
+        <form method="post" action="/account/login">
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary" style="font-size: 0.875rem;">Nazwa Użytkownika lub E-mail</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="material-icons" style="font-size: 1.2rem; color: #64748b;">person</i></span>
+                    <input type="text" name="UserName" class="form-control border-start-0" placeholder="Wprowadź login lub email" required value="admin" autofocus />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary" style="font-size: 0.875rem;">Hasło</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="material-icons" style="font-size: 1.2rem; color: #64748b;">lock</i></span>
+                    <input type="password" name="Password" class="form-control border-start-0" placeholder="Wprowadź hasło" required value="Pass123$" />
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="RememberMe" value="true" id="rememberMeCheck" checked />
+                    <label class="form-check-label text-secondary" for="rememberMeCheck" style="font-size: 0.875rem;">
+                        Zapamiętaj mnie
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2" style="background: #2563eb; border: none; border-radius: 8px;">
+                <i class="material-icons" style="font-size: 1.2rem;">login</i> Zaloguj się
+            </button>
+        </form>
+
+        @if (externalProviders.Count > 0)
+        {
+            <div class="text-center my-3 position-relative">
+                <hr class="border-secondary border-opacity-25" />
+                <span class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted" style="font-size: 0.8rem;">LUB ZALOGUJ PRZEZ SSO</span>
+            </div>
+
+            <div class="d-flex flex-column gap-2">
+                @foreach (var p in externalProviders)
+                {
+                    <a href="/Account/ExternalLogin?provider=@p.Scheme&returnUrl=@Uri.EscapeDataString(ReturnUrl ?? "/admin")" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+                        <i class="material-icons" style="font-size: 1.2rem;">hub</i> @p.DisplayName
+                    </a>
+                }
+            </div>
+        }
+
+        <div class="mt-4 p-3 bg-light rounded text-center border" style="font-size: 0.8rem;">
+            <div class="text-muted mb-1">Domyślne konto administratora (Rola: <strong>Admin</strong>):</div>
+            <code>admin / Pass123$</code>
+        </div>
+    </RadzenCard>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    private List<OidcFederationProvider> externalProviders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        externalProviders = await DynamicOidcService.GetActiveFederationsAsync();
+    }
+}
