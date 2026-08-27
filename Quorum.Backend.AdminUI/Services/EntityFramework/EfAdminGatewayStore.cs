@@ -4,8 +4,12 @@ using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.AdminUI.Services.Interfaces;
 using Quorum.Backend.EntityFramework.Data;
 using Quorum.Backend.EntityFramework.Models;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
-using GatewayTestRequest = Quorum.Backend.AdminUI.Models.GatewayTestRequest;
 
 namespace Quorum.Backend.AdminUI.Services.EntityFramework;
 
@@ -65,7 +69,6 @@ public class EfAdminGatewayStore : IAdminGatewayStore
 
     public async Task<(bool Success, string? Error)> CreateRouteAsync(GatewayRouteAdminModel model, CancellationToken cancellationToken = default)
     {
-        // Jeśli podano pełny URL w UpstreamHost i nie uzupełniono AddressHost osobno, przelicz
         var scheme = !string.IsNullOrWhiteSpace(model.Scheme) ? model.Scheme : "https";
         var host = !string.IsNullOrWhiteSpace(model.AddressHost) ? model.AddressHost : "localhost";
         var port = model.AddressPort > 0 ? model.AddressPort : (scheme == "https" ? 443 : 80);
@@ -175,81 +178,488 @@ public class EfAdminGatewayStore : IAdminGatewayStore
 
     public async Task<GatewayTestResult> TestRouteAsync(GatewayTestRequest request, CancellationToken cancellationToken = default)
     {
-        var routes = await _context.GatewayRoutes
+        var response = new GatewayTestResult
+        {
+            Request = request
+        };
+
+        // 1. Normalizacja ścieżki wejściowej oraz parametrów zapytania
+        var rawUrl = (request.RequestUrl ?? request.RequestPath ?? "/").Trim();
+        string normalizedPath = rawUrl;
+        string? queryString = null;
+        string hostHeaderValue = "localhost";
+
+        if (Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsedAbsoluteUri))
+        {
+            normalizedPath = parsedAbsoluteUri.AbsolutePath;
+            queryString = parsedAbsoluteUri.Query?.TrimStart('?');
+            hostHeaderValue = parsedAbsoluteUri.Authority;
+        }
+        else
+        {
+            var qIndex = rawUrl.IndexOf('?');
+            if (qIndex >= 0)
+            {
+                normalizedPath = rawUrl.Substring(0, qIndex);
+                queryString = rawUrl.Substring(qIndex + 1);
+            }
+        }
+
+        if (!normalizedPath.StartsWith("/"))
+        {
+            normalizedPath = "/" + normalizedPath;
+        }
+
+        response.Evaluation.NormalizedPath = normalizedPath;
+        response.Evaluation.OriginalQueryString = queryString;
+
+        // 2. Pobranie wszystkich aktywnych tras z bazy danych posortowanych według priorytetu malejąco
+        var activeRoutes = await _context.GatewayRoutes
             .Include(r => r.Scopes)
+            .AsNoTracking()
             .Where(r => r.IsEnabled)
             .OrderByDescending(r => r.Priority)
+            .ThenBy(r => r.MatchPattern)
             .ToListAsync(cancellationToken);
 
-        foreach (var r in routes)
+        GatewayRoute? matchedRoute = null;
+        var requestedMethod = (request.HttpMethod ?? "GET").Trim().ToUpperInvariant();
+
+        foreach (var route in activeRoutes)
         {
-            bool isMatch = false;
+            var isRegex = !string.IsNullOrEmpty(route.MatchPattern) && (route.MatchPattern.StartsWith("^") || route.MatchPattern.Contains(".*"));
+            bool isPatternMatch = false;
+
             try
             {
-                if (r.MatchPattern.StartsWith("^") || r.MatchPattern.Contains(".*"))
+                if (isRegex)
                 {
-                    isMatch = Regex.IsMatch(request.RequestPath, r.MatchPattern, RegexOptions.IgnoreCase);
+                    isPatternMatch = Regex.IsMatch(normalizedPath, route.MatchPattern, RegexOptions.IgnoreCase);
                 }
                 else
                 {
-                    isMatch = request.RequestPath.StartsWith(r.MatchPattern, StringComparison.OrdinalIgnoreCase);
+                    isPatternMatch = normalizedPath.StartsWith(route.MatchPattern, StringComparison.OrdinalIgnoreCase);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                isMatch = false;
+                _logger.LogWarning(ex, "Błąd ewaluacji Regex dla wzorca {Pattern}", route.MatchPattern);
+                isPatternMatch = false;
             }
 
-            if (!isMatch) continue;
+            var allowedMethods = string.IsNullOrWhiteSpace(route.HttpMethods) || route.HttpMethods.Equals("ALL", StringComparison.OrdinalIgnoreCase)
+                ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "ALL", "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" }
+                : route.HttpMethods.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            // Check HTTP methods
-            if (!string.Equals(r.HttpMethods, "ALL", StringComparison.OrdinalIgnoreCase))
+            bool isMethodMatch = allowedMethods.Contains("ALL") || allowedMethods.Contains(requestedMethod);
+            bool isWinner = false;
+            string evalStatus = string.Empty;
+            string? details = null;
+
+            if (isPatternMatch && isMethodMatch)
             {
-                var methods = r.HttpMethods.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                if (!methods.Contains(request.HttpMethod, StringComparer.OrdinalIgnoreCase))
+                if (matchedRoute == null)
                 {
-                    continue; // method mismatch
+                    matchedRoute = route;
+                    isWinner = true;
+                    evalStatus = "Dopasowano (Zwycięzca)";
+                    details = $"Trasa ma najwyższy priorytet ({route.Priority}) i pasuje do ścieżki '{normalizedPath}'.";
                 }
-            }
-
-            // Route matched! Check scopes and authorization
-            var routeModel = MapToModel(r);
-            bool isAuthorized = true;
-            var missing = new List<string>();
-
-            if (!r.AllowAnonymous)
-            {
-                if (routeModel.RequiredScopes.Count > 0)
+                else
                 {
-                    missing = routeModel.RequiredScopes.Except(request.ProvidedScopes, StringComparer.OrdinalIgnoreCase).ToList();
-                    isAuthorized = missing.Count == 0;
+                    evalStatus = "Pominięto (Niższy priorytet)";
+                    details = $"Trasa również pasuje, ale reguła '{matchedRoute.RouteName ?? matchedRoute.MatchPattern}' miała wyższy priorytet ({matchedRoute.Priority} > {route.Priority}).";
                 }
             }
-
-            var targetPortStr = (r.AddressPort == 80 && r.Scheme == "http") || (r.AddressPort == 443 && r.Scheme == "https") ? "" : $":{r.AddressPort}";
-            var basePath = r.AddressBasePath?.TrimEnd('/') ?? "";
-            var path = !string.IsNullOrWhiteSpace(r.AddressPath) ? r.AddressPath : request.RequestPath;
-            var queryString = !string.IsNullOrWhiteSpace(r.AddressQueryString) ? "?" + r.AddressQueryString.TrimStart('?') : "";
-            var targetUri = $"{r.Scheme}://{r.AddressHost}{targetPortStr}{basePath}{path}{queryString}";
-
-            return new GatewayTestResult
+            else if (!isPatternMatch)
             {
-                IsMatch = true,
-                MatchedRoute = routeModel,
-                TargetUri = targetUri,
-                IsAuthorized = isAuthorized,
-                MissingScopes = missing,
-                Explanation = isAuthorized 
-                    ? $"Żądanie pomyślnie dopasowane do trasy '{r.RouteName ?? r.MatchPattern}' (Priorytet {r.Priority}). Autoryzacja i reguły routingu są prawidłowe."
-                    : $"Żądanie dopasowane do trasy '{r.RouteName ?? r.MatchPattern}', lecz brakuje wymaganych uprawnień: {string.Join(", ", missing)}."
-            };
+                evalStatus = "Brak dopasowania wzorca";
+                details = $"Ścieżka '{normalizedPath}' nie spełnia wzorca '{route.MatchPattern}'.";
+            }
+            else
+            {
+                evalStatus = "Niezgodna metoda HTTP";
+                details = $"Metoda {requestedMethod} nie jest dozwolona. Dozwolone: {string.Join(", ", allowedMethods)}.";
+            }
+
+            response.Evaluation.CandidateEvaluations.Add(new GatewayRouteCandidateEvaluation
+            {
+                RouteId = route.Id,
+                RouteName = route.RouteName,
+                MatchPattern = route.MatchPattern,
+                Priority = route.Priority,
+                IsEnabled = route.IsEnabled,
+                AllowedMethods = route.HttpMethods ?? "ALL",
+                IsRegexMatch = isRegex,
+                IsMethodMatch = isMethodMatch,
+                IsWinner = isWinner,
+                EvaluationStatus = evalStatus,
+                Details = details
+            });
         }
 
-        return new GatewayTestResult
+        // 3. Sprawdzenie czy znaleziono pasującą trasę
+        if (matchedRoute == null)
         {
-            IsMatch = false,
-            Explanation = "Żadna aktywna trasa nie pasuje do podanej ścieżki i metody HTTP."
+            response.Evaluation.IsMatched = false;
+            response.Evaluation.Explanation = $"Żadna aktywna trasa API Gateway nie pasuje do metody {requestedMethod} i ścieżki '{normalizedPath}'.";
+            response.Execution.Executed = false;
+            response.Execution.ErrorMessage = "Brak pasującej reguły routingu.";
+            return response;
+        }
+
+        response.Evaluation.IsMatched = true;
+        response.Evaluation.MatchedRoute = matchedRoute;
+        response.Evaluation.ForwardOriginalHost = matchedRoute.ForwardOriginalHost;
+
+        // 4. Konstruowanie docelowego Upstream URI zgodnie z Proxy2ManyHostsMiddleware
+        var targetPortStr = (matchedRoute.AddressPort == 80 && matchedRoute.Scheme == "http") || (matchedRoute.AddressPort == 443 && matchedRoute.Scheme == "https")
+            ? ""
+            : $":{matchedRoute.AddressPort}";
+
+        var basePath = !string.IsNullOrWhiteSpace(matchedRoute.AddressBasePath)
+            ? (matchedRoute.AddressBasePath.StartsWith("/") ? matchedRoute.AddressBasePath.TrimEnd('/') : "/" + matchedRoute.AddressBasePath.TrimEnd('/'))
+            : "";
+
+        var downstreamPath = !string.IsNullOrWhiteSpace(matchedRoute.AddressPath) ? matchedRoute.AddressPath : normalizedPath;
+        if (!downstreamPath.StartsWith("/")) downstreamPath = "/" + downstreamPath;
+
+        var mergedQuery = new List<string>();
+        if (!string.IsNullOrWhiteSpace(matchedRoute.AddressQueryString))
+        {
+            mergedQuery.Add(matchedRoute.AddressQueryString.TrimStart('?'));
+        }
+        if (!string.IsNullOrWhiteSpace(queryString))
+        {
+            mergedQuery.Add(queryString);
+        }
+        var targetQueryStr = mergedQuery.Count > 0 ? "?" + string.Join("&", mergedQuery) : "";
+
+        var targetUri = $"{matchedRoute.Scheme}://{matchedRoute.AddressHost}{targetPortStr}{basePath}{downstreamPath}{targetQueryStr}";
+        response.Evaluation.CalculatedUpstreamUrl = targetUri;
+
+        // 5. Weryfikacja Scopes & Autoryzacji
+        var requiredScopes = new List<string>();
+        if (matchedRoute.Scopes != null && matchedRoute.Scopes.Count > 0)
+        {
+            requiredScopes.AddRange(matchedRoute.Scopes.Select(s => s.Scope));
+        }
+        else if (!string.IsNullOrWhiteSpace(matchedRoute.ScopeName))
+        {
+            requiredScopes.AddRange(matchedRoute.ScopeName.Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        if (matchedRoute.AllowAnonymous)
+        {
+            response.Evaluation.AuthRequired = false;
+            response.Evaluation.AuthPassed = true;
+            response.Evaluation.AuthStatusBadge = "badge bg-success";
+            response.Evaluation.AuthSummary = "Dostęp Anonimowy (Publiczny) – token JWT nie jest wymagany.";
+        }
+        else
+        {
+            response.Evaluation.AuthRequired = true;
+            var providedScopesSet = request.ProvidedScopes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var missing = requiredScopes.Where(s => !providedScopesSet.Contains(s)).ToList();
+            response.Evaluation.MissingScopes = missing;
+
+            if (missing.Count == 0)
+            {
+                response.Evaluation.AuthPassed = true;
+                response.Evaluation.AuthStatusBadge = "badge bg-success";
+                response.Evaluation.AuthSummary = requiredScopes.Count > 0
+                    ? $"Autoryzacja pomyślna – wszystkie wymagane scopes ({string.Join(", ", requiredScopes)}) zostały spełnione."
+                    : "Wymagany poprawny token JWT (trasa nie definiuje dodatkowych scopes).";
+            }
+            else
+            {
+                response.Evaluation.AuthPassed = false;
+                response.Evaluation.AuthStatusBadge = "badge bg-danger";
+                response.Evaluation.AuthSummary = $"Odmowa dostępu (403 Forbidden) – brakujące uprawnienia Scopes: {string.Join(", ", missing)}.";
+            }
+        }
+
+        response.Evaluation.Explanation = response.Evaluation.AuthPassed
+            ? $"Dopasowano trasę '{matchedRoute.RouteName ?? matchedRoute.MatchPattern}' (Priorytet {matchedRoute.Priority}). Upstream: {targetUri}"
+            : $"Dopasowano trasę '{matchedRoute.RouteName ?? matchedRoute.MatchPattern}', lecz brakuje wymaganych uprawnień: {string.Join(", ", response.Evaluation.MissingScopes)}";
+
+        // 6. Parsowanie niestandardowych nagłówków trasy (route.Headers)
+        if (!string.IsNullOrWhiteSpace(matchedRoute.Headers))
+        {
+            var headerLines = matchedRoute.Headers.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var hLine in headerLines)
+            {
+                var sep = hLine.IndexOf(':');
+                if (sep > 0)
+                {
+                    var k = hLine.Substring(0, sep).Trim();
+                    var v = hLine.Substring(sep + 1).Trim();
+                    if (!string.IsNullOrEmpty(k))
+                    {
+                        response.Evaluation.InjectedRouteHeaders[k] = v;
+                    }
+                }
+            }
+        }
+
+        // 7. Jeśli użytkownik nie wybrał opcji wykonania żądania sieciowego (tylko dry-run sprawdzenie trasy), zwracamy wynik ewaluacji
+        if (!request.ExecuteLiveRequest)
+        {
+            response.Execution.Executed = false;
+            return response;
+        }
+
+        // 8. RZECZYWISTE WYKONANIE ŻĄDANIA PROXY DO BACKEND SERVICE
+        await ExecuteLiveProxyRequestAsync(request, matchedRoute, targetUri, hostHeaderValue, response, cancellationToken);
+
+        return response;
+    }
+
+    private async Task ExecuteLiveProxyRequestAsync(
+        GatewayTestRequest request,
+        GatewayRoute matchedRoute,
+        string targetUri,
+        string clientHostHeader,
+        GatewayTestResult result,
+        CancellationToken cancellationToken)
+    {
+        result.Execution.Executed = true;
+        var stopwatch = Stopwatch.StartNew();
+
+        var timeoutSeconds = request.CustomTimeoutSeconds ?? (matchedRoute.TimeoutSeconds > 0 ? matchedRoute.TimeoutSeconds : 30);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+
+        // Konfiguracja HttpClientHandler z opcją ignorowania błędów certyfikatu SSL (dla środowisk deweloperskich i testowych)
+        var handler = new HttpClientHandler
+        {
+            AllowAutoRedirect = false,
+            AutomaticDecompression = DecompressionMethods.All
         };
+
+        if (request.IgnoreSslErrors)
+        {
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        }
+
+        using var client = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(timeoutSeconds + 5)
+        };
+
+        var method = new HttpMethod(request.HttpMethod.ToUpperInvariant());
+        using var proxyRequest = new HttpRequestMessage(method, targetUri);
+
+        // A. Dodawanie nagłówków wejściowych klienta (RawHeaders)
+        var rawReqHeaderDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(request.RawHeaders))
+        {
+            var lines = request.RawHeaders.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var sep = line.IndexOf(':');
+                if (sep > 0)
+                {
+                    var k = line.Substring(0, sep).Trim();
+                    var v = line.Substring(sep + 1).Trim();
+                    if (!string.IsNullOrEmpty(k))
+                    {
+                        rawReqHeaderDict[k] = v;
+                    }
+                }
+            }
+        }
+
+        // Jeśli podano BearerToken a nie ma go w RawHeaders, dodaj nagłówek Authorization
+        if (!string.IsNullOrWhiteSpace(request.BearerToken) && !rawReqHeaderDict.ContainsKey("Authorization"))
+        {
+            rawReqHeaderDict["Authorization"] = $"Bearer {request.BearerToken.Trim()}";
+        }
+
+        // B. Dodawanie wstrzykniętych nagłówków z konfiguracji trasy (route.Headers)
+        foreach (var kvp in result.Evaluation.InjectedRouteHeaders)
+        {
+            rawReqHeaderDict[kvp.Key] = kvp.Value;
+        }
+
+        // C. Ustawienie nagłówka Host (zgodnie z ForwardOriginalHost)
+        if (matchedRoute.ForwardOriginalHost)
+        {
+            proxyRequest.Headers.Host = clientHostHeader;
+            rawReqHeaderDict["Host"] = clientHostHeader;
+        }
+        else
+        {
+            if (Uri.TryCreate(targetUri, UriKind.Absolute, out var targetParsedUri))
+            {
+                proxyRequest.Headers.Host = targetParsedUri.Authority;
+                rawReqHeaderDict["Host"] = targetParsedUri.Authority;
+            }
+        }
+
+        // D. Ustawienie ciała żądania (RequestBody)
+        bool hasBody = method != HttpMethod.Get && method != HttpMethod.Head && method != HttpMethod.Options && !string.IsNullOrEmpty(request.RequestBody);
+        if (hasBody)
+        {
+            var mediaType = !string.IsNullOrWhiteSpace(request.ContentType) ? request.ContentType : "application/json";
+            proxyRequest.Content = new StringContent(request.RequestBody ?? "", Encoding.UTF8, mediaType);
+            rawReqHeaderDict["Content-Type"] = mediaType;
+            rawReqHeaderDict["Content-Length"] = Encoding.UTF8.GetByteCount(request.RequestBody ?? "").ToString();
+        }
+
+        // Aplikowanie nagłówków do obiektu HttpRequestMessage
+        foreach (var kvp in rawReqHeaderDict)
+        {
+            if (kvp.Key.Equals("Host", StringComparison.OrdinalIgnoreCase) ||
+                kvp.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) ||
+                kvp.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            proxyRequest.Headers.TryAddWithoutValidation(kvp.Key, kvp.Value);
+        }
+
+        // E. Konstruowanie surowego zrzutu wysłanego żądania (RAW HTTP REQUEST)
+        var rawReqBuilder = new StringBuilder();
+        var uriObj = new Uri(targetUri);
+        var targetPathAndQuery = uriObj.PathAndQuery;
+        rawReqBuilder.AppendLine($"{request.HttpMethod.ToUpperInvariant()} {targetPathAndQuery} HTTP/1.1");
+        
+        foreach (var kvp in rawReqHeaderDict)
+        {
+            rawReqBuilder.AppendLine($"{kvp.Key}: {kvp.Value}");
+        }
+
+        if (hasBody)
+        {
+            rawReqBuilder.AppendLine();
+            rawReqBuilder.AppendLine(request.RequestBody);
+        }
+
+        result.Execution.RawRequest = rawReqBuilder.ToString().TrimEnd();
+
+        // F. Wysłanie żądania i odbiór odpowiedzi
+        try
+        {
+            var response = await client.SendAsync(proxyRequest, HttpCompletionOption.ResponseContentRead, cts.Token);
+            stopwatch.Stop();
+
+            result.Execution.StatusCode = (int)response.StatusCode;
+            result.Execution.StatusPhrase = response.ReasonPhrase ?? response.StatusCode.ToString();
+            result.Execution.IsSuccess = response.IsSuccessStatusCode;
+            result.Execution.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+
+            // Zbieranie nagłówków odpowiedzi
+            foreach (var h in response.Headers)
+            {
+                result.Execution.ResponseHeaders[h.Key] = string.Join(", ", h.Value);
+            }
+            if (response.Content != null)
+            {
+                foreach (var h in response.Content.Headers)
+                {
+                    result.Execution.ResponseHeaders[h.Key] = string.Join(", ", h.Value);
+                }
+                result.Execution.ResponseContentType = response.Content.Headers.ContentType?.ToString();
+                result.Execution.ContentLength = response.Content.Headers.ContentLength;
+
+                var bodyBytes = await response.Content.ReadAsByteArrayAsync(cts.Token);
+                var bodyStr = Encoding.UTF8.GetString(bodyBytes);
+                result.Execution.ResponseBody = bodyStr;
+
+                // Formatowanie JSON do czytelnej postaci (Pretty Print)
+                if (!string.IsNullOrWhiteSpace(bodyStr) && 
+                    (result.Execution.ResponseContentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true || 
+                     bodyStr.TrimStart().StartsWith("{") || bodyStr.TrimStart().StartsWith("[")))
+                {
+                    try
+                    {
+                        using var jsonDoc = JsonDocument.Parse(bodyStr);
+                        result.Execution.FormattedResponseBody = JsonSerializer.Serialize(jsonDoc, new JsonSerializerOptions { WriteIndented = true });
+                    }
+                    catch
+                    {
+                        result.Execution.FormattedResponseBody = bodyStr;
+                    }
+                }
+                else
+                {
+                    result.Execution.FormattedResponseBody = bodyStr;
+                }
+            }
+
+            // G. Konstruowanie surowego zrzutu odebranej odpowiedzi (RAW HTTP RESPONSE)
+            var rawRespBuilder = new StringBuilder();
+            rawRespBuilder.AppendLine($"HTTP/1.1 {result.Execution.StatusCode} {result.Execution.StatusPhrase}");
+            foreach (var kvp in result.Execution.ResponseHeaders)
+            {
+                rawRespBuilder.AppendLine($"{kvp.Key}: {kvp.Value}");
+            }
+            if (!string.IsNullOrEmpty(result.Execution.ResponseBody))
+            {
+                rawRespBuilder.AppendLine();
+                rawRespBuilder.AppendLine(result.Execution.ResponseBody);
+            }
+
+            result.Execution.RawResponse = rawRespBuilder.ToString().TrimEnd();
+        }
+        catch (TaskCanceledException tex) when (!cancellationToken.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            result.Execution.IsSuccess = false;
+            result.Execution.StatusCode = (int)HttpStatusCode.GatewayTimeout;
+            result.Execution.StatusPhrase = "Gateway Timeout";
+            result.Execution.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+            result.Execution.ErrorMessage = $"Przekroczono limit czasu oczekiwania na odpowiedź ({timeoutSeconds}s) od hosta {matchedRoute.AddressHost}:{matchedRoute.AddressPort}.";
+            result.Execution.ErrorDetails = tex.ToString();
+
+            var rawErrBuilder = new StringBuilder();
+            rawErrBuilder.AppendLine($"HTTP/1.1 504 Gateway Timeout");
+            rawErrBuilder.AppendLine($"Date: {DateTime.UtcNow:R}");
+            rawErrBuilder.AppendLine($"Content-Type: text/plain; charset=utf-8");
+            rawErrBuilder.AppendLine($"X-Gateway-Error: RequestTimeout");
+            rawErrBuilder.AppendLine();
+            rawErrBuilder.AppendLine($"Błąd 504 Gateway Timeout: Serwer upstream ({targetUri}) nie odpowiedział w zadanym limicie {timeoutSeconds} sekund.");
+            result.Execution.RawResponse = rawErrBuilder.ToString();
+        }
+        catch (HttpRequestException hex)
+        {
+            stopwatch.Stop();
+            result.Execution.IsSuccess = false;
+            result.Execution.StatusCode = (int)HttpStatusCode.BadGateway;
+            result.Execution.StatusPhrase = "Bad Gateway";
+            result.Execution.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+            result.Execution.ErrorMessage = $"Błąd połączenia z serwerem Upstream ({matchedRoute.AddressHost}:{matchedRoute.AddressPort}): {hex.Message}";
+            result.Execution.ErrorDetails = hex.ToString();
+
+            var rawErrBuilder = new StringBuilder();
+            rawErrBuilder.AppendLine($"HTTP/1.1 502 Bad Gateway");
+            rawErrBuilder.AppendLine($"Date: {DateTime.UtcNow:R}");
+            rawErrBuilder.AppendLine($"Content-Type: text/plain; charset=utf-8");
+            rawErrBuilder.AppendLine($"X-Gateway-Error: UpstreamConnectionFailed");
+            rawErrBuilder.AppendLine();
+            rawErrBuilder.AppendLine($"Błąd 502 Bad Gateway: Nie udało się nawiązać połączenia z serwerem docelowym {targetUri}.\nSzczegóły błędu sieciowego: {hex.Message}");
+            result.Execution.RawResponse = rawErrBuilder.ToString();
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            result.Execution.IsSuccess = false;
+            result.Execution.StatusCode = 500;
+            result.Execution.StatusPhrase = "Internal Server Error";
+            result.Execution.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+            result.Execution.ErrorMessage = $"Wystąpił nieoczekiwany błąd podczas wykonywania żądania: {ex.Message}";
+            result.Execution.ErrorDetails = ex.ToString();
+
+            var rawErrBuilder = new StringBuilder();
+            rawErrBuilder.AppendLine($"HTTP/1.1 500 Internal Server Error");
+            rawErrBuilder.AppendLine($"Date: {DateTime.UtcNow:R}");
+            rawErrBuilder.AppendLine($"Content-Type: text/plain; charset=utf-8");
+            rawErrBuilder.AppendLine();
+            rawErrBuilder.AppendLine($"Wystąpił błąd wykonania: {ex.Message}");
+            result.Execution.RawResponse = rawErrBuilder.ToString();
+        }
     }
 
     private static (string scheme, string host, int port, string basePath) ParseUpstreamUrl(string url)
@@ -308,3 +718,4 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         };
     }
 }
+

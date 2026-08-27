@@ -259,29 +259,3 @@ public class GatewayRouteAdminModel
             .ToList();
     }
 }
-
-public class GatewayTestRequest
-{
-    public string RequestPath { get; set; } = "/api/v1/users";
-    public string HttpMethod { get; set; } = "GET";
-    public List<string> ProvidedScopes { get; set; } = new();
-
-    public string ProvidedScopesText
-    {
-        get => string.Join(" ", ProvidedScopes);
-        set => ProvidedScopes = (value ?? "")
-            .Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => s.Trim())
-            .ToList();
-    }
-}
-
-public class GatewayTestResult
-{
-    public bool IsMatch { get; set; }
-    public GatewayRouteAdminModel? MatchedRoute { get; set; }
-    public string TargetUri { get; set; } = string.Empty;
-    public bool IsAuthorized { get; set; }
-    public List<string> MissingScopes { get; set; } = new();
-    public string Explanation { get; set; } = string.Empty;
-}

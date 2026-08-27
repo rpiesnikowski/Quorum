@@ -6,9 +6,18 @@ namespace Quorum.Backend.EntityFramework.Models;
 public class GatewayTestRequest
 {
     /// <summary>
-    /// Ścieżka wejściowa lub pełny adres URL (np. /api/v1/users/profile?details=true).
+    /// Ścieżka wejściowa lub pełny adres URL (np. /api/v1/orders/123?details=true).
     /// </summary>
-    public string RequestUrl { get; set; } = "/api/v1/users/profile";
+    public string RequestUrl { get; set; } = "/api/v1/orders/123";
+
+    /// <summary>
+    /// Alias dla wstecznej kompatybilności.
+    /// </summary>
+    public string RequestPath
+    {
+        get => RequestUrl;
+        set => RequestUrl = value;
+    }
 
     /// <summary>
     /// Metoda HTTP (GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD).
@@ -31,6 +40,29 @@ public class GatewayTestRequest
     public string ContentType { get; set; } = "application/json";
 
     /// <summary>
+    /// Opcjonalny token Bearer JWT do wstrzyknięcia do nagłówka Authorization.
+    /// </summary>
+    public string? BearerToken { get; set; }
+
+    /// <summary>
+    /// Zakresy (Scopes) przypisane do symulowanego tokenu JWT.
+    /// </summary>
+    public List<string> ProvidedScopes { get; set; } = new();
+
+    /// <summary>
+    /// Scopes w formie rozdzielonego spacjami ciągu tekstowego.
+    /// </summary>
+    public string ProvidedScopesText
+    {
+        get => string.Join(" ", ProvidedScopes);
+        set => ProvidedScopes = (value ?? "")
+            .Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim())
+            .Distinct()
+            .ToList();
+    }
+
+    /// <summary>
     /// Czy wykonać rzeczywiste żądanie HTTP do upstream serwera (Live Proxy), czy tylko dokonać ewaluacji reguły (Dry Run).
     /// </summary>
     public bool ExecuteLiveRequest { get; set; } = true;
@@ -43,7 +75,7 @@ public class GatewayTestRequest
     /// <summary>
     /// Opcjonalne nadpisanie limitu czasu (w sekundach).
     /// </summary>
-    public int? CustomTimeoutSeconds { get; set; }
+    public int? CustomTimeoutSeconds { get; set; } = 30;
 }
 
 /// <summary>
@@ -86,13 +118,25 @@ public class GatewayEvaluationResult
     public Dictionary<string, string> CalculatedHeaders { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Niestandardowe nagłówki wstrzyknięte z konfiguracji trasy (route.Headers).
+    /// </summary>
+    public Dictionary<string, string> InjectedRouteHeaders { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Czy nagłówek Host klienta ma być przekazany dalej.
+    /// </summary>
+    public bool ForwardOriginalHost { get; set; }
+
+    /// <summary>
     /// Weryfikacja uwierzytelniania i uprawnień OIDC/JWT Scope.
     /// </summary>
     public bool AuthRequired { get; set; }
     public bool AuthPassed { get; set; }
     public string AuthStatusBadge { get; set; } = "badge bg-secondary";
     public string AuthSummary { get; set; } = string.Empty;
+    public List<string> MissingScopes { get; set; } = new();
     public List<string> AuthDetails { get; set; } = new();
+    public string Explanation { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -105,6 +149,17 @@ public class GatewayExecutionResult
     public string? StatusPhrase { get; set; }
     public bool IsSuccess { get; set; }
     public long ExecutionTimeMs { get; set; }
+
+    /// <summary>
+    /// Surowy zrzut wysłanego żądania HTTP (Raw HTTP Request).
+    /// </summary>
+    public string? RawRequest { get; set; }
+
+    /// <summary>
+    /// Surowy zrzut odebranej odpowiedzi HTTP (Raw HTTP Response).
+    /// </summary>
+    public string? RawResponse { get; set; }
+
     public Dictionary<string, string> ResponseHeaders { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public string? ResponseBody { get; set; }
     public string? FormattedResponseBody { get; set; }
@@ -117,9 +172,23 @@ public class GatewayExecutionResult
 /// <summary>
 /// Całościowy raport testu API Gateway (Ewaluacja + Odpowiedź HTTP).
 /// </summary>
-public class GatewayTestResponse
+public class GatewayTestResult
 {
     public GatewayTestRequest Request { get; set; } = new();
     public GatewayEvaluationResult Evaluation { get; set; } = new();
     public GatewayExecutionResult Execution { get; set; } = new();
+
+    // Właściwości pomocnicze kompatybilności wstecznej
+    public bool IsMatch => Evaluation.IsMatched;
+    public string TargetUri => Evaluation.CalculatedUpstreamUrl;
+    public bool IsAuthorized => Evaluation.AuthPassed;
+    public List<string> MissingScopes => Evaluation.MissingScopes;
+    public string Explanation => !string.IsNullOrEmpty(Evaluation.Explanation) 
+        ? Evaluation.Explanation 
+        : (Evaluation.IsMatched ? "Trasa została dopasowana." : "Brak pasującej trasy Gateway.");
 }
+
+public class GatewayTestResponse : GatewayTestResult
+{
+}
+

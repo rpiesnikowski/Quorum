@@ -3,97 +3,347 @@
 @inject IAdminGatewayStore GatewayStore
 @inject IAdminApiScopeStore ApiScopeStore
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
-<PageTitle>Symulator API Gateway | Quorum Admin UI</PageTitle>
+<PageTitle>Symulator & Tester API Gateway | Quorum Admin</PageTitle>
 
 <RadzenStack Gap="1.5rem">
+    <!-- Header -->
     <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
         <RadzenColumn Size="12" SizeMD="8">
             <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Symulator & Tester API Gateway</RadzenText>
-            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Interaktywna weryfikacja dopasowania tras URL, priorytetów oraz kontroli uprawnień (Scopes) w czasie rzeczywistym.</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                Testuj dopasowanie tras routingowych, weryfikację uprawnień (Scopes), wstrzykiwanie nagłówków oraz wykonuj rzeczywiste wywołania proxy z podglądem <strong>RAW HTTP Request & Response</strong>.
+            </RadzenText>
         </RadzenColumn>
         <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
             <RadzenButton Icon="arrow_back" Text="Powrót do tras" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/gateway"))" />
         </RadzenColumn>
     </RadzenRow>
 
+    <!-- Request Studio Card -->
     <RadzenCard Class="rz-p-4">
-        <RadzenStack Gap="1.5rem">
-            <RadzenRow Gap="1rem">
-                <RadzenColumn Size="12" SizeMD="3">
-                    <RadzenFormField Text="Metoda HTTP" Class="w-100">
-                        <RadzenDropDown @bind-Value="testRequest.HttpMethod" Data="@httpMethods" Class="w-100" />
-                    </RadzenFormField>
+        <RadzenStack Gap="1.25rem">
+            <!-- URL and Method Row -->
+            <RadzenRow Gap="0.75rem" AlignItems="AlignItems.Center">
+                <RadzenColumn Size="12" SizeSM="3" SizeMD="2">
+                    <RadzenDropDown @bind-Value="testRequest.HttpMethod" Data="@httpMethods" Class="w-100 fw-bold" 
+                                    Style="@GetMethodStyle(testRequest.HttpMethod)" />
                 </RadzenColumn>
 
-                <RadzenColumn Size="12" SizeMD="9">
-                    <RadzenFormField Text="Ścieżka Żądania (Request Path)" Class="w-100">
-                        <RadzenTextBox @bind-Value="testRequest.RequestPath" Class="w-100" Placeholder="/api/orders/123" />
-                    </RadzenFormField>
+                <RadzenColumn Size="12" SizeSM="9" SizeMD="6">
+                    <RadzenTextBox @bind-Value="testRequest.RequestUrl" Class="w-100 font-monospace" Placeholder="/api/v1/orders/100?details=true lub https://..." />
                 </RadzenColumn>
 
-                <RadzenColumn Size="12">
-                    <RadzenFormField Text="Scopes dostarczone w Tokenie JWT" Class="w-100">
-                        <RadzenDropDown @bind-Value="testRequest.ProvidedScopes" Data="@availableScopes" Multiple="true" AllowClear="true" Placeholder="Wybierz scopes symulowanego użytkownika..." Class="w-100" />
-                    </RadzenFormField>
+                <RadzenColumn Size="12" SizeMD="4" Class="d-flex gap-2">
+                    <RadzenButton Text="Sprawdź trasę" Icon="search" ButtonStyle="ButtonStyle.Secondary" 
+                                  Click="@EvaluateRouteOnlyAsync" IsBusy="@isEvaluating" Class="flex-grow-1" />
+                    <RadzenButton Text="Wyślij żądanie" Icon="send" ButtonStyle="ButtonStyle.Primary" 
+                                  Click="@SendLiveRequestAsync" IsBusy="@isSending" Class="flex-grow-1" />
                 </RadzenColumn>
             </RadzenRow>
 
-            <div class="d-flex justify-content-end">
-                <RadzenButton Text="Uruchom Test Routingu" Icon="play_arrow" ButtonStyle="ButtonStyle.Primary" Click="@RunTestAsync" IsBusy="@isRunning" />
+            <!-- Quick Presets -->
+            <div class="d-flex flex-wrap align-items-center gap-2 pt-1 border-top">
+                <span class="text-muted small fw-bold me-1">Szablony testowe:</span>
+                <RadzenButton Text="GET Orders" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => ApplyPreset("GET", "/api/orders/123", "", "orders.read"))" />
+                <RadzenButton Text="POST Order (JSON)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => ApplyPreset("POST", "/api/orders", "{\n  \"customerId\": 42,\n  \"amount\": 199.99,\n  \"currency\": \"PLN\",\n  \"items\": [\"Książka\", \"Kawa\"]\n}", "orders.write"))" />
+                <RadzenButton Text="PUT User Update" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => ApplyPreset("PUT", "/api/users/profile", "{\n  \"displayName\": \"Jan Kowalski\",\n  \"department\": \"IT Security\"\n}", "profile user.manage"))" />
+                <RadzenButton Text="DELETE Resource" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => ApplyPreset("DELETE", "/api/cache/flush", "", "admin.system"))" />
             </div>
+
+            <!-- Configuration Tabs (Headers, Body, Auth, Options) -->
+            <RadzenTabs RenderMode="TabRenderMode.Client" Class="mt-2">
+                <Tabs>
+                    <!-- TAB 1: Headers -->
+                    <RadzenTabsItem Text="Nagłówki HTTP (Headers)">
+                        <RadzenStack Gap="0.75rem" Class="rz-pt-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted small">Wpisz nagłówki żądania w formacie <code>Klucz: Wartość</code> (jeden w każdej linii):</span>
+                                <div class="d-flex gap-1">
+                                    <RadzenButton Text="+ JSON Accept" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => AppendHeader("Accept: application/json"))" />
+                                    <RadzenButton Text="+ User-Agent" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => AppendHeader("User-Agent: Quorum-Gateway-Simulator/1.0"))" />
+                                    <RadzenButton Text="+ Custom Header" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => AppendHeader("X-Client-Correlation-Id: " + Guid.NewGuid().ToString("N")))" />
+                                    <RadzenButton Text="Wyczyść" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => testRequest.RawHeaders = "")" />
+                                </div>
+                            </div>
+                            <RadzenTextArea @bind-Value="testRequest.RawHeaders" Rows="5" Class="w-100 font-monospace" 
+                                            Placeholder="Accept: application/json&#10;User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)&#10;X-Correlation-Id: abc-123" />
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    <!-- TAB 2: Body -->
+                    <RadzenTabsItem Text="Ciało Żądania (Request Body)">
+                        <RadzenStack Gap="0.75rem" Class="rz-pt-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-muted small">Content-Type:</span>
+                                    <RadzenDropDown @bind-Value="testRequest.ContentType" Data="@contentTypes" Style="width: 220px;" Size="ButtonSize.Small" />
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <RadzenButton Text="Formatuj JSON" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@FormatJsonBody" />
+                                    <RadzenButton Text="Wyczyść Body" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => testRequest.RequestBody = "")" />
+                                </div>
+                            </div>
+                            <RadzenTextArea @bind-Value="testRequest.RequestBody" Rows="8" Class="w-100 font-monospace" 
+                                            Placeholder="{\n  \"key\": \"value\"\n}" />
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    <!-- TAB 3: Auth & Scopes -->
+                    <RadzenTabsItem Text="Autoryzacja & Scopes">
+                        <RadzenStack Gap="1rem" Class="rz-pt-2">
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Symulowany Bearer Token (JWT)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="testRequest.BearerToken" Class="w-100 font-monospace" Placeholder="eyJhbGciOiJSUzI1NiIs..." />
+                                    </RadzenFormField>
+                                    <div class="form-text mt-1 text-muted small">
+                                        Zostanie automatycznie dołączony jako nagłówek <code>Authorization: Bearer &lt;token&gt;</code> podczas wysyłania do Upstream.
+                                    </div>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Dostarczone Scopes (Symulacja uprawnień użytkownika)" Class="w-100">
+                                        <RadzenDropDown @bind-Value="testRequest.ProvidedScopes" Data="@availableScopes" Multiple="true" AllowClear="true" 
+                                                        Placeholder="Wybierz scopes symulowanego tokenu..." Class="w-100" />
+                                    </RadzenFormField>
+                                    <div class="form-text mt-1 text-muted small">
+                                        Używane przez silnik Gateway do weryfikacji reguły <code>RequiredScope</code>.
+                                    </div>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    <!-- TAB 4: Advanced Options -->
+                    <RadzenTabsItem Text="Opcje Sieciowe (Proxy Options)">
+                        <RadzenStack Gap="1rem" Class="rz-pt-2">
+                            <RadzenRow Gap="1rem" AlignItems="AlignItems.Center">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenCheckBox @bind-Value="testRequest.IgnoreSslErrors" Name="chkSsl" />
+                                        <label for="chkSsl" class="form-check-label user-select-none">
+                                            <strong>Ignoruj błędy certyfikatów SSL/TLS</strong> (przydatne przy testowaniu wewnętrznych serwisów HTTPS i self-signed)
+                                        </label>
+                                    </div>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <label class="form-label mb-0 text-nowrap">Niestandardowy Timeout (sekundy):</label>
+                                        <RadzenNumeric @bind-Value="testRequest.CustomTimeoutSeconds" Min="1" Max="300" Style="width: 120px;" Placeholder="Auto" />
+                                    </div>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
         </RadzenStack>
     </RadzenCard>
 
+    <!-- TEST RESULTS SECTION -->
     @if (testResult != null)
     {
+        <!-- 1. Gateway Routing & Authorization Match Banner -->
         <RadzenCard Class="rz-p-4">
-            <RadzenText TextStyle="TextStyle.H6" Class="fw-bold mb-3">Wynik Symulacji Routingu</RadzenText>
-            
-            <RadzenAlert AlertStyle="@(testResult.IsMatch && testResult.IsAuthorized ? AlertStyle.Success : (!testResult.IsMatch ? AlertStyle.Danger : AlertStyle.Warning))" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
-                <div class="fw-bold fs-6">@testResult.Explanation</div>
-            </RadzenAlert>
-
-            @if (testResult.IsMatch && testResult.MatchedRoute != null)
-            {
-                <RadzenRow Gap="1rem" Class="mt-3">
-                    <RadzenColumn Size="12" SizeMD="6">
-                        <RadzenCard Class="rz-p-3" Style="background: #f8fafc;">
-                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold">Dopasowana Trasa</RadzenText>
-                            <div><strong>Wzorzec:</strong> <code>@testResult.MatchedRoute.MatchPattern</code></div>
-                            <div><strong>Nazwa:</strong> @(testResult.MatchedRoute.RouteName ?? "-")</div>
-                            <div><strong>Priorytet:</strong> @testResult.MatchedRoute.Priority</div>
-                            <div><strong>Metody:</strong> @string.Join(", ", testResult.MatchedRoute.AllowedHttpMethods)</div>
-                            <div><strong>Dostęp Anonimowy:</strong> @(testResult.MatchedRoute.AllowAnonymous ? "Tak" : "Nie (Wymaga tokenu)")</div>
-                        </RadzenCard>
-                    </RadzenColumn>
-
-                    <RadzenColumn Size="12" SizeMD="6">
-                        <RadzenCard Class="rz-p-3" Style="background: #f8fafc;">
-                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold">Docelowy URL Przekierowania (Upstream)</RadzenText>
-                            <div class="text-truncate fw-bold" style="font-family: monospace; color: #0284c7;">@testResult.TargetUri</div>
-                            <div class="mt-2">
-                                <strong>Status Autoryzacji:</strong>
-                                @if (testResult.IsAuthorized)
-                                {
-                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Autoryzacja Przyznana (200 OK)" IsPill="true" />
-                                }
-                                else
-                                {
-                                    <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Odmowa Dostępu (403 Forbidden)" IsPill="true" />
-                                }
-                            </div>
-                            @if (testResult.MissingScopes != null && testResult.MissingScopes.Count > 0)
+            <RadzenStack Gap="1rem">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-0">Wynik Ewaluacji API Gateway</RadzenText>
+                    @if (testResult.Evaluation.IsMatched)
+                    {
+                        <div class="d-flex align-items-center gap-2">
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Trasa Dopasowana" IsPill="true" />
+                            @if (testResult.Evaluation.AuthPassed)
                             {
-                                <div class="mt-2 text-danger small">
-                                    <strong>Brakujące Scopes:</strong> @string.Join(", ", testResult.MissingScopes)
-                                </div>
+                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Autoryzacja OK" IsPill="true" />
                             }
-                        </RadzenCard>
-                    </RadzenColumn>
-                </RadzenRow>
-            }
+                            else
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Brak Uprawnień (403)" IsPill="true" />
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Brak Dopasowania" IsPill="true" />
+                    }
+                </div>
+
+                <RadzenAlert AlertStyle="@(testResult.Evaluation.IsMatched && testResult.Evaluation.AuthPassed ? AlertStyle.Success : (!testResult.Evaluation.IsMatched ? AlertStyle.Danger : AlertStyle.Warning))" 
+                             ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <div class="fw-bold">@testResult.Evaluation.Explanation</div>
+                </RadzenAlert>
+
+                @if (testResult.Evaluation.IsMatched && testResult.Evaluation.MatchedRoute != null)
+                {
+                    <RadzenRow Gap="1rem">
+                        <!-- Matched Route Details -->
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenCard Class="rz-p-3" Style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold text-primary mb-2">Szczegóły Dopasowanej Trasy</RadzenText>
+                                <div class="d-flex justify-content-between py-1 border-bottom">
+                                    <span class="text-muted">Nazwa Trasy:</span>
+                                    <span class="fw-bold">@(testResult.Evaluation.MatchedRoute.RouteName ?? "Brak nazwy")</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-bottom">
+                                    <span class="text-muted">Wzorzec Dopasowania:</span>
+                                    <code>@testResult.Evaluation.MatchedRoute.MatchPattern</code>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-bottom">
+                                    <span class="text-muted">Priorytet Trasy:</span>
+                                    <span class="badge bg-secondary">@testResult.Evaluation.MatchedRoute.Priority</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-bottom">
+                                    <span class="text-muted">Dozwolone Metody:</span>
+                                    <span>@testResult.Evaluation.MatchedRoute.HttpMethods</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1">
+                                    <span class="text-muted">Forward Original Host:</span>
+                                    <span>@(testResult.Evaluation.MatchedRoute.ForwardOriginalHost ? "Tak (przekazywany)" : "Nie (host upstream)")</span>
+                                </div>
+                            </RadzenCard>
+                        </RadzenColumn>
+
+                        <!-- Calculated Target Upstream & Security -->
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenCard Class="rz-p-3" Style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold text-primary mb-2">Docelowy Upstream URL & Bezpieczeństwo</RadzenText>
+                                <div class="py-1 border-bottom">
+                                    <span class="text-muted d-block small">Obliczony Upstream URL:</span>
+                                    <span class="font-monospace text-primary fw-bold text-break">@testResult.Evaluation.CalculatedUpstreamUrl</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-1 border-bottom">
+                                    <span class="text-muted">Autoryzacja:</span>
+                                    <span>@testResult.Evaluation.AuthSummary</span>
+                                </div>
+                                @if (testResult.Evaluation.MissingScopes.Count > 0)
+                                {
+                                    <div class="py-1 border-bottom text-danger">
+                                        <span class="fw-bold">Brakujące Scopes:</span> @string.Join(", ", testResult.Evaluation.MissingScopes)
+                                    </div>
+                                }
+                                @if (testResult.Evaluation.InjectedRouteHeaders.Count > 0)
+                                {
+                                    <div class="py-1">
+                                        <span class="text-muted d-block small">Wstrzykiwane Nagłówki Trasy:</span>
+                                        @foreach (var h in testResult.Evaluation.InjectedRouteHeaders)
+                                        {
+                                            <span class="badge bg-info text-dark me-1 font-monospace">@h.Key: @h.Value</span>
+                                        }
+                                    </div>
+                                }
+                            </RadzenCard>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <!-- Route Candidates Accordion -->
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="@(() => showCandidateMatrix = !showCandidateMatrix)">
+                            @(showCandidateMatrix ? "Ukryj" : "Pokaż") pełną analizę kandydatów tras (@testResult.Evaluation.CandidateEvaluations.Count reguł w kolejce)
+                        </button>
+
+                        @if (showCandidateMatrix)
+                        {
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm table-bordered table-striped align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 80px;">Priorytet</th>
+                                            <th>Trasa</th>
+                                            <th>Wzorzec</th>
+                                            <th>Metody</th>
+                                            <th>Status Ewaluacji</th>
+                                            <th>Szczegóły</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var cand in testResult.Evaluation.CandidateEvaluations)
+                                        {
+                                            <tr class="@(cand.IsWinner ? "table-success fw-bold" : "")">
+                                                <td><span class="badge bg-secondary">@cand.Priority</span></td>
+                                                <td>@(cand.RouteName ?? $"ID {cand.RouteId}")</td>
+                                                <td><code>@cand.MatchPattern</code></td>
+                                                <td>@cand.AllowedMethods</td>
+                                                <td>
+                                                    @if (cand.IsWinner)
+                                                    {
+                                                        <span class="badge bg-success">Zwycięzca (Dopasowano)</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-light text-dark border">@cand.EvaluationStatus</span>
+                                                    }
+                                                </td>
+                                                <td class="small text-muted">@cand.Details</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                }
+            </RadzenStack>
         </RadzenCard>
+
+        <!-- 2. RAW HTTP REQUEST & RESPONSE VIEW -->
+        @if (testResult.Execution.Executed)
+        {
+            <RadzenCard Class="rz-p-4">
+                <RadzenStack Gap="1.5rem">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-3">
+                            <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-0">Zrzut Wywołania Proxy (RAW HTTP)</RadzenText>
+                            @if (testResult.Execution.StatusCode.HasValue)
+                            {
+                                <span class="badge @GetStatusBadgeClass(testResult.Execution.StatusCode.Value) fs-6">
+                                    HTTP @testResult.Execution.StatusCode @testResult.Execution.StatusPhrase
+                                </span>
+                            }
+                            @if (testResult.Execution.ExecutionTimeMs > 0)
+                            {
+                                <span class="text-muted small">Czas wykonania: <strong>@testResult.Execution.ExecutionTimeMs ms</strong></span>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!testResult.Execution.IsSuccess && !string.IsNullOrEmpty(testResult.Execution.ErrorMessage))
+                    {
+                        <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
+                            <div class="fw-bold">@testResult.Execution.ErrorMessage</div>
+                        </RadzenAlert>
+                    }
+
+                    <RadzenRow Gap="1.5rem">
+                        <!-- RAW REQUEST -->
+                        <RadzenColumn Size="12" SizeLG="6">
+                            <RadzenCard Class="rz-p-3" Style="background: #0f172a; border-radius: 8px;">
+                                <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom border-secondary">
+                                    <span class="text-light fw-bold font-monospace small">WYSŁANE ŻĄDANIE (RAW REQUEST)</span>
+                                    <RadzenButton Text="Kopiuj" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" 
+                                                  Click="@(() => CopyToClipboard(testResult.Execution.RawRequest))" />
+                                </div>
+                                <pre class="text-info font-monospace m-0 p-2" style="max-height: 480px; overflow-y: auto; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.4;">@testResult.Execution.RawRequest</pre>
+                            </RadzenCard>
+                        </RadzenColumn>
+
+                        <!-- RAW RESPONSE -->
+                        <RadzenColumn Size="12" SizeLG="6">
+                            <RadzenCard Class="rz-p-3" Style="background: #0f172a; border-radius: 8px;">
+                                <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom border-secondary">
+                                    <span class="text-light fw-bold font-monospace small">ODEBRANA ODPOWIEDŹ (RAW RESPONSE)</span>
+                                    <RadzenButton Text="Kopiuj" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" 
+                                                  Click="@(() => CopyToClipboard(testResult.Execution.RawResponse))" />
+                                </div>
+                                <pre class="@(testResult.Execution.IsSuccess ? "text-success" : "text-warning") font-monospace m-0 p-2" style="max-height: 480px; overflow-y: auto; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.4;">@testResult.Execution.RawResponse</pre>
+                            </RadzenCard>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenStack>
+            </RadzenCard>
+        }
     }
 </RadzenStack>
 
@@ -101,34 +351,138 @@
     private GatewayTestRequest testRequest = new()
     {
         HttpMethod = "GET",
-        RequestPath = "/api/orders/55",
-        ProvidedScopes = new List<string>()
+        RequestUrl = "/api/v1/orders/100?details=true",
+        RawHeaders = "Accept: application/json\nUser-Agent: Quorum-Gateway-Simulator/1.0",
+        ContentType = "application/json",
+        IgnoreSslErrors = true
     };
+
     private GatewayTestResult? testResult;
     private List<string> httpMethods = new() { "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" };
+    private List<string> contentTypes = new() { "application/json", "application/x-www-form-urlencoded", "text/plain", "application/xml" };
     private List<string> availableScopes = new();
-    private bool isRunning = false;
+    private bool isEvaluating = false;
+    private bool isSending = false;
+    private bool showCandidateMatrix = false;
 
     protected override async Task OnInitializedAsync()
     {
-        var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 100);
-        availableScopes = scopesRes.Items.Select(s => s.Name).ToList();
+        try
+        {
+            var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 100);
+            availableScopes = scopesRes.Items.Select(s => s.Name).Distinct().ToList();
+        }
+        catch
+        {
+            // Fallback scopes
+        }
+
         if (availableScopes.Count == 0)
         {
-            availableScopes = new List<string> { "openid", "profile", "email", "api1", "orders.read", "orders.write" };
+            availableScopes = new List<string> { "openid", "profile", "email", "api1", "orders.read", "orders.write", "admin.system" };
         }
     }
 
-    private async Task RunTestAsync()
+    private void ApplyPreset(string method, string path, string body, string scopes)
     {
-        isRunning = true;
+        testRequest.HttpMethod = method;
+        testRequest.RequestUrl = path;
+        testRequest.RequestBody = body;
+        testRequest.ProvidedScopes = scopes.Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (string.IsNullOrEmpty(testRequest.RawHeaders))
+        {
+            testRequest.RawHeaders = "Accept: application/json\nUser-Agent: Quorum-Gateway-Simulator/1.0";
+        }
+    }
+
+    private void AppendHeader(string headerLine)
+    {
+        if (string.IsNullOrWhiteSpace(testRequest.RawHeaders))
+        {
+            testRequest.RawHeaders = headerLine;
+        }
+        else
+        {
+            testRequest.RawHeaders = testRequest.RawHeaders.TrimEnd() + "\n" + headerLine;
+        }
+    }
+
+    private void FormatJsonBody()
+    {
+        if (string.IsNullOrWhiteSpace(testRequest.RequestBody)) return;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(testRequest.RequestBody);
+            testRequest.RequestBody = System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            // not valid json, ignore
+        }
+    }
+
+    private async Task EvaluateRouteOnlyAsync()
+    {
+        isEvaluating = true;
+        testRequest.ExecuteLiveRequest = false;
         try
         {
             testResult = await GatewayStore.TestRouteAsync(testRequest);
         }
         finally
         {
-            isRunning = false;
+            isEvaluating = false;
         }
+    }
+
+    private async Task SendLiveRequestAsync()
+    {
+        isSending = true;
+        testRequest.ExecuteLiveRequest = true;
+        try
+        {
+            testResult = await GatewayStore.TestRouteAsync(testRequest);
+        }
+        finally
+        {
+            isSending = false;
+        }
+    }
+
+    private async Task CopyToClipboard(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        }
+        catch
+        {
+            // ignore clipboard errors in sandboxed iframes
+        }
+    }
+
+    private string GetMethodStyle(string method)
+    {
+        return method.ToUpperInvariant() switch
+        {
+            "GET" => "color: #15803d; background-color: #f0fdf4;",
+            "POST" => "color: #0369a1; background-color: #f0f9ff;",
+            "PUT" => "color: #b45309; background-color: #fffbeb;",
+            "DELETE" => "color: #b91c1c; background-color: #fef2f2;",
+            "PATCH" => "color: #6d28d9; background-color: #f5f3ff;",
+            _ => "color: #334155; background-color: #f8fafc;"
+        };
+    }
+
+    private string GetStatusBadgeClass(int statusCode)
+    {
+        return statusCode switch
+        {
+            >= 200 and < 300 => "bg-success",
+            >= 300 and < 400 => "bg-info text-dark",
+            >= 400 and < 500 => "bg-warning text-dark",
+            _ => "bg-danger"
+        };
     }
 }
