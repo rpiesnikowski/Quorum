@@ -1,0 +1,334 @@
+@page "/admin/clients/create"
+@page "/admin/clients/{Id:int}/edit"
+@layout AdminLayout
+@inject IAdminClientStore ClientStore
+@inject IAdminApiScopeStore ApiScopeStore
+@inject IAdminIdentityResourceStore IdentityResourceStore
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(IsNew ? "Nowy Klient OAuth" : "Edycja Klienta OAuth") | Quorum Admin UI</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">
+                @(IsNew ? "Dodaj Nowego Klienta OAuth / OIDC" : $"Edycja Klienta: {model.ClientId}")
+            </RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                Konfiguracja przepływów autoryzacji (PKCE, Code Flow, Client Credentials), dozwolonych adresów zwrotnych, sekretów i zakresów uprawnień.
+            </RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="arrow_back" Text="Powrót do listy" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/clients"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenTemplateForm TItem="ClientAdminModel" Data="@model" Submit="@HandleSubmitAsync">
+            <RadzenTabs>
+                <Tabs>
+                    <!-- KROK 1: Podstawowe Ustawienia -->
+                    <RadzenTabsItem Text="Podstawowe Informacje" Icon="info">
+                        <RadzenStack Gap="1.25rem" Class="pt-3">
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Client ID (Identyfikator)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.ClientId" Name="ClientId" Class="w-100" Disabled="@(!IsNew)" />
+                                    </RadzenFormField>
+                                    <RadzenRequiredValidator Component="ClientId" Text="ClientId jest wymagany." />
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Nazwa Klienta (Client Name)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.ClientName" Name="ClientName" Class="w-100" />
+                                    </RadzenFormField>
+                                    <RadzenRequiredValidator Component="ClientName" Text="Nazwa klienta jest wymagana." />
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="12">
+                                    <RadzenFormField Text="Opis Klienta" Class="w-100">
+                                        <RadzenTextArea @bind-Value="model.Description" Rows="2" Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="URL Klienta (ClientUri)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.ClientUri" Class="w-100" Placeholder="https://app.example.com" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="URL Logo (LogoUri)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.LogoUri" Class="w-100" Placeholder="https://app.example.com/logo.png" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenCheckBox @bind-Value="model.Enabled" Name="Enabled" />
+                                        <RadzenLabel Text="Klient aktywny" Component="Enabled" />
+                                    </div>
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenCheckBox @bind-Value="model.RequirePkce" Name="RequirePkce" />
+                                        <RadzenLabel Text="Wymagaj PKCE (S256)" Component="RequirePkce" />
+                                    </div>
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenCheckBox @bind-Value="model.RequireClientSecret" Name="RequireClientSecret" />
+                                        <RadzenLabel Text="Wymagaj Client Secret" Component="RequireClientSecret" />
+                                    </div>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    <!-- KROK 2: Przepływy & Scopes -->
+                    <RadzenTabsItem Text="Przepływy & Uprawnienia" Icon="vpn_key">
+                        <RadzenStack Gap="1.25rem" Class="pt-3">
+                            <RadzenFormField Text="Typy Przepływów (Grant Types)" Class="w-100">
+                                <RadzenDropDown @bind-Value="model.AllowedGrantTypes" Data="@availableGrantTypes" Multiple="true" AllowClear="true" Placeholder="Wybierz typy przepływów..." Class="w-100" />
+                            </RadzenFormField>
+
+                            <div class="d-flex gap-2">
+                                <RadzenButton Text="Szablon: SPA (PKCE)" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@SetSpaTemplate" />
+                                <RadzenButton Text="Szablon: Web App (Code Flow)" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@SetWebAppTemplate" />
+                                <RadzenButton Text="Szablon: M2M (Client Credentials)" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" Click="@SetM2MTemplate" />
+                            </div>
+
+                            <RadzenFormField Text="Dozwolone Zakresy (Allowed Scopes)" Class="w-100">
+                                <RadzenDropDown @bind-Value="model.AllowedScopes" Data="@allAvailableScopes" Multiple="true" AllowClear="true" Placeholder="Wybierz scopes..." Class="w-100" />
+                            </RadzenFormField>
+
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenCheckBox @bind-Value="model.AllowOfflineAccess" Name="AllowOfflineAccess" />
+                                        <RadzenLabel Text="Zezwalaj na Refresh Token (offline_access)" Component="AllowOfflineAccess" />
+                                    </div>
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenCheckBox @bind-Value="model.AlwaysIncludeUserClaimsInIdToken" Name="AlwaysIncludeUserClaimsInIdToken" />
+                                        <RadzenLabel Text="Dołączaj roszczenia użytkownika do ID Tokena" Component="AlwaysIncludeUserClaimsInIdToken" />
+                                    </div>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    <!-- KROK 3: Adresy URL i Przekierowania -->
+                    <RadzenTabsItem Text="Adresy URL i CORS" Icon="link">
+                        <RadzenStack Gap="1.25rem" Class="pt-3">
+                            <RadzenFormField Text="Dozwolone Adresy Zwrotne (Redirect URIs - jeden na linię)" Class="w-100">
+                                <RadzenTextArea @bind-Value="model.RedirectUrisText" Rows="3" Class="w-100" Placeholder="https://app.example.com/signin-oidc&#10;http://localhost:3000/callback" />
+                            </RadzenFormField>
+
+                            <RadzenFormField Text="Adresy Zwrotne po Wylogowaniu (Post Logout Redirect URIs)" Class="w-100">
+                                <RadzenTextArea @bind-Value="model.PostLogoutRedirectUrisText" Rows="2" Class="w-100" Placeholder="https://app.example.com/signout-callback-oidc" />
+                            </RadzenFormField>
+
+                            <RadzenFormField Text="Dozwolone Źródła CORS (Allowed CORS Origins)" Class="w-100">
+                                <RadzenTextArea @bind-Value="model.AllowedCorsOriginsText" Rows="2" Class="w-100" Placeholder="https://app.example.com&#10;http://localhost:3000" />
+                            </RadzenFormField>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    <!-- KROK 4: Sekrety & Czas Życia Tokenów -->
+                    <RadzenTabsItem Text="Sekrety i Czas Życia" Icon="lock">
+                        <RadzenStack Gap="1.25rem" Class="pt-3">
+                            @if (!IsNew && model.ClientSecrets.Count > 0)
+                            {
+                                <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold">Zapisane Sekrety Klienta</RadzenText>
+                                <RadzenDataGrid Data="@model.ClientSecrets" TItem="ClientSecretModel" AllowPaging="false">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="ClientSecretModel" Property="Description" Title="Opis" />
+                                        <RadzenDataGridColumn TItem="ClientSecretModel" Property="Type" Title="Typ" Width="140px" />
+                                        <RadzenDataGridColumn TItem="ClientSecretModel" Property="Created" Title="Utworzono" Width="160px">
+                                            <Template Context="sec">@sec.Created.ToShortDateString()</Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ClientSecretModel" Title="Akcje" Width="100px" TextAlign="TextAlign.End">
+                                            <Template Context="sec">
+                                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Variant="Variant.Flat" Click="@(() => RemoveSecretAsync(sec.Id))" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                    </Columns>
+                                </RadzenDataGrid>
+                            }
+
+                            <RadzenFieldset Text="Dodaj Nowy Sekret Klienta">
+                                <RadzenRow Gap="1rem">
+                                    <RadzenColumn Size="12" SizeMD="6">
+                                        <RadzenFormField Text="Wartość Sekretu (Value)" Class="w-100">
+                                            <RadzenPassword @bind-Value="model.NewSecretValue" Class="w-100" Placeholder="np. TajneHaslo123!" />
+                                        </RadzenFormField>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12" SizeMD="6">
+                                        <RadzenFormField Text="Opis Sekretu" Class="w-100">
+                                            <RadzenTextBox @bind-Value="model.NewSecretDescription" Class="w-100" Placeholder="np. Domyślny klucz produkcyjny" />
+                                        </RadzenFormField>
+                                    </RadzenColumn>
+                                </RadzenRow>
+                            </RadzenFieldset>
+
+                            <RadzenFieldset Text="Czas Życia Tokenów (w sekundach)">
+                                <RadzenRow Gap="1rem">
+                                    <RadzenColumn Size="12" SizeMD="4">
+                                        <RadzenFormField Text="Access Token Lifetime" Class="w-100">
+                                            <RadzenNumeric @bind-Value="model.AccessTokenLifetime" Class="w-100" />
+                                        </RadzenFormField>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12" SizeMD="4">
+                                        <RadzenFormField Text="Identity Token Lifetime" Class="w-100">
+                                            <RadzenNumeric @bind-Value="model.IdentityTokenLifetime" Class="w-100" />
+                                        </RadzenFormField>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12" SizeMD="4">
+                                        <RadzenFormField Text="Authorization Code Lifetime" Class="w-100">
+                                            <RadzenNumeric @bind-Value="model.AuthorizationCodeLifetime" Class="w-100" />
+                                        </RadzenFormField>
+                                    </RadzenColumn>
+                                </RadzenRow>
+                            </RadzenFieldset>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/clients"))" />
+                <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Klienta" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
+            </div>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsNew => !Id.HasValue || Id.Value == 0;
+    private ClientAdminModel model = new();
+    private List<string> availableGrantTypes = new() { "authorization_code", "client_credentials", "password", "implicit", "hybrid", "urn:ietf:params:oauth:grant-type:device_code" };
+    private List<string> allAvailableScopes = new();
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load available scopes from DB
+        var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 100);
+        var idRes = await IdentityResourceStore.GetResourcesAsync(pageSize: 100);
+        
+        allAvailableScopes = idRes.Items.Select(i => i.Name)
+            .Concat(scopesRes.Items.Select(s => s.Name))
+            .Distinct()
+            .ToList();
+
+        if (allAvailableScopes.Count == 0)
+        {
+            allAvailableScopes = new List<string> { "openid", "profile", "email", "roles", "offline_access", "api1", "quorum_api" };
+        }
+
+        if (!IsNew)
+        {
+            var client = await ClientStore.GetClientByIdAsync(Id!.Value);
+            if (client != null)
+            {
+                model = client;
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono wskazanego klienta.");
+                NavigationManager.NavigateTo("admin/clients");
+            }
+        }
+        else
+        {
+            SetSpaTemplate();
+        }
+    }
+
+    private void SetSpaTemplate()
+    {
+        model.AllowedGrantTypes = new List<string> { "authorization_code" };
+        model.RequirePkce = true;
+        model.RequireClientSecret = false;
+        model.AllowedScopes = new List<string> { "openid", "profile", "email", "offline_access" };
+        model.AllowOfflineAccess = true;
+    }
+
+    private void SetWebAppTemplate()
+    {
+        model.AllowedGrantTypes = new List<string> { "authorization_code" };
+        model.RequirePkce = true;
+        model.RequireClientSecret = true;
+        model.AllowedScopes = new List<string> { "openid", "profile", "email", "offline_access" };
+        model.AllowOfflineAccess = true;
+    }
+
+    private void SetM2MTemplate()
+    {
+        model.AllowedGrantTypes = new List<string> { "client_credentials" };
+        model.RequirePkce = false;
+        model.RequireClientSecret = true;
+        model.AllowedScopes = new List<string> { "api1", "quorum_api" };
+        model.AllowOfflineAccess = false;
+    }
+
+    private async Task RemoveSecretAsync(int secretId)
+    {
+        if (Id.HasValue)
+        {
+            var res = await ClientStore.DeleteSecretAsync(Id.Value, secretId);
+            if (res.Success)
+            {
+                model.ClientSecrets.RemoveAll(s => s.Id == secretId);
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Sekret został usunięty.");
+            }
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsNew)
+            {
+                var result = await ClientStore.CreateClientAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Klient '{model.ClientId}' został utworzony.");
+                    NavigationManager.NavigateTo("admin/clients");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd tworzenia", result.Error ?? "Wystąpił błąd.");
+                }
+            }
+            else
+            {
+                var result = await ClientStore.UpdateClientAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Zaktualizowano dane klienta.");
+                    NavigationManager.NavigateTo("admin/clients");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd aktualizacji", result.Error ?? "Wystąpił błąd.");
+                }
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

@@ -1,0 +1,165 @@
+@page "/admin/scopes/create"
+@page "/admin/scopes/{Id:int}/edit"
+@layout AdminLayout
+@inject IAdminApiScopeStore ApiScopeStore
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(IsNew ? "Nowy Zakres API" : "Edycja Zakresu API") | Quorum Admin UI</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">
+                @(IsNew ? "Dodaj Nowy Zakres API (Scope)" : $"Edycja Zakresu: {model.Name}")
+            </RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                Konfiguracja nazwy zakresu, nazwy wyświetlanej w oknie zgody oraz roszczeń użytkownika.
+            </RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="arrow_back" Text="Powrót do listy" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/scopes"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenTemplateForm TItem="ApiScopeAdminModel" Data="@model" Submit="@HandleSubmitAsync">
+            <RadzenStack Gap="1.5rem">
+                <RadzenFieldset Text="Dane Identyfikacyjne Zakresu">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Nazwa Zakresu (Name)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.Name" Name="Name" Class="w-100" Disabled="@(!IsNew)" Placeholder="np. api1, read:orders, payments" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="Name" Text="Nazwa zakresu jest wymagana." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Nazwa Wyświetlana (DisplayName)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.DisplayName" Class="w-100" Placeholder="np. Dostęp do API Zamówień" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12">
+                            <RadzenFormField Text="Opis Funkcjonalny" Class="w-100">
+                                <RadzenTextArea @bind-Value="model.Description" Rows="2" Class="w-100" Placeholder="Opis zakresu wyświetlany użytkownikowi..." />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Roszczenia Użytkownika (User Claims)">
+                    <RadzenFormField Text="Lista roszczeń (User Claims - po jednym na linię)" Class="w-100">
+                        <RadzenTextArea @bind-Value="model.UserClaimsText" Rows="3" Class="w-100" Placeholder="role&#10;permission&#10;tenant_id" />
+                    </RadzenFormField>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="Opcje i Flagi">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.Enabled" Name="Enabled" />
+                                <RadzenLabel Text="Zakres aktywny" Component="Enabled" />
+                            </div>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.ShowInDiscoveryDocument" Name="ShowInDiscoveryDocument" />
+                                <RadzenLabel Text="Pokaż w .well-known Discovery" Component="ShowInDiscoveryDocument" />
+                            </div>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.Required" Name="Required" />
+                                <RadzenLabel Text="Wymagany w żądaniu" Component="Required" />
+                            </div>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <div class="d-flex align-items-center gap-2">
+                                <RadzenCheckBox @bind-Value="model.Emphasize" Name="Emphasize" />
+                                <RadzenLabel Text="Wyróżnij na ekranie zgody" Component="Emphasize" />
+                            </div>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/scopes"))" />
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Zakres" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
+                </div>
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsNew => !Id.HasValue || Id.Value == 0;
+    private ApiScopeAdminModel model = new();
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsNew)
+        {
+            var sc = await ApiScopeStore.GetScopeByIdAsync(Id!.Value);
+            if (sc != null)
+            {
+                model = sc;
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono wskazanego zakresu.");
+                NavigationManager.NavigateTo("admin/scopes");
+            }
+        }
+        else
+        {
+            model = new ApiScopeAdminModel
+            {
+                Enabled = true,
+                ShowInDiscoveryDocument = true
+            };
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsNew)
+            {
+                var result = await ApiScopeStore.CreateScopeAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", $"Zakres '{model.Name}' został utworzony.");
+                    NavigationManager.NavigateTo("admin/scopes");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się utworzyć zakresu.");
+                }
+            }
+            else
+            {
+                var result = await ApiScopeStore.UpdateScopeAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Zaktualizowano dane zakresu.");
+                    NavigationManager.NavigateTo("admin/scopes");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się zaktualizować zakresu.");
+                }
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

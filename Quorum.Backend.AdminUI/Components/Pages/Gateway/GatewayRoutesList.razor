@@ -1,0 +1,174 @@
+@page "/admin/gateway"
+@page "/admin/gateway/routes"
+@layout AdminLayout
+@inject IAdminGatewayStore GatewayStore
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Trasy API Gateway | Quorum Admin UI</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Trasy API Gateway & Reverse Proxy</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Routowanie zapytań HTTP do mikroserwisów wewnętrznych z egzekwowaniem nagłówków Bearer i autoryzacji Scopes.</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="science" Text="Symulator Trasy" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => NavigationManager.NavigateTo("admin/gateway/test"))" />
+            <RadzenButton Icon="add" Text="Dodaj Trasę" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/gateway/create"))" />
+            <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-3">
+        <RadzenRow AlignItems="AlignItems.Center" Gap="1rem" Class="mb-3">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenTextBox Placeholder="Szukaj po wzorcu ścieżki, nazwie, hoście docelowym..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" Class="d-flex justify-content-md-end gap-2">
+                <RadzenButton Icon="filter_alt_off" Text="Wyczyść filtry" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@ResetFiltersAsync" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenDataGrid @ref="grid"
+                        Data="@routes"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.SimpleWithMenu"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="10"
+                        PageSizeOptions="@(new int[] { 5, 10, 25, 50, 100 })"
+                        ShowPagingSummary="true"
+                        PagingSummaryFormat="Strona {0} z {1} (łącznie {2} pozycji)"
+                        AllowColumnResize="true"
+                        IsLoading="@isLoading"
+                        TItem="GatewayRouteAdminModel"
+                        EmptyText="Brak tras API Gateway spełniających wybrane kryteria.">
+            <Columns>
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="Priority" Title="Prio" Width="80px" TextAlign="TextAlign.Center">
+                    <Template Context="r">
+                        <RadzenBadge BadgeStyle="BadgeStyle.Dark" Text="@r.Priority.ToString()" IsPill="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="PathPattern" Title="Wzorzec Ścieżki & Nazwa" Width="240px">
+                    <Template Context="r">
+                        <div class="fw-bold" style="font-family: monospace; color: #d946ef;">@r.PathPattern</div>
+                        <div class="text-muted" style="font-size: 0.78rem;">@(r.Name ?? "-")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="UpstreamHost" Title="Host Docelowy (Upstream)">
+                    <Template Context="r">
+                        <div class="text-truncate" style="font-family: monospace; font-size: 0.85rem;" title="@r.UpstreamHost">
+                            @r.UpstreamHost
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">Metody: @string.Join(", ", r.AllowedHttpMethods)</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="ScopesSummary" Title="Wymagane Scopes" Width="200px">
+                    <Template Context="r">
+                        <div class="d-flex flex-wrap gap-1">
+                            @if (r.RequiredScopes != null && r.RequiredScopes.Count > 0)
+                            {
+                                @foreach (var sc in r.RequiredScopes)
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@sc" IsPill="true" />
+                                }
+                            }
+                            else
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="Anonimowy (Brak)" IsPill="true" />
+                            }
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="StatusSummary" Title="Status" Width="110px">
+                    <Template Context="r">
+                        @if (r.IsEnabled)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Aktywna" IsPill="true" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Wyłączona" IsPill="true" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Title="Akcje" Width="140px" Sortable="false" Filterable="false" TextAlign="TextAlign.End">
+                    <Template Context="r">
+                        <div class="d-flex justify-content-end gap-1">
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/gateway/{r.Id}/edit"))" Tooltip="Edytuj trasę" />
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ConfirmDeleteAsync(r))" Tooltip="Usuń trasę" />
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private RadzenDataGrid<GatewayRouteAdminModel>? grid;
+    private IEnumerable<GatewayRouteAdminModel> routes = new List<GatewayRouteAdminModel>();
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        await LoadDataAsync();
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        searchTerm = string.Empty;
+        if (grid != null)
+        {
+            await grid.Reset(true);
+        }
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await GatewayStore.GetRoutesAsync(searchTerm, 1, 1000);
+            routes = result.Items;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ConfirmDeleteAsync(GatewayRouteAdminModel route)
+    {
+        var confirmed = await DialogService.Confirm($"Czy na pewno chcesz usunąć trasę '{route.PathPattern}'?", "Potwierdzenie usunięcia", new ConfirmOptions { OkButtonText = "Tak, usuń", CancelButtonText = "Anuluj" });
+        if (confirmed == true)
+        {
+            var result = await GatewayStore.DeleteRouteAsync(route.Id);
+            if (result.Success)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Trasa API Gateway została usunięta.");
+                await LoadDataAsync();
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się usunąć trasy.");
+            }
+        }
+    }
+}

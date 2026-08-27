@@ -1,7 +1,6 @@
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Program).Assembly" 
-            AdditionalAssemblies="new[] { typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly }" 
-            NotFoundPage="typeof(Pages.NotFound)">
+            AdditionalAssemblies="new[] { typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly }">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
                 <NotAuthorized>
@@ -49,6 +48,22 @@
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
+        <NotFound>
+            <PageTitle>Nie Znaleziono | Quorum</PageTitle>
+            <LayoutView Layout="@typeof(Layout.MainLayout)">
+                <div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+                    <RadzenCard Class="rz-p-5 text-center" Style="max-width: 480px;">
+                        <RadzenIcon Icon="search_off" Style="font-size: 3.5rem; color: #64748b;" />
+                        <RadzenText TextStyle="TextStyle.H3" Class="fw-bold mt-3 mb-2">404</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-2">Nie znaleziono strony</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" Class="text-muted mb-4">
+                            Strona, której szukasz, nie istnieje lub została przeniesiona.
+                        </RadzenText>
+                        <RadzenButton Text="Powrót do Pulpitu" Icon="dashboard" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("/admin"))" />
+                    </RadzenCard>
+                </div>
+            </LayoutView>
+        </NotFound>
     </Router> 
 </CascadingAuthenticationState>
 

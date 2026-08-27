@@ -1,0 +1,193 @@
+@page "/admin/gateway/create"
+@page "/admin/gateway/{Id:int}/edit"
+@layout AdminLayout
+@inject IAdminGatewayStore GatewayStore
+@inject IAdminApiScopeStore ApiScopeStore
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(IsNew ? "Nowa Trasa Gateway" : "Edycja Trasy Gateway") | Quorum Admin UI</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">
+                @(IsNew ? "Dodaj Nową Trasę API Gateway" : $"Edycja Trasy: {model.PathPattern}")
+            </RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                Dopasowanie ścieżek URL (Prefix lub Regex), przekazywanie zapytań do serwera nadrzędnego (Upstream) oraz ochrona na poziomie Scopes.
+            </RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="arrow_back" Text="Powrót do listy" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/gateway"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenTemplateForm TItem="GatewayRouteAdminModel" Data="@model" Submit="@HandleSubmitAsync">
+            <RadzenStack Gap="1.5rem">
+                <!-- Podstawowe dopasowanie trasy -->
+                <RadzenFieldset Text="Dopasowanie Żądania (Inbound Routing)">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Wzorzec Ścieżki (Path Pattern)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.PathPattern" Name="PathPattern" Class="w-100" Placeholder="np. /api/orders, /api/v1/users/.*" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="PathPattern" Text="Wzorzec ścieżki jest wymagany." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenFormField Text="Nazwa Trasy (Route Name)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.Name" Class="w-100" Placeholder="np. Orders Microservice API" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenFormField Text="Priorytet Dopasowania (Większy = ważniejszy)" Class="w-100">
+                                <RadzenNumeric @bind-Value="model.Priority" Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="8">
+                            <RadzenFormField Text="Dozwolone Metody HTTP" Class="w-100">
+                                <RadzenDropDown @bind-Value="model.AllowedHttpMethods" Data="@httpMethodsList" Multiple="true" AllowClear="true" Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <!-- Cel przekierowania -->
+                <RadzenFieldset Text="Cel Przekierowania (Upstream Host & Backend)">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="8">
+                            <RadzenFormField Text="Adres Host Docelowego (Upstream Host)" Class="w-100">
+                                <RadzenTextBox @bind-Value="model.UpstreamHost" Name="UpstreamHost" Class="w-100" Placeholder="http://orders-service:5005 lub https://api.internal.local" />
+                            </RadzenFormField>
+                            <RadzenRequiredValidator Component="UpstreamHost" Text="Adres hosta docelowego jest wymagany." />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenFormField Text="Timeout Żądania (sekundy)" Class="w-100">
+                                <RadzenNumeric @bind-Value="model.TimeoutSeconds" Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12">
+                            <RadzenFormField Text="Opis Trasy" Class="w-100">
+                                <RadzenTextArea @bind-Value="model.Description" Rows="2" Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <!-- Autoryzacja i Scopes -->
+                <RadzenFieldset Text="Autoryzacja i Wymagane Scopes">
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="8">
+                            <RadzenFormField Text="Wymagane Scopes w Tokenie JWT" Class="w-100">
+                                <RadzenDropDown @bind-Value="model.RequiredScopes" Data="@availableScopes" Multiple="true" AllowClear="true" Placeholder="Wybierz scopes (pozostaw puste dla publicznych endpointów)..." Class="w-100" />
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <div class="d-flex align-items-center gap-2 pt-3">
+                                <RadzenCheckBox @bind-Value="model.IsEnabled" Name="IsEnabled" />
+                                <RadzenLabel Text="Trasa aktywna w Reverse Proxy" Component="IsEnabled" />
+                            </div>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenFieldset>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/gateway"))" />
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Trasę" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
+                </div>
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsNew => !Id.HasValue || Id.Value == 0;
+    private GatewayRouteAdminModel model = new();
+    private List<string> httpMethodsList = new() { "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" };
+    private List<string> availableScopes = new();
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 100);
+        availableScopes = scopesRes.Items.Select(s => s.Name).ToList();
+        if (availableScopes.Count == 0)
+        {
+            availableScopes = new List<string> { "api1", "orders.read", "orders.write", "quorum_api" };
+        }
+
+        if (!IsNew)
+        {
+            var r = await GatewayStore.GetRouteByIdAsync(Id!.Value);
+            if (r != null)
+            {
+                model = r;
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono wybranej trasy.");
+                NavigationManager.NavigateTo("admin/gateway");
+            }
+        }
+        else
+        {
+            model = new GatewayRouteAdminModel
+            {
+                Priority = 10,
+                TimeoutSeconds = 30,
+                IsEnabled = true,
+                UpstreamHost = "http://localhost:5001",
+                AllowedHttpMethods = new List<string> { "GET", "POST", "PUT", "DELETE" },
+                RequiredScopes = new List<string>()
+            };
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        isSubmitting = true;
+        try
+        {
+            if (IsNew)
+            {
+                var result = await GatewayStore.CreateRouteAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Trasa API Gateway została utworzona.");
+                    NavigationManager.NavigateTo("admin/gateway");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się utworzyć trasy.");
+                }
+            }
+            else
+            {
+                var result = await GatewayStore.UpdateRouteAsync(model);
+                if (result.Success)
+                {
+                    NotificationService.Notify(NotificationSeverity.Success, "Sukces", "Zaktualizowano trasę API Gateway.");
+                    NavigationManager.NavigateTo("admin/gateway");
+                }
+                else
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się zapisać zmian.");
+                }
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
