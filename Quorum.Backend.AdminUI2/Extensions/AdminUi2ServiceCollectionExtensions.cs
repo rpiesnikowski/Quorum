@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -15,17 +16,52 @@ public static class AdminUi2ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddQuorumAdminUI2<TUser>(
         this IServiceCollection services,
-        Action<AdminUi2Options>? configureOptions = null)
+        Action<AdminUiOptions2>? configureOptions = null)
         where TUser : IdentityUser, new()
     {
-        var options = new AdminUi2Options();
+        var options = new AdminUiOptions2();
         configureOptions?.Invoke(options);
         services.AddSingleton(options);
 
+        services.AddRazorComponents()
+            .AddInteractiveServerComponents();
+        
         // Rejestracja serwisów komponentów Radzen Blazor (DataGrid, DialogService, NotificationService, TooltipService, ContextMenuService)
         services.AddRadzenComponents();
         services.AddHttpClient();
+        
+        // Rejestracja dedykowanego schematu uwierzytelniania ciasteczkowego dla administratorów
+        services.AddAuthentication()
+            .AddCookie(options.AuthenticationScheme, cookieOptions =>
+            {
+                cookieOptions.Cookie.Name = options.CookieName;
+                cookieOptions.LoginPath = options.LoginPath;
+                cookieOptions.LogoutPath = options.LogoutPath;
+                cookieOptions.AccessDeniedPath = options.AccessDeniedPath;
+                cookieOptions.ReturnUrlParameter = "returnUrl";
+                cookieOptions.ExpireTimeSpan = options.ExpireTimeSpan;
+                cookieOptions.SlidingExpiration = true;
+                cookieOptions.Cookie.HttpOnly = true;
+                cookieOptions.Cookie.SameSite = SameSiteMode.Lax;
+                cookieOptions.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            });
+        
+        // Rejestracja dedykowanej polityki autoryzacji opartej o schemat administratora i wymaganą rolę
+        services.AddAuthorization(authOptions =>
+        {
+            authOptions.AddPolicy(options.PolicyName, policy =>
+            {
+                policy.AddAuthenticationSchemes(options.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
+                if (!string.IsNullOrEmpty(options.RequiredRole))
+                {
+                    policy.RequireRole(options.RequiredRole);
+                }
+            });
+        });
 
+        services.AddCascadingAuthenticationState();
+        
         return services;
     }
 

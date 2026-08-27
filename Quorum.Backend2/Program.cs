@@ -10,12 +10,10 @@ using Quorum.Backend.EntityFramework.Models;
 using Quorum.Backend2.Components;
 using Quorum.Backend2.Data;
 using Quorum.Backend2.Services;
-using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+
 // 1. Obsługa nagłówków X-Forwarded-Proto / X-Forwarded-For dla Reverse Proxy (Docker/Nginx/Caddy)
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -91,10 +89,6 @@ builder.Services.AddIdentityServer(options =>
 })
 .AddDeveloperSigningCredential();
 
-// 7. Konfiguracja Blazor Interactive Server (Pure Blazor - brak stron Razor MVC)
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-
 // 8. Konfiguracja Quorum AdminUI 2 (Nuget RCL oparty w 100% o Radzen)
 builder.Services.AddQuorumAdminUI2<ApplicationUser>(options =>
 {
@@ -106,6 +100,7 @@ builder.Services.AddQuorumAdminUI2<ApplicationUser>(options =>
 builder.Services.AddQuorumAdminUI2EntityFrameworkStore<ApplicationUser>();
 
 var app = builder.Build();
+
 app.UseStaticFiles();
 app.MapStaticAssets();
 // Przetwarzanie nagłówków Proxy przed routingiem
@@ -128,6 +123,9 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 // 10. Pipeline IdentityServer
