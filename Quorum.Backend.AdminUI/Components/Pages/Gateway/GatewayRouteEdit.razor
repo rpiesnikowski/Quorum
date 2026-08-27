@@ -3,106 +3,394 @@
 @layout AdminLayout
 @inject IAdminGatewayStore GatewayStore
 @inject IAdminApiScopeStore ApiScopeStore
+@inject IAdminIdentityResourceStore IdentityResourceStore
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
 
-<PageTitle>@(IsNew ? "Nowa Trasa Gateway" : "Edycja Trasy Gateway") | Quorum Admin UI</PageTitle>
+<PageTitle>@(IsNew ? "Nowa Trasa Gateway" : $"Edycja Trasy: {model.MatchPattern}") | Quorum Admin UI</PageTitle>
 
 <RadzenStack Gap="1.5rem">
     <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
         <RadzenColumn Size="12" SizeMD="8">
-            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">
-                @(IsNew ? "Dodaj Nową Trasę API Gateway" : $"Edycja Trasy: {model.PathPattern}")
-            </RadzenText>
-            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
-                Dopasowanie ścieżek URL (Prefix lub Regex), przekazywanie zapytań do serwera nadrzędnego (Upstream) oraz ochrona na poziomie Scopes.
-            </RadzenText>
+            <div class="d-flex align-items-center gap-2">
+                <RadzenIcon Icon="alt_route" Style="font-size: 2rem; color: var(--rz-primary);" />
+                <div>
+                    <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0">
+                        @(IsNew ? "Nowa Trasa API Gateway" : $"Edycja Trasy: {model.MatchPattern}")
+                    </RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                        Konfiguracja dopasowania ścieżki URL, przekierowania do serwerów upstream, uwierzytelniania i parametrów Reverse Proxy.
+                    </RadzenText>
+                </div>
+            </div>
         </RadzenColumn>
         <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            @if (!IsNew)
+            {
+                <RadzenButton Icon="science" Text="Testuj w Symulatorze" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@NavigateToTester" />
+            }
             <RadzenButton Icon="arrow_back" Text="Powrót do listy" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/gateway"))" />
         </RadzenColumn>
     </RadzenRow>
 
     <RadzenCard Class="rz-p-4">
         <RadzenTemplateForm TItem="GatewayRouteAdminModel" Data="@model" Submit="@HandleSubmitAsync">
-            <RadzenStack Gap="1.5rem">
-                <!-- Podstawowe dopasowanie trasy -->
-                <RadzenFieldset Text="Dopasowanie Żądania (Inbound Routing)">
-                    <RadzenRow Gap="1rem">
-                        <RadzenColumn Size="12" SizeMD="6">
-                            <RadzenFormField Text="Wzorzec Ścieżki (Path Pattern)" Class="w-100">
-                                <RadzenTextBox @bind-Value="model.PathPattern" Name="PathPattern" Class="w-100" Placeholder="np. /api/orders, /api/v1/users/.*" />
-                            </RadzenFormField>
-                            <RadzenRequiredValidator Component="PathPattern" Text="Wzorzec ścieżki jest wymagany." />
-                        </RadzenColumn>
+            <RadzenTabs SelectedIndex="0">
+                <Tabs>
+                    <!-- KARTA 1: Routing Przychodzący i Dopasowanie -->
+                    <RadzenTabsItem Text="1. Dopasowanie Żądania (Inbound)">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="8">
+                                    <RadzenFormField Text="Wzorzec Dopasowania Ścieżki (MatchPattern)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.MatchPattern" Name="MatchPattern" Class="w-100" Placeholder="np. /api/orders, ^/api/v1/users/.*" />
+                                    </RadzenFormField>
+                                    <RadzenRequiredValidator Component="MatchPattern" Text="Wzorzec ścieżki (MatchPattern) jest wymagany." />
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="text-muted small">Typ dopasowania:</span>
+                                        @if (model.IsRegex)
+                                        {
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="Wyrażenie Regularne (Regex)" IsPill="true" />
+                                        }
+                                        else
+                                        {
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="Dopasowanie Ścieżki / Prefiks" IsPill="true" />
+                                        }
+                                    </div>
+                                </RadzenColumn>
 
-                        <RadzenColumn Size="12" SizeMD="6">
-                            <RadzenFormField Text="Nazwa Trasy (Route Name)" Class="w-100">
-                                <RadzenTextBox @bind-Value="model.Name" Class="w-100" Placeholder="np. Orders Microservice API" />
-                            </RadzenFormField>
-                        </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <RadzenFormField Text="Priorytet Dopasowania (Priority)" Class="w-100">
+                                        <RadzenNumeric @bind-Value="model.Priority" Class="w-100" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Wyższa liczba = sprawdzana wcześniej</span>
+                                </RadzenColumn>
 
-                        <RadzenColumn Size="12" SizeMD="4">
-                            <RadzenFormField Text="Priorytet Dopasowania (Większy = ważniejszy)" Class="w-100">
-                                <RadzenNumeric @bind-Value="model.Priority" Class="w-100" />
-                            </RadzenFormField>
-                        </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Nazwa Trasy (RouteName)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.RouteName" Class="w-100" Placeholder="np. Orders Microservice API" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
 
-                        <RadzenColumn Size="12" SizeMD="8">
-                            <RadzenFormField Text="Dozwolone Metody HTTP" Class="w-100">
-                                <RadzenDropDown @bind-Value="model.AllowedHttpMethods" Data="@httpMethodsList" Multiple="true" AllowClear="true" Class="w-100" />
-                            </RadzenFormField>
-                        </RadzenColumn>
-                    </RadzenRow>
-                </RadzenFieldset>
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border h-100">
+                                        <RadzenCheckBox @bind-Value="model.IsEnabled" Name="IsEnabled" />
+                                        <div>
+                                            <RadzenLabel Text="Trasa Aktywna w Gateway" Component="IsEnabled" Class="fw-bold d-block" />
+                                            <span class="text-muted small">Wyłączenie powoduje pominięcie trasy w reverse proxy</span>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
 
-                <!-- Cel przekierowania -->
-                <RadzenFieldset Text="Cel Przekierowania (Upstream Host & Backend)">
-                    <RadzenRow Gap="1rem">
-                        <RadzenColumn Size="12" SizeMD="8">
-                            <RadzenFormField Text="Adres Host Docelowego (Upstream Host)" Class="w-100">
-                                <RadzenTextBox @bind-Value="model.UpstreamHost" Name="UpstreamHost" Class="w-100" Placeholder="http://orders-service:5005 lub https://api.internal.local" />
-                            </RadzenFormField>
-                            <RadzenRequiredValidator Component="UpstreamHost" Text="Adres hosta docelowego jest wymagany." />
-                        </RadzenColumn>
+                                <RadzenColumn Size="12">
+                                    <RadzenFormField Text="Dozwolone Metody HTTP (HttpMethods)" Class="w-100">
+                                        <RadzenDropDown @bind-Value="model.AllowedHttpMethods" Data="@allHttpMethods" Multiple="true" AllowClear="true" Placeholder="Wybierz dozwolone metody HTTP..." Class="w-100" />
+                                    </RadzenFormField>
+                                    <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+                                        <span class="text-muted small me-1">Szybki wybór metod:</span>
+                                        <RadzenButton Text="Wszystkie (ALL)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => SetMethodsPreset("ALL"))" />
+                                        <RadzenButton Text="REST (GET, POST, PUT, DELETE)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => SetMethodsPreset("REST"))" />
+                                        <RadzenButton Text="Tylko Odczyt (GET, HEAD)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => SetMethodsPreset("READ"))" />
+                                    </div>
+                                </RadzenColumn>
 
-                        <RadzenColumn Size="12" SizeMD="4">
-                            <RadzenFormField Text="Timeout Żądania (sekundy)" Class="w-100">
-                                <RadzenNumeric @bind-Value="model.TimeoutSeconds" Class="w-100" />
-                            </RadzenFormField>
-                        </RadzenColumn>
+                                <RadzenColumn Size="12">
+                                    <RadzenFormField Text="Opis Funkcjonalny Trasy" Class="w-100">
+                                        <RadzenTextArea @bind-Value="model.Description" Rows="2" Class="w-100" Placeholder="Szczegółowy opis przeznaczenia usługi, formatu zwracanych danych..." />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
 
-                        <RadzenColumn Size="12">
-                            <RadzenFormField Text="Opis Trasy" Class="w-100">
-                                <RadzenTextArea @bind-Value="model.Description" Rows="2" Class="w-100" />
-                            </RadzenFormField>
-                        </RadzenColumn>
-                    </RadzenRow>
-                </RadzenFieldset>
-
-                <!-- Autoryzacja i Scopes -->
-                <RadzenFieldset Text="Autoryzacja i Wymagane Scopes">
-                    <RadzenRow Gap="1rem">
-                        <RadzenColumn Size="12" SizeMD="8">
-                            <RadzenFormField Text="Wymagane Scopes w Tokenie JWT" Class="w-100">
-                                <RadzenDropDown @bind-Value="model.RequiredScopes" Data="@availableScopes" Multiple="true" AllowClear="true" Placeholder="Wybierz scopes (pozostaw puste dla publicznych endpointów)..." Class="w-100" />
-                            </RadzenFormField>
-                        </RadzenColumn>
-
-                        <RadzenColumn Size="12" SizeMD="4">
-                            <div class="d-flex align-items-center gap-2 pt-3">
-                                <RadzenCheckBox @bind-Value="model.IsEnabled" Name="IsEnabled" />
-                                <RadzenLabel Text="Trasa aktywna w Reverse Proxy" Component="IsEnabled" />
+                    <!-- KARTA 2: Cel Przekierowania (Upstream URI & Target) -->
+                    <RadzenTabsItem Text="2. Cel Przekierowania (Upstream Host & URI)">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <!-- Podgląd docelowego URL w czasie rzeczywistym -->
+                            <div class="p-3 rounded border bg-light">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenIcon Icon="link" Style="color: var(--rz-primary);" />
+                                        <span class="fw-bold">Podgląd Docelowego Adresu Upstream:</span>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <RadzenButton Text="Szablon: Lokalny (5001)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@SetLocalPreset" />
+                                        <RadzenButton Text="Szablon: Kontener K8s" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@SetK8sPreset" />
+                                        <RadzenButton Text="Szablon: Zewnętrzne HTTPS" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@SetExternalPreset" />
+                                    </div>
+                                </div>
+                                <div class="p-2 bg-white rounded border" style="font-family: monospace; font-size: 0.95rem; color: #0284c7; word-break: break-all;">
+                                    @GetCalculatedUpstreamPreview()
+                                </div>
                             </div>
-                        </RadzenColumn>
-                    </RadzenRow>
-                </RadzenFieldset>
 
-                <div class="d-flex justify-content-end gap-2 mt-3">
-                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/gateway"))" />
-                    <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Trasę" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
-                </div>
-            </RadzenStack>
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenFormField Text="Protokół (Scheme)" Class="w-100">
+                                        <RadzenDropDown @bind-Value="model.Scheme" Data="@schemesList" Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Host Docelowy (AddressHost)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.AddressHost" Name="AddressHost" Class="w-100" Placeholder="np. orders-service.internal lub api.example.com" />
+                                    </RadzenFormField>
+                                    <RadzenRequiredValidator Component="AddressHost" Text="Host docelowy (AddressHost) jest wymagany." />
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenFormField Text="Port Docelowy (AddressPort)" Class="w-100">
+                                        <RadzenNumeric @bind-Value="model.AddressPort" Class="w-100" Min="1" Max="65535" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Ścieżka Bazowa Upstream (AddressBasePath)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.AddressBasePath" Class="w-100" Placeholder="np. /v1, /api/internal (opcjonalna)" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Doklejana przed ścieżką żądania</span>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Nadpisanie Ścieżki Docelowej (AddressPath)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.AddressPath" Class="w-100" Placeholder="np. /api/v2/orders (pozostaw puste dla zachowania oryginalnej ścieżki)" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Opcjonalny override ścieżki przekazywanej do backendu</span>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12">
+                                    <RadzenFormField Text="Domyślne Parametry Zapytania (AddressQueryString)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.AddressQueryString" Class="w-100" Placeholder="np. format=json&version=2 (doklejane do URL)" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    <!-- KARTA 3: Uwierzytelnianie & Uprawnienia Scopes -->
+                    <RadzenTabsItem Text="3. Uwierzytelnianie & Scopes">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border h-100">
+                                        <RadzenCheckBox @bind-Value="model.AllowAnonymous" Name="AllowAnonymous" />
+                                        <div>
+                                            <RadzenLabel Text="Zezwalaj na Dostęp Anonimowy (AllowAnonymous)" Component="AllowAnonymous" Class="fw-bold d-block" />
+                                            <span class="text-muted small">Ruch do tej trasy nie wymaga nagłówka Authorization ani tokenu JWT</span>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border h-100">
+                                        <RadzenCheckBox @bind-Value="model.RequiredScope" Name="RequiredScope" />
+                                        <div>
+                                            <RadzenLabel Text="Wymagaj Weryfikacji Scopes (RequiredScope)" Component="RequiredScope" Class="fw-bold d-block" />
+                                            <span class="text-muted small">Egzekwuj obecność wymaganych zakresów w roszczeniach tokenu JWT</span>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Wymagany Schemat Uwierzytelniania (AuthenticationSchemes)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.AuthenticationSchemes" Class="w-100" Placeholder="Bearer" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Domyślnie: Bearer (możliwe: Bearer, Cookies, OpenIdConnect)</span>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Powiązany Zasób API (ApiScopeId - opcjonalny)" Class="w-100">
+                                        <RadzenDropDown @bind-Value="model.ApiScopeId" 
+                                                        Data="@dbApiScopesList" 
+                                                        TextProperty="DisplayNameOrName" 
+                                                        ValueProperty="Id" 
+                                                        AllowClear="true" 
+                                                        Placeholder="Wybierz powiązany zasób z tabeli ApiScopes..." 
+                                                        Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            <!-- ChipList z wybranymi scopes -->
+                            <RadzenFieldset Text="Wymagane Zakresy dla tej Trasy (Required Scopes)" Class="rz-p-3">
+                                @if (model.RequiredScopes == null || model.RequiredScopes.Count == 0)
+                                {
+                                    <div class="d-flex align-items-center gap-2 p-3 text-muted bg-light rounded border border-dashed">
+                                        <RadzenIcon Icon="info" Style="font-size: 1.25rem; color: #64748b;" />
+                                        <span>Brak zdefiniowanych wymaganych scopes. Każdy uwierzytelniony token uzyska dostęp do trasy (lub anonimowy, jeśli zaznaczono AllowAnonymous).</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex flex-wrap gap-2 align-items-center p-3 rounded border bg-light">
+                                        @foreach (var scope in model.RequiredScopes)
+                                        {
+                                            var scopeInfo = allAvailableScopesList.FirstOrDefault(s => s.Name.Equals(scope, StringComparison.OrdinalIgnoreCase));
+                                            var isIdentity = scopeInfo?.IsIdentity ?? false;
+
+                                            <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill shadow-sm border bg-white" style="font-size: 0.875rem;">
+                                                <RadzenIcon Icon="@(isIdentity ? "badge" : "api")" Style="@(isIdentity ? "font-size: 1.1rem; color: var(--rz-primary);" : "font-size: 1.1rem; color: var(--rz-info);")" />
+                                                <span class="fw-semibold text-dark">@scope</span>
+                                                @if (scopeInfo != null && !string.IsNullOrWhiteSpace(scopeInfo.DisplayName) && scopeInfo.DisplayName != scope)
+                                                {
+                                                    <span class="text-muted" style="font-size: 0.75rem;">(@scopeInfo.DisplayName)</span>
+                                                }
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-link text-danger p-0 ms-1 d-inline-flex align-items-center" 
+                                                        style="text-decoration: none; line-height: 1;" 
+                                                        title="Usuń scope @scope" 
+                                                        @onclick="@(() => RemoveScope(scope))" 
+                                                        @onclick:stopPropagation="true">
+                                                    <RadzenIcon Icon="close" Style="font-size: 1rem;" />
+                                                </button>
+                                            </div>
+                                        }
+                                        <div class="ms-auto d-flex gap-2">
+                                            <RadzenButton Text="Wyczyść wszystkie" 
+                                                          Icon="clear_all" 
+                                                          Size="ButtonSize.ExtraSmall" 
+                                                          ButtonStyle="ButtonStyle.Light" 
+                                                          Variant="Variant.Outlined" 
+                                                          Click="@ClearAllScopes" />
+                                        </div>
+                                    </div>
+                                }
+                            </RadzenFieldset>
+
+                            <!-- Tabela do wyboru scopes przez kliknięcie -->
+                            <RadzenStack Gap="0.75rem">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div>
+                                        <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-0">Dostępne Zakresy API i Tożsamości</RadzenText>
+                                        <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">Kliknij w wiersz, aby dodać lub odpiąć wymagany zakres dla tej trasy Gateway.</RadzenText>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <RadzenTextBox @bind-Value="scopeSearchTerm" 
+                                                       Placeholder="Filtruj zakresy..." 
+                                                       @oninput="@((ChangeEventArgs e) => scopeSearchTerm = e.Value?.ToString() ?? string.Empty)" 
+                                                       Class="rz-textbox-sm" 
+                                                       Style="width: 220px;" />
+                                        @if (!string.IsNullOrEmpty(scopeSearchTerm))
+                                        {
+                                            <RadzenButton Icon="close" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => scopeSearchTerm = string.Empty)" />
+                                        }
+                                    </div>
+                                </div>
+
+                                <RadzenDataGrid Data="@FilteredScopes"
+                                                TItem="ScopeItemModel"
+                                                AllowPaging="true"
+                                                PageSize="5"
+                                                AllowSorting="true"
+                                                RowClick="@OnScopeRowClick"
+                                                Style="cursor: pointer;"
+                                                Class="rz-shadow-1">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Property="Name" Title="Nazwa Zakresu (Scope)" Width="180px">
+                                            <Template Context="s">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <RadzenIcon Icon="@(s.IsIdentity ? "badge" : "api")" Style="@(s.IsIdentity ? "color: var(--rz-primary);" : "color: var(--rz-info);")" />
+                                                    <span class="fw-bold">@s.Name</span>
+                                                </div>
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Property="DisplayName" Title="Nazwa Wyświetlana" Width="200px">
+                                            <Template Context="s">
+                                                @(string.IsNullOrWhiteSpace(s.DisplayName) ? s.Name : s.DisplayName)
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Property="Type" Title="Typ" Width="140px">
+                                            <Template Context="s">
+                                                <RadzenBadge BadgeStyle="@(s.IsIdentity ? BadgeStyle.Primary : BadgeStyle.Info)" Text="@s.Type" IsPill="true" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Property="Description" Title="Opis">
+                                            <Template Context="s">
+                                                <span class="text-muted small">@(string.IsNullOrWhiteSpace(s.Description) ? "Brak opisu" : s.Description)</span>
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                        <RadzenDataGridColumn TItem="ScopeItemModel" Title="Status / Akcja" Width="140px" TextAlign="TextAlign.Center" Sortable="false">
+                                            <Template Context="s">
+                                                @if (model.RequiredScopes.Contains(s.Name))
+                                                {
+                                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Wymagany ✓" IsPill="true" />
+                                                }
+                                                else
+                                                {
+                                                    <RadzenButton Icon="add" Text="Dodaj" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Click="@(() => AddScope(s.Name))" @onclick:stopPropagation="true" />
+                                                }
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                    </Columns>
+                                </RadzenDataGrid>
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    <!-- KARTA 4: Zaawansowane Parametry Proxy & Wydajność -->
+                    <RadzenTabsItem Text="4. Zaawansowane Parametry Proxy">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <RadzenFormField Text="Limit Czasu Żądania (Timeout w sekundach)" Class="w-100">
+                                        <RadzenNumeric @bind-Value="model.TimeoutSeconds" Class="w-100" Min="1" Max="600" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Domyślnie 30 sekund</span>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border h-100">
+                                        <RadzenCheckBox @bind-Value="model.ForwardOriginalHost" Name="ForwardOriginalHost" />
+                                        <div>
+                                            <RadzenLabel Text="Przekazuj Nagłówek Host Klienta" Component="ForwardOriginalHost" Class="fw-bold d-block" />
+                                            <span class="text-muted small">Forward Original Host do serwisu backendowego</span>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border h-100">
+                                        <RadzenCheckBox @bind-Value="model.EnableCaching" Name="EnableCaching" />
+                                        <div>
+                                            <RadzenLabel Text="Buforowanie Odpowiedzi (Caching)" Component="EnableCaching" Class="fw-bold d-block" />
+                                            <span class="text-muted small">Response Caching dla operacji idempotencyjnych</span>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12">
+                                    <RadzenFormField Text="Niestandardowe Nagłówki HTTP (Headers)" Class="w-100">
+                                        <RadzenTextArea @bind-Value="model.Headers" Rows="3" Class="w-100" Placeholder="np. X-Gateway-Proxy: Quorum lub format JSON: { &quot;X-Forwarded-Source&quot;: &quot;Gateway&quot; }" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Dodatkowe nagłówki wstrzykiwane do zapytania przekazywanego upstream</span>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            @if (!IsNew)
+                            {
+                                <div class="p-3 bg-light rounded border mt-2">
+                                    <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2">Informacje o Rekordzie</RadzenText>
+                                    <RadzenRow Gap="1rem">
+                                        <RadzenColumn Size="12" SizeMD="6">
+                                            <span class="text-muted small">Data utworzenia:</span>
+                                            <span class="fw-bold ms-1">@model.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</span>
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="12" SizeMD="6">
+                                            <span class="text-muted small">Ostatnia modyfikacja:</span>
+                                            <span class="fw-bold ms-1">@(model.UpdatedAt.HasValue ? model.UpdatedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") : "Brak wcześniejszych edycji")</span>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+                                </div>
+                            }
+                        </RadzenStack>
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
+
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/gateway"))" />
+                <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Trasę API Gateway" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
+            </div>
         </RadzenTemplateForm>
     </RadzenCard>
 </RadzenStack>
@@ -111,19 +399,94 @@
     [Parameter]
     public int? Id { get; set; }
 
+    public class ScopeItemModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string? Description { get; set; }
+        public string Type { get; set; } = "Zakres API";
+        public bool IsIdentity { get; set; }
+    }
+
+    public class ApiScopeSelectItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string DisplayNameOrName => string.IsNullOrWhiteSpace(DisplayName) ? Name : $"{DisplayName} ({Name})";
+    }
+
     private bool IsNew => !Id.HasValue || Id.Value == 0;
     private GatewayRouteAdminModel model = new();
-    private List<string> httpMethodsList = new() { "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" };
-    private List<string> availableScopes = new();
+    private List<string> allHttpMethods = new() { "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" };
+    private List<string> schemesList = new() { "https", "http" };
+    private List<ScopeItemModel> allAvailableScopesList = new();
+    private List<ApiScopeSelectItem> dbApiScopesList = new();
+    private string scopeSearchTerm = string.Empty;
     private bool isSubmitting = false;
+
+    private IEnumerable<ScopeItemModel> FilteredScopes
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(scopeSearchTerm))
+            {
+                return allAvailableScopesList;
+            }
+
+            return allAvailableScopesList.Where(s => 
+                s.Name.Contains(scopeSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(s.DisplayName) && s.DisplayName.Contains(scopeSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(s.Description) && s.Description.Contains(scopeSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                s.Type.Contains(scopeSearchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 100);
-        availableScopes = scopesRes.Items.Select(s => s.Name).ToList();
-        if (availableScopes.Count == 0)
+        // 1. Załaduj zakresy API i zasoby tożsamości
+        var scopesRes = await ApiScopeStore.GetScopesAsync(pageSize: 500);
+        var idRes = await IdentityResourceStore.GetResourcesAsync(pageSize: 500);
+
+        dbApiScopesList = scopesRes.Items.Select(s => new ApiScopeSelectItem
         {
-            availableScopes = new List<string> { "api1", "orders.read", "orders.write", "quorum_api" };
+            Id = s.Id,
+            Name = s.Name,
+            DisplayName = s.DisplayName
+        }).ToList();
+
+        allAvailableScopesList = idRes.Items.Select(i => new ScopeItemModel
+        {
+            Name = i.Name,
+            DisplayName = i.DisplayName,
+            Description = i.Description,
+            Type = "Zasób Tożsamości",
+            IsIdentity = true
+        })
+        .Concat(scopesRes.Items.Select(s => new ScopeItemModel
+        {
+            Name = s.Name,
+            DisplayName = s.DisplayName,
+            Description = s.Description,
+            Type = "Zakres API",
+            IsIdentity = false
+        }))
+        .OrderBy(s => s.IsIdentity ? 0 : 1)
+        .ThenBy(s => s.Name)
+        .ToList();
+
+        if (allAvailableScopesList.Count == 0)
+        {
+            allAvailableScopesList = new List<ScopeItemModel>
+            {
+                new() { Name = "openid", DisplayName = "OpenID Connect", Description = "Weryfikacja OIDC", Type = "Zasób Tożsamości", IsIdentity = true },
+                new() { Name = "profile", DisplayName = "Profil Użytkownika", Description = "Dane profilowe", Type = "Zasób Tożsamości", IsIdentity = true },
+                new() { Name = "email", DisplayName = "Adres E-mail", Description = "Adres email", Type = "Zasób Tożsamości", IsIdentity = true },
+                new() { Name = "quorum_api", DisplayName = "Quorum Core API", Description = "Główny interfejs API", Type = "Zakres API", IsIdentity = false },
+                new() { Name = "gateway_routing", DisplayName = "Gateway Routing API", Description = "Dostęp do reguł i bramki proxy", Type = "Zakres API", IsIdentity = false },
+                new() { Name = "orders.read", DisplayName = "Odczyt Zamówień", Description = "Uprawnienia odczytu zamówień", Type = "Zakres API", IsIdentity = false },
+                new() { Name = "orders.write", DisplayName = "Modyfikacja Zamówień", Description = "Uprawnienia zapisu zamówień", Type = "Zakres API", IsIdentity = false }
+            };
         }
 
         if (!IsNew)
@@ -132,10 +495,12 @@
             if (r != null)
             {
                 model = r;
+                model.RequiredScopes ??= new List<string>();
+                model.AllowedHttpMethods ??= new List<string> { "GET", "POST", "PUT", "DELETE" };
             }
             else
             {
-                NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono wybranej trasy.");
+                NotificationService.Notify(NotificationSeverity.Error, "Błąd", "Nie znaleziono wybranej trasy API Gateway.");
                 NavigationManager.NavigateTo("admin/gateway");
             }
         }
@@ -143,14 +508,149 @@
         {
             model = new GatewayRouteAdminModel
             {
+                MatchPattern = "/api/v1/",
+                RouteName = "Nowa Usługa",
                 Priority = 10,
-                TimeoutSeconds = 30,
                 IsEnabled = true,
-                UpstreamHost = "http://localhost:5001",
+                Scheme = "https",
+                AddressHost = "localhost",
+                AddressPort = 5001,
+                AddressBasePath = "/api",
+                TimeoutSeconds = 30,
+                ForwardOriginalHost = true,
+                EnableCaching = false,
+                AllowAnonymous = false,
+                RequiredScope = true,
+                AuthenticationSchemes = "Bearer",
                 AllowedHttpMethods = new List<string> { "GET", "POST", "PUT", "DELETE" },
                 RequiredScopes = new List<string>()
             };
         }
+    }
+
+    private string GetCalculatedUpstreamPreview()
+    {
+        var scheme = !string.IsNullOrWhiteSpace(model.Scheme) ? model.Scheme : "https";
+        var host = !string.IsNullOrWhiteSpace(model.AddressHost) ? model.AddressHost : "localhost";
+        var portStr = (model.AddressPort == 80 && scheme == "http") || (model.AddressPort == 443 && scheme == "https") ? "" : $":{model.AddressPort}";
+        var basePath = !string.IsNullOrWhiteSpace(model.AddressBasePath) ? (model.AddressBasePath.StartsWith("/") ? model.AddressBasePath : "/" + model.AddressBasePath) : "";
+        var path = !string.IsNullOrWhiteSpace(model.AddressPath) ? (model.AddressPath.StartsWith("/") ? model.AddressPath : "/" + model.AddressPath) : "{ścieżka_żądania}";
+        var query = !string.IsNullOrWhiteSpace(model.AddressQueryString) ? "?" + model.AddressQueryString.TrimStart('?') : "";
+
+        return $"{scheme}://{host}{portStr}{basePath}{path}{query}";
+    }
+
+    private void SetMethodsPreset(string preset)
+    {
+        switch (preset)
+        {
+            case "ALL":
+                model.AllowedHttpMethods = new List<string> { "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" };
+                break;
+            case "REST":
+                model.AllowedHttpMethods = new List<string> { "GET", "POST", "PUT", "DELETE" };
+                break;
+            case "READ":
+                model.AllowedHttpMethods = new List<string> { "GET", "HEAD" };
+                break;
+        }
+        StateHasChanged();
+    }
+
+    private void SetLocalPreset()
+    {
+        model.Scheme = "http";
+        model.AddressHost = "localhost";
+        model.AddressPort = 5001;
+        model.AddressBasePath = "/api";
+        StateHasChanged();
+    }
+
+    private void SetK8sPreset()
+    {
+        model.Scheme = "http";
+        model.AddressHost = "orders-service.default.svc.cluster.local";
+        model.AddressPort = 8080;
+        model.AddressBasePath = "/v1";
+        StateHasChanged();
+    }
+
+    private void SetExternalPreset()
+    {
+        model.Scheme = "https";
+        model.AddressHost = "api.external-service.com";
+        model.AddressPort = 443;
+        model.AddressBasePath = "";
+        StateHasChanged();
+    }
+
+    private void AddScope(string scopeName)
+    {
+        if (string.IsNullOrWhiteSpace(scopeName)) return;
+
+        model.RequiredScopes ??= new List<string>();
+
+        if (!model.RequiredScopes.Contains(scopeName, StringComparer.OrdinalIgnoreCase))
+        {
+            model.RequiredScopes.Add(scopeName);
+            model.RequiredScope = true;
+            NotificationService.Notify(NotificationSeverity.Success, "Dodano Scope", $"Zakres '{scopeName}' został dodany jako wymagany dla tej trasy.");
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveScope(string scopeName)
+    {
+        if (model.RequiredScopes != null && model.RequiredScopes.Remove(scopeName))
+        {
+            if (model.RequiredScopes.Count == 0)
+            {
+                model.RequiredScope = false;
+            }
+            NotificationService.Notify(NotificationSeverity.Info, "Usunięto Scope", $"Zakres '{scopeName}' został usunięty z listy wymaganych.");
+            StateHasChanged();
+        }
+    }
+
+    private void ClearAllScopes()
+    {
+        if (model.RequiredScopes != null && model.RequiredScopes.Count > 0)
+        {
+            model.RequiredScopes.Clear();
+            model.RequiredScope = false;
+            NotificationService.Notify(NotificationSeverity.Warning, "Wyczyszczono Zakresy", "Usunięto wszystkie wymagane zakresy dla tej trasy.");
+            StateHasChanged();
+        }
+    }
+
+    private void OnScopeRowClick(DataGridRowMouseEventArgs<ScopeItemModel> args)
+    {
+        if (args?.Data == null) return;
+        var scopeName = args.Data.Name;
+
+        model.RequiredScopes ??= new List<string>();
+
+        if (!model.RequiredScopes.Contains(scopeName, StringComparer.OrdinalIgnoreCase))
+        {
+            model.RequiredScopes.Add(scopeName);
+            model.RequiredScope = true;
+            NotificationService.Notify(NotificationSeverity.Success, "Dodano Scope", $"Zakres '{scopeName}' został dodany.");
+        }
+        else
+        {
+            model.RequiredScopes.Remove(scopeName);
+            if (model.RequiredScopes.Count == 0)
+            {
+                model.RequiredScope = false;
+            }
+            NotificationService.Notify(NotificationSeverity.Info, "Odpięto Scope", $"Zakres '{scopeName}' został odpięty.");
+        }
+        StateHasChanged();
+    }
+
+    private void NavigateToTester()
+    {
+        NavigationManager.NavigateTo("admin/gateway/test");
     }
 
     private async Task HandleSubmitAsync()
@@ -191,3 +691,4 @@
         }
     }
 }
+

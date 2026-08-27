@@ -30,6 +30,7 @@ public class Proxy2ManyHostsMiddleware
 
         // 1. Pobranie aktywnych reguł z bazy, posortowanych według priorytetu
         var activeRoutes = await dbContext.GatewayRoutes
+            .Include(r => r.Scopes)
             .AsNoTracking()
             .Where(r => r.IsEnabled)
             .OrderByDescending(r => r.Priority)
@@ -64,24 +65,39 @@ public class Proxy2ManyHostsMiddleware
                 return;
             }
 
-            if (matchedRoute.RequiredScope && !string.IsNullOrWhiteSpace(matchedRoute.ScopeName))
+            if (matchedRoute.RequiredScope)
             {
-                var userScopes = context.User.FindAll("scope")
-                    .Concat(context.User.FindAll("scp"))
-                    .SelectMany(c => c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-
-                if (!userScopes.Contains(matchedRoute.ScopeName, StringComparer.OrdinalIgnoreCase))
+                var requiredScopes = new List<string>();
+                if (matchedRoute.Scopes != null && matchedRoute.Scopes.Count > 0)
                 {
-                    _logger.LogWarning("Brak wymaganego scope: {Scope} dla żądania {Path}", matchedRoute.ScopeName, uri);
-                    context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
-                    context.Response.Headers.Append("WWW-Authenticate", $"Bearer error=\"insufficient_scope\", scope=\"{matchedRoute.ScopeName}\"");
-                    return;
+                    requiredScopes.AddRange(matchedRoute.Scopes.Select(s => s.Scope));
+                }
+                else if (!string.IsNullOrWhiteSpace(matchedRoute.ScopeName))
+                {
+                    requiredScopes.AddRange(matchedRoute.ScopeName.Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries));
+                }
+
+                if (requiredScopes.Count > 0)
+                {
+                    var userScopes = context.User.FindAll("scope")
+                        .Concat(context.User.FindAll("scp"))
+                        .SelectMany(c => c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                    var missingScopes = requiredScopes.Where(rs => !userScopes.Contains(rs)).ToList();
+                    if (missingScopes.Count > 0)
+                    {
+                        _logger.LogWarning("Brak wymaganych scopes: {MissingScopes} dla żądania {Path}", string.Join(", ", missingScopes), uri);
+                        context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                        context.Response.Headers.Append("WWW-Authenticate", $"Bearer error=\"insufficient_scope\", scope=\"{string.Join(" ", missingScopes)}\"");
+                        return;
+                    }
                 }
             }
         }
 
         // 4. Konstruowanie docelowego URI
-        var targetUri = BuildTargetUri(context.Request, matchedRoute).ToString().TrimEnd('/') ??"";
+        var targetUri = BuildTargetUri(context.Request, matchedRoute).ToString().TrimEnd('/') ?? "";
 
         // 5. Przygotowanie żądania proxy (HttpRequestMessage)
         using var proxyRequest = new HttpRequestMessage(new HttpMethod(method), targetUri);
@@ -95,6 +111,25 @@ public class Proxy2ManyHostsMiddleware
             if (!proxyRequest.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()) && proxyRequest.Content != null)
             {
                 proxyRequest.Content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+            }
+        }
+
+        // Wstrzykiwanie niestandardowych nagłówków skonfigurowanych w regule trasy (route.Headers)
+        if (!string.IsNullOrWhiteSpace(matchedRoute.Headers))
+        {
+            var headerLines = matchedRoute.Headers.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var hLine in headerLines)
+            {
+                var separatorIdx = hLine.IndexOf(':');
+                if (separatorIdx > 0)
+                {
+                    var hKey = hLine.Substring(0, separatorIdx).Trim();
+                    var hVal = hLine.Substring(separatorIdx + 1).Trim();
+                    if (!string.IsNullOrEmpty(hKey))
+                    {
+                        proxyRequest.Headers.TryAddWithoutValidation(hKey, hVal);
+                    }
+                }
             }
         }
 

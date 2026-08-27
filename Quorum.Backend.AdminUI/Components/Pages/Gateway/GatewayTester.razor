@@ -60,16 +60,18 @@
                     <RadzenColumn Size="12" SizeMD="6">
                         <RadzenCard Class="rz-p-3" Style="background: #f8fafc;">
                             <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold">Dopasowana Trasa</RadzenText>
-                            <div><strong>Wzorzec:</strong> <code>@testResult.MatchedRoute.PathPattern</code></div>
-                            <div><strong>Nazwa:</strong> @(testResult.MatchedRoute.Name ?? "-")</div>
+                            <div><strong>Wzorzec:</strong> <code>@testResult.MatchedRoute.MatchPattern</code></div>
+                            <div><strong>Nazwa:</strong> @(testResult.MatchedRoute.RouteName ?? "-")</div>
                             <div><strong>Priorytet:</strong> @testResult.MatchedRoute.Priority</div>
+                            <div><strong>Metody:</strong> @string.Join(", ", testResult.MatchedRoute.AllowedHttpMethods)</div>
+                            <div><strong>Dostęp Anonimowy:</strong> @(testResult.MatchedRoute.AllowAnonymous ? "Tak" : "Nie (Wymaga tokenu)")</div>
                         </RadzenCard>
                     </RadzenColumn>
 
                     <RadzenColumn Size="12" SizeMD="6">
                         <RadzenCard Class="rz-p-3" Style="background: #f8fafc;">
-                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold">Docelowy URL Przekierowania</RadzenText>
-                            <div class="text-truncate" style="font-family: monospace; color: #2563eb;">@testResult.TargetUri</div>
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold">Docelowy URL Przekierowania (Upstream)</RadzenText>
+                            <div class="text-truncate fw-bold" style="font-family: monospace; color: #0284c7;">@testResult.TargetUri</div>
                             <div class="mt-2">
                                 <strong>Status Autoryzacji:</strong>
                                 @if (testResult.IsAuthorized)
@@ -81,6 +83,12 @@
                                     <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Odmowa Dostępu (403 Forbidden)" IsPill="true" />
                                 }
                             </div>
+                            @if (testResult.MissingScopes != null && testResult.MissingScopes.Count > 0)
+                            {
+                                <div class="mt-2 text-danger small">
+                                    <strong>Brakujące Scopes:</strong> @string.Join(", ", testResult.MissingScopes)
+                                </div>
+                            }
                         </RadzenCard>
                     </RadzenColumn>
                 </RadzenRow>

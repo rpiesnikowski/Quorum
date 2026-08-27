@@ -47,47 +47,97 @@
                         TItem="GatewayRouteAdminModel"
                         EmptyText="Brak tras API Gateway spełniających wybrane kryteria.">
             <Columns>
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="Priority" Title="Prio" Width="80px" TextAlign="TextAlign.Center">
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="Priority" Title="Prio" Width="75px" TextAlign="TextAlign.Center">
                     <Template Context="r">
                         <RadzenBadge BadgeStyle="BadgeStyle.Dark" Text="@r.Priority.ToString()" IsPill="true" />
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="PathPattern" Title="Wzorzec Ścieżki & Nazwa" Width="240px">
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="MatchPattern" Title="Wzorzec & Nazwa" Width="260px">
                     <Template Context="r">
-                        <div class="fw-bold" style="font-family: monospace; color: #d946ef;">@r.PathPattern</div>
-                        <div class="text-muted" style="font-size: 0.78rem;">@(r.Name ?? "-")</div>
-                    </Template>
-                </RadzenDataGridColumn>
-
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="UpstreamHost" Title="Host Docelowy (Upstream)">
-                    <Template Context="r">
-                        <div class="text-truncate" style="font-family: monospace; font-size: 0.85rem;" title="@r.UpstreamHost">
-                            @r.UpstreamHost
-                        </div>
-                        <div class="text-muted" style="font-size: 0.75rem;">Metody: @string.Join(", ", r.AllowedHttpMethods)</div>
-                    </Template>
-                </RadzenDataGridColumn>
-
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="ScopesSummary" Title="Wymagane Scopes" Width="200px">
-                    <Template Context="r">
-                        <div class="d-flex flex-wrap gap-1">
-                            @if (r.RequiredScopes != null && r.RequiredScopes.Count > 0)
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="fw-bold text-primary" style="font-family: monospace; font-size: 0.9rem;">@r.MatchPattern</span>
+                            @if (r.IsRegex)
                             {
-                                @foreach (var sc in r.RequiredScopes)
-                                {
-                                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@sc" IsPill="true" />
-                                }
+                                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="Regex" IsPill="true" Style="font-size: 0.65rem;" />
+                            }
+                        </div>
+                        <div class="text-muted" style="font-size: 0.8rem;">@(r.RouteName ?? "-")</div>
+                        @if (!string.IsNullOrWhiteSpace(r.Description))
+                        {
+                            <div class="text-muted text-truncate" style="font-size: 0.72rem;" title="@r.Description">@r.Description</div>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="UpstreamHost" Title="Host Upstream & Metody">
+                    <Template Context="r">
+                        <div class="d-flex align-items-center gap-1 text-truncate">
+                            <RadzenBadge BadgeStyle="@(r.Scheme == "https" ? BadgeStyle.Success : BadgeStyle.Warning)" Text="@r.Scheme?.ToUpperInvariant()" IsPill="true" Style="font-size: 0.65rem;" />
+                            <span style="font-family: monospace; font-size: 0.85rem;" title="@r.UpstreamHost">@r.UpstreamHost</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
+                            <span class="text-muted" style="font-size: 0.72rem;">Metody:</span>
+                            @if (r.AllowedHttpMethods == null || r.AllowedHttpMethods.Count == 0 || r.AllowedHttpMethods.Contains("ALL"))
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="ALL" IsPill="true" Style="font-size: 0.65rem;" />
                             }
                             else
                             {
-                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="Anonimowy (Brak)" IsPill="true" />
+                                @foreach (var m in r.AllowedHttpMethods.Take(4))
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@m" IsPill="true" Style="font-size: 0.65rem;" />
+                                }
+                                @if (r.AllowedHttpMethods.Count > 4)
+                                {
+                                    <span class="text-muted" style="font-size: 0.7rem;">+@(r.AllowedHttpMethods.Count - 4)</span>
+                                }
                             }
                         </div>
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="StatusSummary" Title="Status" Width="110px">
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="ScopesSummary" Title="Autoryzacja & Scopes" Width="200px">
+                    <Template Context="r">
+                        @if (r.AllowAnonymous)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="Anonimowy (Public)" IsPill="true" />
+                        }
+                        else if (r.RequiredScopes != null && r.RequiredScopes.Count > 0)
+                        {
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var sc in r.RequiredScopes)
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@sc" IsPill="true" Style="font-size: 0.7rem;" />
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="Wymagany Token" IsPill="true" Style="font-size: 0.7rem;" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="ProxyFeaturesSummary" Title="Proxy & Caching" Width="150px">
+                    <Template Context="r">
+                        <div class="d-flex flex-column gap-1">
+                            <span class="text-muted" style="font-size: 0.75rem;">Timeout: <strong>@(r.TimeoutSeconds)s</strong></span>
+                            <div class="d-flex gap-1">
+                                @if (r.EnableCaching)
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Cache" IsPill="true" Style="font-size: 0.65rem;" />
+                                }
+                                @if (r.ForwardOriginalHost)
+                                {
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="FwdHost" IsPill="true" Style="font-size: 0.65rem;" />
+                                }
+                            </div>
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="StatusSummary" Title="Status" Width="100px">
                     <Template Context="r">
                         @if (r.IsEnabled)
                         {
@@ -100,7 +150,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Title="Akcje" Width="140px" Sortable="false" Filterable="false" TextAlign="TextAlign.End">
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Title="Akcje" Width="120px" Sortable="false" Filterable="false" TextAlign="TextAlign.End">
                     <Template Context="r">
                         <div class="d-flex justify-content-end gap-1">
                             <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/gateway/{r.Id}/edit"))" Tooltip="Edytuj trasę" />
