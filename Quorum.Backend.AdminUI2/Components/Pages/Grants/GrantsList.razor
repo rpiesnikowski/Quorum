@@ -24,11 +24,29 @@
             </RadzenColumn>
 
             <RadzenColumn Size="12" SizeMD="4">
-                <RadzenDropDown @bind-Value="selectedType" Data="@grantTypes" AllowClear="true" Placeholder="Filtruj po typie grantu..." Class="w-100" Change="@(() => { currentPage = 1; LoadDataAsync(); })" />
+                <RadzenDropDown @bind-Value="selectedType" Data="@grantTypes" AllowClear="true" Placeholder="Filtruj po typie grantu..." Class="w-100" Change="@LoadDataAsync" />
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="3" Class="d-flex justify-content-md-end gap-2">
+                <RadzenButton Icon="filter_alt_off" Text="Wyczyść filtry" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@ResetFiltersAsync" />
             </RadzenColumn>
         </RadzenRow>
 
-        <RadzenDataGrid Data="@grants" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25, 50 })" IsLoading="@isLoading" TItem="PersistedGrantAdminModel" EmptyText="Brak aktywnych grantów.">
+        <RadzenDataGrid @ref="grid"
+                        Data="@grants"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.SimpleWithMenu"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="10"
+                        PageSizeOptions="@(new int[] { 5, 10, 25, 50, 100 })"
+                        ShowPagingSummary="true"
+                        PagingSummaryFormat="Strona {0} z {1} (łącznie {2} pozycji)"
+                        AllowColumnResize="true"
+                        IsLoading="@isLoading"
+                        TItem="PersistedGrantAdminModel"
+                        EmptyText="Brak aktywnych grantów spełniających wybrane kryteria.">
             <Columns>
                 <RadzenDataGridColumn TItem="PersistedGrantAdminModel" Property="Type" Title="Typ Grantu" Width="170px">
                     <Template Context="g">
@@ -57,7 +75,9 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="PersistedGrantAdminModel" Title="Akcje" Width="130px" Sortable="false" TextAlign="TextAlign.End">
+                <RadzenDataGridColumn TItem="PersistedGrantAdminModel" Property="StatusSummary" Title="Status" Width="120px" />
+
+                <RadzenDataGridColumn TItem="PersistedGrantAdminModel" Title="Akcje" Width="140px" Sortable="false" Filterable="false" TextAlign="TextAlign.End">
                     <Template Context="g">
                         <RadzenButton Icon="delete_forever" Text="Unieważnij" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ConfirmRevokeAsync(g))" Tooltip="Unieważnij ten grant" />
                     </Template>
@@ -68,31 +88,32 @@
 </RadzenStack>
 
 @code {
+    private RadzenDataGrid<PersistedGrantAdminModel>? grid;
     private IEnumerable<PersistedGrantAdminModel> grants = new List<PersistedGrantAdminModel>();
-    private int totalCount;
     private bool isLoading = true;
     private string searchTerm = string.Empty;
     private string? selectedType;
     private List<string> grantTypes = new() { "refresh_token", "user_consent", "authorization_code", "reference_token", "device_code" };
-    private int currentPage = 1;
-    private int currentPageSize = 10;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
     }
 
-    private async Task OnLoadData(LoadDataArgs args)
-    {
-        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
-        currentPageSize = args.Top ?? 10;
-        await LoadDataAsync();
-    }
-
     private async Task OnSearchInput(ChangeEventArgs e)
     {
         searchTerm = e.Value?.ToString() ?? "";
-        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        searchTerm = string.Empty;
+        selectedType = null;
+        if (grid != null)
+        {
+            await grid.Reset(true);
+        }
         await LoadDataAsync();
     }
 
@@ -101,9 +122,8 @@
         isLoading = true;
         try
         {
-            var result = await GrantStore.GetGrantsAsync(searchTerm, selectedType, null, currentPage, currentPageSize);
+            var result = await GrantStore.GetGrantsAsync(searchTerm, selectedType, null, 1, 1000);
             grants = result.Items;
-            totalCount = result.TotalCount;
         }
         finally
         {

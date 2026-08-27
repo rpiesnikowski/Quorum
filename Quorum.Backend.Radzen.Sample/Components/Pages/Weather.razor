@@ -1,4 +1,4 @@
-﻿@page "/weather"
+@page "/weather"
 @attribute [StreamRendering]
 
 <PageTitle>Weather</PageTitle>
@@ -13,27 +13,23 @@
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th aria-label="Temperature in Celsius">Temp. (C)</th>
-                <th aria-label="Temperature in Fahrenheit">Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var forecast in forecasts)
-            {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <RadzenDataGrid Data="@forecasts"
+                    TItem="WeatherForecast"
+                    AllowFiltering="true"
+                    FilterMode="FilterMode.SimpleWithMenu"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="5"
+                    AllowColumnResize="true"
+                    EmptyText="Brak danych prognozy pogody.">
+        <Columns>
+            <RadzenDataGridColumn TItem="WeatherForecast" Property="Date" Title="Date" FormatString="{0:yyyy-MM-dd}" Width="150px" />
+            <RadzenDataGridColumn TItem="WeatherForecast" Property="TemperatureC" Title="Temp. (C)" Width="130px" />
+            <RadzenDataGridColumn TItem="WeatherForecast" Property="TemperatureF" Title="Temp. (F)" Width="130px" />
+            <RadzenDataGridColumn TItem="WeatherForecast" Property="Summary" Title="Summary" />
+        </Columns>
+    </RadzenDataGrid>
 }
 
 @code {

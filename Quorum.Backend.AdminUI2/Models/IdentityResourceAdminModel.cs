@@ -25,6 +25,9 @@ public class IdentityResourceAdminModel
 
     public List<string> UserClaims { get; set; } = new();
 
+    public string UserClaimsSummary => UserClaims != null && UserClaims.Count > 0 ? string.Join(", ", UserClaims) : "Brak";
+    public string StatusSummary => Enabled ? "Aktywny" : "Wyłączony";
+
     public string UserClaimsText
     {
         get => string.Join(Environment.NewLine, UserClaims);

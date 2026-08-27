@@ -48,6 +48,10 @@ public class ClientAdminModel
 
     public string ProtocolType { get; set; } = "oidc";
 
+    public string GrantTypesSummary => AllowedGrantTypes != null && AllowedGrantTypes.Count > 0 ? string.Join(", ", AllowedGrantTypes) : "Brak";
+    public string ScopesSummary => AllowedScopes != null && AllowedScopes.Count > 0 ? string.Join(", ", AllowedScopes) : "Brak";
+    public string StatusSummary => Enabled ? "Włączony" : "Wyłączony";
+
     // Grant Types
     public List<string> AllowedGrantTypes { get; set; } = new();
 

@@ -24,9 +24,26 @@
             <RadzenColumn Size="12" SizeMD="6">
                 <RadzenTextBox Placeholder="Szukaj po ClientId, nazwie..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
             </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" Class="d-flex justify-content-md-end gap-2">
+                <RadzenButton Icon="filter_alt_off" Text="Wyczyść filtry" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@ResetFiltersAsync" />
+            </RadzenColumn>
         </RadzenRow>
 
-        <RadzenDataGrid Data="@clients" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25, 50 })" IsLoading="@isLoading" TItem="ClientAdminModel" EmptyText="Brak klientów spełniających kryteria.">
+        <RadzenDataGrid @ref="grid"
+                        Data="@clients"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.SimpleWithMenu"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="10"
+                        PageSizeOptions="@(new int[] { 5, 10, 25, 50, 100 })"
+                        ShowPagingSummary="true"
+                        PagingSummaryFormat="Strona {0} z {1} (łącznie {2} pozycji)"
+                        AllowColumnResize="true"
+                        IsLoading="@isLoading"
+                        TItem="ClientAdminModel"
+                        EmptyText="Brak klientów spełniających wybrane kryteria filtrowania.">
             <Columns>
                 <RadzenDataGridColumn TItem="ClientAdminModel" Property="ClientId" Title="Client ID" Width="200px">
                     <Template Context="client">
@@ -35,7 +52,9 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="ClientAdminModel" Title="Typ Przepływu (Grant Types)" Width="230px">
+                <RadzenDataGridColumn TItem="ClientAdminModel" Property="ClientName" Title="Nazwa Klienta" Width="180px" />
+
+                <RadzenDataGridColumn TItem="ClientAdminModel" Property="GrantTypesSummary" Title="Typ Przepływu (Grant Types)" Width="210px">
                     <Template Context="client">
                         <div class="d-flex flex-wrap gap-1">
                             @if (client.AllowedGrantTypes != null && client.AllowedGrantTypes.Count > 0)
@@ -53,7 +72,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="ClientAdminModel" Title="Dozwolone Scopes" Width="240px">
+                <RadzenDataGridColumn TItem="ClientAdminModel" Property="ScopesSummary" Title="Dozwolone Scopes" Width="220px">
                     <Template Context="client">
                         <div class="d-flex flex-wrap gap-1">
                             @if (client.AllowedScopes != null && client.AllowedScopes.Count > 0)
@@ -71,7 +90,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="ClientAdminModel" Property="Enabled" Title="Status & PKCE" Width="160px">
+                <RadzenDataGridColumn TItem="ClientAdminModel" Property="StatusSummary" Title="Status & PKCE" Width="160px">
                     <Template Context="client">
                         <div class="d-flex flex-column gap-1">
                             @if (client.Enabled)
@@ -91,7 +110,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="ClientAdminModel" Title="Akcje" Width="140px" Sortable="false" TextAlign="TextAlign.End">
+                <RadzenDataGridColumn TItem="ClientAdminModel" Title="Akcje" Width="140px" Sortable="false" Filterable="false" TextAlign="TextAlign.End">
                     <Template Context="client">
                         <div class="d-flex justify-content-end gap-1">
                             <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/clients/{client.Id}/edit"))" Tooltip="Edytuj klienta" />
@@ -105,29 +124,29 @@
 </RadzenStack>
 
 @code {
+    private RadzenDataGrid<ClientAdminModel>? grid;
     private IEnumerable<ClientAdminModel> clients = new List<ClientAdminModel>();
-    private int totalCount;
     private bool isLoading = true;
     private string searchTerm = string.Empty;
-    private int currentPage = 1;
-    private int currentPageSize = 10;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
     }
 
-    private async Task OnLoadData(LoadDataArgs args)
-    {
-        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
-        currentPageSize = args.Top ?? 10;
-        await LoadDataAsync();
-    }
-
     private async Task OnSearchInput(ChangeEventArgs e)
     {
         searchTerm = e.Value?.ToString() ?? "";
-        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        searchTerm = string.Empty;
+        if (grid != null)
+        {
+            await grid.Reset(true);
+        }
         await LoadDataAsync();
     }
 
@@ -136,9 +155,8 @@
         isLoading = true;
         try
         {
-            var result = await ClientStore.GetClientsAsync(searchTerm, currentPage, currentPageSize);
+            var result = await ClientStore.GetClientsAsync(searchTerm, 1, 1000);
             clients = result.Items;
-            totalCount = result.TotalCount;
         }
         finally
         {

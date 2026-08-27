@@ -25,9 +25,26 @@
             <RadzenColumn Size="12" SizeMD="6">
                 <RadzenTextBox Placeholder="Szukaj po nazwie zasobu..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
             </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" Class="d-flex justify-content-md-end gap-2">
+                <RadzenButton Icon="filter_alt_off" Text="Wyczyść filtry" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@ResetFiltersAsync" />
+            </RadzenColumn>
         </RadzenRow>
 
-        <RadzenDataGrid Data="@resources" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25 })" IsLoading="@isLoading" TItem="IdentityResourceAdminModel" EmptyText="Brak zasobów tożsamości.">
+        <RadzenDataGrid @ref="grid"
+                        Data="@resources"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.SimpleWithMenu"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="10"
+                        PageSizeOptions="@(new int[] { 5, 10, 25, 50, 100 })"
+                        ShowPagingSummary="true"
+                        PagingSummaryFormat="Strona {0} z {1} (łącznie {2} pozycji)"
+                        AllowColumnResize="true"
+                        IsLoading="@isLoading"
+                        TItem="IdentityResourceAdminModel"
+                        EmptyText="Brak zasobów tożsamości spełniających wybrane kryteria filtrowania.">
             <Columns>
                 <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Property="Name" Title="Nazwa Zasobu" Width="180px">
                     <Template Context="res">
@@ -38,7 +55,7 @@
 
                 <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Property="Description" Title="Opis" />
 
-                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Title="Skojarzone Claims" Width="260px">
+                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Property="UserClaimsSummary" Title="Skojarzone Claims" Width="260px">
                     <Template Context="res">
                         <div class="d-flex flex-wrap gap-1">
                             @if (res.UserClaims != null && res.UserClaims.Count > 0)
@@ -56,7 +73,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Property="Enabled" Title="Status" Width="130px">
+                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Property="StatusSummary" Title="Status" Width="130px">
                     <Template Context="res">
                         @if (res.Enabled)
                         {
@@ -69,7 +86,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Title="Akcje" Width="140px" Sortable="false" TextAlign="TextAlign.End">
+                <RadzenDataGridColumn TItem="IdentityResourceAdminModel" Title="Akcje" Width="140px" Sortable="false" Filterable="false" TextAlign="TextAlign.End">
                     <Template Context="res">
                         <div class="d-flex justify-content-end gap-1">
                             <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/identityresources/{res.Id}/edit"))" Tooltip="Edytuj zasób" />
@@ -83,29 +100,29 @@
 </RadzenStack>
 
 @code {
+    private RadzenDataGrid<IdentityResourceAdminModel>? grid;
     private IEnumerable<IdentityResourceAdminModel> resources = new List<IdentityResourceAdminModel>();
-    private int totalCount;
     private bool isLoading = true;
     private string searchTerm = string.Empty;
-    private int currentPage = 1;
-    private int currentPageSize = 10;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
     }
 
-    private async Task OnLoadData(LoadDataArgs args)
-    {
-        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
-        currentPageSize = args.Top ?? 10;
-        await LoadDataAsync();
-    }
-
     private async Task OnSearchInput(ChangeEventArgs e)
     {
         searchTerm = e.Value?.ToString() ?? "";
-        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        searchTerm = string.Empty;
+        if (grid != null)
+        {
+            await grid.Reset(true);
+        }
         await LoadDataAsync();
     }
 
@@ -114,9 +131,8 @@
         isLoading = true;
         try
         {
-            var result = await IdentityResourceStore.GetResourcesAsync(searchTerm, currentPage, currentPageSize);
+            var result = await IdentityResourceStore.GetResourcesAsync(searchTerm, 1, 1000);
             resources = result.Items;
-            totalCount = result.TotalCount;
         }
         finally
         {

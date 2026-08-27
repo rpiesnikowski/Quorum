@@ -15,4 +15,5 @@ public class PersistedGrantAdminModel
 
     public bool IsExpired => Expiration.HasValue && Expiration.Value < DateTime.UtcNow;
     public bool IsConsumed => ConsumedTime.HasValue;
+    public string StatusSummary => IsExpired ? "Wygasły" : (IsConsumed ? "Skonsumowany" : "Aktywny");
 }

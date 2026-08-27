@@ -26,11 +26,28 @@
             <RadzenColumn Size="12" SizeMD="6">
                 <RadzenTextBox Placeholder="Szukaj po wzorcu ścieżki, nazwie, hoście docelowym..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
             </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" Class="d-flex justify-content-md-end gap-2">
+                <RadzenButton Icon="filter_alt_off" Text="Wyczyść filtry" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@ResetFiltersAsync" />
+            </RadzenColumn>
         </RadzenRow>
 
-        <RadzenDataGrid Data="@routes" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25 })" IsLoading="@isLoading" TItem="GatewayRouteAdminModel" EmptyText="Brak tras API Gateway.">
+        <RadzenDataGrid @ref="grid"
+                        Data="@routes"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.SimpleWithMenu"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="10"
+                        PageSizeOptions="@(new int[] { 5, 10, 25, 50, 100 })"
+                        ShowPagingSummary="true"
+                        PagingSummaryFormat="Strona {0} z {1} (łącznie {2} pozycji)"
+                        AllowColumnResize="true"
+                        IsLoading="@isLoading"
+                        TItem="GatewayRouteAdminModel"
+                        EmptyText="Brak tras API Gateway spełniających wybrane kryteria.">
             <Columns>
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="Priority" Title="Prio" Width="70px" TextAlign="TextAlign.Center">
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="Priority" Title="Prio" Width="80px" TextAlign="TextAlign.Center">
                     <Template Context="r">
                         <RadzenBadge BadgeStyle="BadgeStyle.Dark" Text="@r.Priority.ToString()" IsPill="true" />
                     </Template>
@@ -52,7 +69,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Title="Wymagane Scopes" Width="200px">
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="ScopesSummary" Title="Wymagane Scopes" Width="200px">
                     <Template Context="r">
                         <div class="d-flex flex-wrap gap-1">
                             @if (r.RequiredScopes != null && r.RequiredScopes.Count > 0)
@@ -70,7 +87,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="IsEnabled" Title="Status" Width="110px">
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Property="StatusSummary" Title="Status" Width="110px">
                     <Template Context="r">
                         @if (r.IsEnabled)
                         {
@@ -83,7 +100,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Title="Akcje" Width="140px" Sortable="false" TextAlign="TextAlign.End">
+                <RadzenDataGridColumn TItem="GatewayRouteAdminModel" Title="Akcje" Width="140px" Sortable="false" Filterable="false" TextAlign="TextAlign.End">
                     <Template Context="r">
                         <div class="d-flex justify-content-end gap-1">
                             <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => NavigationManager.NavigateTo($"admin/gateway/{r.Id}/edit"))" Tooltip="Edytuj trasę" />
@@ -97,29 +114,29 @@
 </RadzenStack>
 
 @code {
+    private RadzenDataGrid<GatewayRouteAdminModel>? grid;
     private IEnumerable<GatewayRouteAdminModel> routes = new List<GatewayRouteAdminModel>();
-    private int totalCount;
     private bool isLoading = true;
     private string searchTerm = string.Empty;
-    private int currentPage = 1;
-    private int currentPageSize = 10;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
     }
 
-    private async Task OnLoadData(LoadDataArgs args)
-    {
-        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
-        currentPageSize = args.Top ?? 10;
-        await LoadDataAsync();
-    }
-
     private async Task OnSearchInput(ChangeEventArgs e)
     {
         searchTerm = e.Value?.ToString() ?? "";
-        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        searchTerm = string.Empty;
+        if (grid != null)
+        {
+            await grid.Reset(true);
+        }
         await LoadDataAsync();
     }
 
@@ -128,9 +145,8 @@
         isLoading = true;
         try
         {
-            var result = await GatewayStore.GetRoutesAsync(searchTerm, currentPage, currentPageSize);
+            var result = await GatewayStore.GetRoutesAsync(searchTerm, 1, 1000);
             routes = result.Items;
-            totalCount = result.TotalCount;
         }
         finally
         {

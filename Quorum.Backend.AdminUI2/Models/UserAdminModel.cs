@@ -33,6 +33,9 @@ public class UserAdminModel
 
     public List<string> Roles { get; set; } = new();
 
+    public string RolesSummary => Roles != null && Roles.Count > 0 ? string.Join(", ", Roles) : "Brak";
+    public string StatusSummary => IsLockedOut ? "Zablokowany" : "Aktywny";
+
     public List<UserClaimModel> Claims { get; set; } = new();
 
     // Pole pomocnicze do ustawiania nowego hasła podczas tworzenia lub resetu

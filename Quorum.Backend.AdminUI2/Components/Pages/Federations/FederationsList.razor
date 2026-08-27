@@ -24,9 +24,26 @@
             <RadzenColumn Size="12" SizeMD="6">
                 <RadzenTextBox Placeholder="Szukaj po nazwie, schemacie, adresie Authority..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
             </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" Class="d-flex justify-content-md-end gap-2">
+                <RadzenButton Icon="filter_alt_off" Text="Wyczyść filtry" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@ResetFiltersAsync" />
+            </RadzenColumn>
         </RadzenRow>
 
-        <RadzenDataGrid Data="@providers" Count="@totalCount" LoadData="@OnLoadData" AllowPaging="true" PageSize="10" PageSizeOptions="@(new int[] { 5, 10, 25 })" IsLoading="@isLoading" TItem="FederationAdminModel" EmptyText="Brak skonfigurowanych dostawców federacji.">
+        <RadzenDataGrid @ref="grid"
+                        Data="@providers"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.SimpleWithMenu"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="10"
+                        PageSizeOptions="@(new int[] { 5, 10, 25, 50, 100 })"
+                        ShowPagingSummary="true"
+                        PagingSummaryFormat="Strona {0} z {1} (łącznie {2} pozycji)"
+                        AllowColumnResize="true"
+                        IsLoading="@isLoading"
+                        TItem="FederationAdminModel"
+                        EmptyText="Brak skonfigurowanych dostawców federacji spełniających wybrane kryteria.">
             <Columns>
                 <RadzenDataGridColumn TItem="FederationAdminModel" Property="DisplayName" Title="Dostawca OIDC" Width="200px">
                     <Template Context="fed">
@@ -40,6 +57,8 @@
                     </Template>
                 </RadzenDataGridColumn>
 
+                <RadzenDataGridColumn TItem="FederationAdminModel" Property="Scheme" Title="Schemat" Width="140px" />
+
                 <RadzenDataGridColumn TItem="FederationAdminModel" Property="Authority" Title="Authority & Client ID">
                     <Template Context="fed">
                         <div class="text-truncate" style="max-width: 340px; font-family: monospace; font-size: 0.85rem;" title="@fed.Authority">
@@ -49,7 +68,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="FederationAdminModel" Title="Auto-Provisioning" Width="180px">
+                <RadzenDataGridColumn TItem="FederationAdminModel" Property="ProvisioningSummary" Title="Auto-Provisioning" Width="180px">
                     <Template Context="fed">
                         @if (fed.AutoProvisionUsers)
                         {
@@ -63,7 +82,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="FederationAdminModel" Property="IsEnabled" Title="Status" Width="130px">
+                <RadzenDataGridColumn TItem="FederationAdminModel" Property="StatusSummary" Title="Status" Width="130px">
                     <Template Context="fed">
                         @if (fed.IsEnabled)
                         {
@@ -76,7 +95,7 @@
                     </Template>
                 </RadzenDataGridColumn>
 
-                <RadzenDataGridColumn TItem="FederationAdminModel" Title="Akcje" Width="180px" Sortable="false" TextAlign="TextAlign.End">
+                <RadzenDataGridColumn TItem="FederationAdminModel" Title="Akcje" Width="180px" Sortable="false" Filterable="false" TextAlign="TextAlign.End">
                     <Template Context="fed">
                         <div class="d-flex justify-content-end gap-1">
                             <RadzenButton Icon="@(fed.IsEnabled ? "toggle_on" : "toggle_off")" ButtonStyle="@(fed.IsEnabled ? ButtonStyle.Success : ButtonStyle.Light)" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => ToggleStatusAsync(fed))" Tooltip="@(fed.IsEnabled ? "Wyłącz dostawcę" : "Włącz dostawcę")" />
@@ -91,29 +110,29 @@
 </RadzenStack>
 
 @code {
+    private RadzenDataGrid<FederationAdminModel>? grid;
     private IEnumerable<FederationAdminModel> providers = new List<FederationAdminModel>();
-    private int totalCount;
     private bool isLoading = true;
     private string searchTerm = string.Empty;
-    private int currentPage = 1;
-    private int currentPageSize = 10;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
     }
 
-    private async Task OnLoadData(LoadDataArgs args)
-    {
-        currentPage = (args.Skip ?? 0) / (args.Top ?? 10) + 1;
-        currentPageSize = args.Top ?? 10;
-        await LoadDataAsync();
-    }
-
     private async Task OnSearchInput(ChangeEventArgs e)
     {
         searchTerm = e.Value?.ToString() ?? "";
-        currentPage = 1;
+        await LoadDataAsync();
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        searchTerm = string.Empty;
+        if (grid != null)
+        {
+            await grid.Reset(true);
+        }
         await LoadDataAsync();
     }
 
@@ -122,9 +141,8 @@
         isLoading = true;
         try
         {
-            var result = await FederationStore.GetProvidersAsync(searchTerm, currentPage, currentPageSize);
+            var result = await FederationStore.GetProvidersAsync(searchTerm, 1, 1000);
             providers = result.Items;
-            totalCount = result.TotalCount;
         }
         finally
         {

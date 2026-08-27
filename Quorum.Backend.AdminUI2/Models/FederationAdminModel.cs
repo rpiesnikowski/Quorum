@@ -35,6 +35,9 @@ public class FederationAdminModel
 
     public bool AutoProvisionUsers { get; set; } = true;
 
+    public string StatusSummary => IsEnabled ? "Włączony" : "Wyłączony";
+    public string ProvisioningSummary => AutoProvisionUsers ? "Auto-Provisioning" : "Tylko powiązane";
+
     public string? DefaultRoles { get; set; } = "User";
 
     public string? IconUrl { get; set; }

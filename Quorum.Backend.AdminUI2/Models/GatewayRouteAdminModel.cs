@@ -34,6 +34,10 @@ public class GatewayRouteAdminModel
 
     public bool RequireAllScopes { get; set; } = false;
 
+    public string ScopesSummary => RequiredScopes != null && RequiredScopes.Count > 0 ? string.Join(", ", RequiredScopes) : "Anonimowy";
+    public string MethodsSummary => AllowedHttpMethods != null && AllowedHttpMethods.Count > 0 ? string.Join(", ", AllowedHttpMethods) : "Wszystkie";
+    public string StatusSummary => IsEnabled ? "Aktywna" : "Wyłączona";
+
     public List<string> AllowedHttpMethods { get; set; } = new() { "GET", "POST", "PUT", "DELETE" };
 
     public List<string> RequiredScopes { get; set; } = new();
