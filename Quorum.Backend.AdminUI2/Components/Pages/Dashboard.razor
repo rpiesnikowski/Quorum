@@ -1,6 +1,6 @@
 @page "/admin"
 @page "/admin/dashboard"
-@attribute [Authorize(Policy = "AdminOnly")]
+@attribute [Authorize(Roles = "Admin")]
 
 @layout AdminLayout
 @inject IAdminDashboardStore DashboardStore

@@ -3,7 +3,39 @@
             AdditionalAssemblies="new[] { typeof(Quorum.Backend.AdminUI2.Components.Layout.AdminLayout).Assembly }" 
             NotFoundPage="typeof(Pages.NotFound)">
         <Found Context="routeData">
-            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+                            <RadzenCard Class="rz-p-5 text-center" Style="max-width: 480px;">
+                                <RadzenIcon Icon="gpp_bad" Style="font-size: 3.5rem; color: #ef4444;" />
+                                <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mt-3 mb-2">Brak Uprawnień</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1" Class="text-muted mb-4">
+                                    Nie posiadasz wystarczających uprawnień (wymagana rola <strong>Administratora</strong>), aby uzyskać dostęp do panelu administracyjnego.
+                                </RadzenText>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <a href="/" class="btn btn-outline-secondary d-flex align-items-center gap-1">
+                                        <i class="material-icons">home</i> Strona Główna
+                                    </a>
+                                    <a href="/account/logout" class="btn btn-primary d-flex align-items-center gap-1">
+                                        <i class="material-icons">logout</i> Zmień Konto
+                                    </a>
+                                </div>
+                            </RadzenCard>
+                        </div>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
+                        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                    </div>
+                </Authorizing>
+            </AuthorizeRouteView>
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
     </Router> 

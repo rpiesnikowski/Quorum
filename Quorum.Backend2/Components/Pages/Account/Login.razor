@@ -2,8 +2,6 @@
 @using Microsoft.AspNetCore.Identity
 @using Quorum.Backend.EntityFramework.Models
 @using Quorum.Backend2.Services
-@inject SignInManager<ApplicationUser> SignInManager
-@inject UserManager<ApplicationUser> UserManager
 @inject IDynamicOidcService DynamicOidcService
 @inject NavigationManager NavigationManager
 
@@ -14,38 +12,48 @@
         <div class="text-center mb-4">
             <RadzenIcon Icon="lock" Style="font-size: 2.5rem; color: #3b82f6;" />
             <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mt-2 mb-1">Logowanie</RadzenText>
-            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Quorum Identity Server 2 (Pure Blazor)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Quorum Identity Server 2 & Panel Admina</RadzenText>
         </div>
 
-        @if (!string.IsNullOrEmpty(errorMessage))
+        @if (!string.IsNullOrEmpty(Error))
         {
             <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" Class="mb-3">
-                @errorMessage
+                @Error
             </RadzenAlert>
         }
 
-        <RadzenTemplateForm TItem="LoginModel" Data="@loginModel" Submit="@HandleLoginAsync">
-            <RadzenStack Gap="1rem">
-                <RadzenFormField Text="Nazwa Użytkownika lub E-mail" Class="w-100">
-                    <RadzenTextBox @bind-Value="loginModel.UserName" Name="UserName" Class="w-100" />
-                </RadzenFormField>
-                <RadzenRequiredValidator Component="UserName" Text="Nazwa użytkownika jest wymagana." />
-
-                <RadzenFormField Text="Hasło" Class="w-100">
-                    <RadzenPassword @bind-Value="loginModel.Password" Name="Password" Class="w-100" />
-                </RadzenFormField>
-                <RadzenRequiredValidator Component="Password" Text="Hasło jest wymagane." />
-
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-2">
-                        <RadzenCheckBox @bind-Value="loginModel.RememberMe" Name="RememberMe" />
-                        <RadzenLabel Text="Zapamiętaj mnie" Component="RememberMe" />
-                    </div>
+        <form method="post" action="/account/login">
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary" style="font-size: 0.875rem;">Nazwa Użytkownika lub E-mail</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="material-icons" style="font-size: 1.2rem; color: #64748b;">person</i></span>
+                    <input type="text" name="UserName" class="form-control border-start-0" placeholder="Wprowadź login lub email" required value="admin" autofocus />
                 </div>
+            </div>
 
-                <RadzenButton ButtonType="ButtonType.Submit" Text="Zaloguj się" Icon="login" ButtonStyle="ButtonStyle.Primary" Class="w-100 mt-2" IsBusy="@isLoading" />
-            </RadzenStack>
-        </RadzenTemplateForm>
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary" style="font-size: 0.875rem;">Hasło</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="material-icons" style="font-size: 1.2rem; color: #64748b;">lock</i></span>
+                    <input type="password" name="Password" class="form-control border-start-0" placeholder="Wprowadź hasło" required value="Pass123$" />
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="RememberMe" value="true" id="rememberMeCheck" checked />
+                    <label class="form-check-label text-secondary" for="rememberMeCheck" style="font-size: 0.875rem;">
+                        Zapamiętaj mnie
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2" style="background: #2563eb; border: none; border-radius: 8px;">
+                <i class="material-icons" style="font-size: 1.2rem;">login</i> Zaloguj się
+            </button>
+        </form>
 
         @if (externalProviders.Count > 0)
         {
@@ -54,16 +62,18 @@
                 <span class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted" style="font-size: 0.8rem;">LUB ZALOGUJ PRZEZ SSO</span>
             </div>
 
-            <RadzenStack Gap="0.5rem">
+            <div class="d-flex flex-column gap-2">
                 @foreach (var p in externalProviders)
                 {
-                    <RadzenButton Text="@p.DisplayName" Icon="hub" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" Class="w-100 justify-content-center" Click="@(() => NavigationManager.NavigateTo($"/Account/ExternalLogin?provider={p.Scheme}&returnUrl={ReturnUrl}", true))" />
+                    <a href="/Account/ExternalLogin?provider=@p.Scheme&returnUrl=@Uri.EscapeDataString(ReturnUrl ?? "/admin")" class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2">
+                        <i class="material-icons" style="font-size: 1.2rem;">hub</i> @p.DisplayName
+                    </a>
                 }
-            </RadzenStack>
+            </div>
         }
 
-        <div class="mt-4 p-3 bg-light rounded text-center" style="font-size: 0.8rem;">
-            <div><strong>Domyślne konto administratora:</strong></div>
+        <div class="mt-4 p-3 bg-light rounded text-center border" style="font-size: 0.8rem;">
+            <div class="text-muted mb-1">Domyślne konto administratora (Rola: <strong>Admin</strong>):</div>
             <code>admin / Pass123$</code>
         </div>
     </RadzenCard>
@@ -73,50 +83,13 @@
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
 
-    private LoginModel loginModel = new() { UserName = "admin", Password = "Pass123$" };
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
     private List<OidcFederationProvider> externalProviders = new();
-    private string? errorMessage;
-    private bool isLoading = false;
 
     protected override async Task OnInitializedAsync()
     {
         externalProviders = await DynamicOidcService.GetActiveFederationsAsync();
-    }
-
-    private async Task HandleLoginAsync()
-    {
-        isLoading = true;
-        errorMessage = null;
-        try
-        {
-            var user = await UserManager.FindByNameAsync(loginModel.UserName) ?? await UserManager.FindByEmailAsync(loginModel.UserName);
-            if (user != null)
-            {
-                var result = await SignInManager.CheckPasswordSignInAsync(user, loginModel.Password, false);
-                if (result.Succeeded)
-                {
-                    var target = !string.IsNullOrEmpty(ReturnUrl) ? ReturnUrl : "/admin";
-                    NavigationManager.NavigateTo(target, true);
-                    return;
-                }
-            }
-
-            errorMessage = "Nieprawidłowa nazwa użytkownika lub hasło.";
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Błąd podczas logowania: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    public class LoginModel
-    {
-        public string UserName { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public bool RememberMe { get; set; } = true;
     }
 }
