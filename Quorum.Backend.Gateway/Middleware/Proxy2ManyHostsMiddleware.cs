@@ -36,19 +36,26 @@ public class Proxy2ManyHostsMiddleware
             .OrderByDescending(r => r.Priority)
             .ToListAsync();
 
-        // 2. Dopasowanie trasy za pomocą Regex i metody HTTP
+        // 2. Dopasowanie trasy za pomocą GatewayRouteMatcher (Regex, szablony {grupa}, prefiksy) i metody HTTP
         GatewayRoute? matchedRoute = null;
+        Match? matchedMatch = null;
+        Dictionary<string, string> capturedGroups = new(StringComparer.OrdinalIgnoreCase);
+
+        var requestPath = context.Request.Path.Value ?? "/";
+
         foreach (var route in activeRoutes)
         {
             if (IsHttpMethodAllowed(route.HttpMethods, method) &&
-                Regex.IsMatch(uri, route.MatchPattern, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100)))
+                GatewayRouteMatcher.TryMatch(route.MatchPattern, requestPath, uri, out var match, out var groups))
             {
                 matchedRoute = route;
+                matchedMatch = match;
+                capturedGroups = groups;
                 break;
             }
         }
 
-        // Jeśli żaden regex nie pasuje, przekazujemy żądanie dalej w potoku ASP.NET
+        // Jeśli żaden wzorzec nie pasuje, przekazujemy żądanie dalej w potoku ASP.NET
         if (matchedRoute == null)
         {
             await _next(context);
@@ -96,8 +103,8 @@ public class Proxy2ManyHostsMiddleware
             }
         }
 
-        // 4. Konstruowanie docelowego URI
-        var targetUri = BuildTargetUri(context.Request, matchedRoute).ToString().TrimEnd('/') ?? "";
+        // 4. Konstruowanie docelowego URI z podstawieniem grup Regex / Szablonu
+        var targetUri = BuildTargetUri(context.Request, matchedRoute, matchedMatch, capturedGroups).ToString().TrimEnd('/') ?? "";
 
         // 5. Przygotowanie żądania proxy (HttpRequestMessage)
         using var proxyRequest = new HttpRequestMessage(new HttpMethod(method), targetUri);
@@ -114,7 +121,7 @@ public class Proxy2ManyHostsMiddleware
             }
         }
 
-        // Wstrzykiwanie niestandardowych nagłówków skonfigurowanych w regule trasy (route.Headers)
+        // Wstrzykiwanie niestandardowych nagłówków skonfigurowanych w regule trasy (route.Headers) z podstawieniem grup
         if (!string.IsNullOrWhiteSpace(matchedRoute.Headers))
         {
             var headerLines = matchedRoute.Headers.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -123,8 +130,8 @@ public class Proxy2ManyHostsMiddleware
                 var separatorIdx = hLine.IndexOf(':');
                 if (separatorIdx > 0)
                 {
-                    var hKey = hLine.Substring(0, separatorIdx).Trim();
-                    var hVal = hLine.Substring(separatorIdx + 1).Trim();
+                    var hKey = GatewayRouteMatcher.ApplyReplacements(hLine.Substring(0, separatorIdx).Trim(), matchedMatch, capturedGroups);
+                    var hVal = GatewayRouteMatcher.ApplyReplacements(hLine.Substring(separatorIdx + 1).Trim(), matchedMatch, capturedGroups);
                     if (!string.IsNullOrEmpty(hKey))
                     {
                         proxyRequest.Headers.TryAddWithoutValidation(hKey, hVal);
@@ -140,9 +147,10 @@ public class Proxy2ManyHostsMiddleware
         }
         else
         {
+            var resolvedHost = GatewayRouteMatcher.ApplyReplacements(matchedRoute.AddressHost, matchedMatch, capturedGroups);
             proxyRequest.Headers.Host = matchedRoute.AddressPort is 80 or 443
-                ? matchedRoute.AddressHost
-                : $"{matchedRoute.AddressHost}:{matchedRoute.AddressPort}";
+                ? resolvedHost
+                : $"{resolvedHost}:{matchedRoute.AddressPort}";
         }
 
         // Kopiowanie treści żądania (Body) dla metod POST, PUT, PATCH itp.
@@ -203,27 +211,15 @@ public class Proxy2ManyHostsMiddleware
         return methods.Contains(currentMethod, StringComparer.OrdinalIgnoreCase);
     }
 
-    private static Uri BuildTargetUri(HttpRequest request, GatewayRoute route)
+    private static Uri BuildTargetUri(
+        HttpRequest request,
+        GatewayRoute route,
+        Match? match,
+        IReadOnlyDictionary<string, string> capturedGroups)
     {
-        var basePath = route.AddressBasePath?.TrimEnd('/') ?? string.Empty;
-        var path = !string.IsNullOrWhiteSpace(route.AddressPath) 
-            ? route.AddressPath 
-            : request.Path.Value;
-
-        var queryString = !string.IsNullOrWhiteSpace(route.AddressQueryString)
-            ? route.AddressQueryString
-            : request.QueryString.Value;
-
-        var builder = new UriBuilder
-        {
-            Scheme = route.Scheme,
-            Host = route.AddressHost,
-            Port = route.AddressPort,
-            Path = $"{basePath}{path}",
-            Query = queryString?.TrimStart('?')
-        };
-
-        return builder.Uri;
+        var path = request.Path.Value ?? "/";
+        var query = request.QueryString.Value;
+        return GatewayRouteMatcher.BuildTargetUri(path, query, route, match, capturedGroups);
     }
 }
 // Extension Method ułatwiająca rejestrację middleware w Program.cs

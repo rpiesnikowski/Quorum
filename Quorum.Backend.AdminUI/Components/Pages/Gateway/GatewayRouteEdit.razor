@@ -43,12 +43,16 @@
                             <RadzenRow Gap="1rem">
                                 <RadzenColumn Size="12" SizeMD="8">
                                     <RadzenFormField Text="Wzorzec Dopasowania Ścieżki (MatchPattern)" Class="w-100">
-                                        <RadzenTextBox @bind-Value="model.MatchPattern" Name="MatchPattern" Class="w-100" Placeholder="np. /api/orders, ^/api/v1/users/.*" />
+                                        <RadzenTextBox @bind-Value="model.MatchPattern" Name="MatchPattern" Class="w-100" Placeholder="np. /api/v1/{grupa1}/{grupa2} lub ^/api/v1/(?<grupa1>[^/]+)/(?<grupa2>[^/]+)" />
                                     </RadzenFormField>
                                     <RadzenRequiredValidator Component="MatchPattern" Text="Wzorzec ścieżki (MatchPattern) jest wymagany." />
                                     <div class="d-flex align-items-center gap-2 mt-1">
                                         <span class="text-muted small">Typ dopasowania:</span>
-                                        @if (model.IsRegex)
+                                        @if (model.IsTemplate)
+                                        {
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Szablon Ścieżki z Parametrami {grupa}" IsPill="true" />
+                                        }
+                                        else if (model.IsRegex)
                                         {
                                             <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="Wyrażenie Regularne (Regex)" IsPill="true" />
                                         }
@@ -57,6 +61,9 @@
                                             <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="Dopasowanie Ścieżki / Prefiks" IsPill="true" />
                                         }
                                     </div>
+                                    <span class="text-muted small d-block mt-1">
+                                        Obsługuje szablony parametrów (np. <code>/api/v1/{grupa1}/{grupa2}</code>), grupy nazwane Regex (np. <code>(?&lt;grupa1&gt;[^/]+)</code>) i grupy indeksowane <code>(.*)</code>.
+                                    </span>
                                 </RadzenColumn>
 
                                 <RadzenColumn Size="12" SizeMD="4">
@@ -153,9 +160,11 @@
 
                                 <RadzenColumn Size="12" SizeMD="6">
                                     <RadzenFormField Text="Nadpisanie Ścieżki Docelowej (AddressPath)" Class="w-100">
-                                        <RadzenTextBox @bind-Value="model.AddressPath" Class="w-100" Placeholder="np. /api/v2/orders (pozostaw puste dla zachowania oryginalnej ścieżki)" />
+                                        <RadzenTextBox @bind-Value="model.AddressPath" Class="w-100" Placeholder="np. /{grupa1}/{grupa2}/v1/orders lub /$1/$2/orders" />
                                     </RadzenFormField>
-                                    <span class="text-muted small">Opcjonalny override ścieżki przekazywanej do backendu</span>
+                                    <span class="text-muted small">
+                                        Obsługuje podstawianie grup Regex/Szablonu: <code>{grupa1}</code>, <code>$1</code>, <code>$2</code> (np. <code>/{grupa1}/{grupa2}/v1/orders</code>). Puste = zachowaj ścieżkę wejściową.
+                                    </span>
                                 </RadzenColumn>
 
                                 <RadzenColumn Size="12">

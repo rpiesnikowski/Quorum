@@ -94,6 +94,7 @@ public class GatewayRouteCandidateEvaluation
     public bool IsWinner { get; set; }
     public string EvaluationStatus { get; set; } = string.Empty;
     public string? Details { get; set; }
+    public Dictionary<string, string> CapturedGroups { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -106,6 +107,7 @@ public class GatewayEvaluationResult
     public string? OriginalQueryString { get; set; }
     public GatewayRoute? MatchedRoute { get; set; }
     public List<GatewayRouteCandidateEvaluation> CandidateEvaluations { get; set; } = new();
+    public Dictionary<string, string> CapturedGroups { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Wyliczony pełny adres URL docelowego serwera (Upstream).

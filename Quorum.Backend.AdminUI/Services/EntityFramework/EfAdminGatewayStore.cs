@@ -223,27 +223,25 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             .ToListAsync(cancellationToken);
 
         GatewayRoute? matchedRoute = null;
+        Match? matchedMatch = null;
+        Dictionary<string, string> matchedGroups = new(StringComparer.OrdinalIgnoreCase);
         var requestedMethod = (request.HttpMethod ?? "GET").Trim().ToUpperInvariant();
 
         foreach (var route in activeRoutes)
         {
-            var isRegex = !string.IsNullOrEmpty(route.MatchPattern) && (route.MatchPattern.StartsWith("^") || route.MatchPattern.Contains(".*"));
+            var isTemplate = GatewayRouteMatcher.IsTemplatePattern(route.MatchPattern);
+            var isRegex = !string.IsNullOrEmpty(route.MatchPattern) && (route.MatchPattern.StartsWith("^") || route.MatchPattern.Contains(".*") || route.MatchPattern.Contains("(?<"));
             bool isPatternMatch = false;
+            Match? candidateMatch = null;
+            Dictionary<string, string> candidateGroups = new(StringComparer.OrdinalIgnoreCase);
 
             try
             {
-                if (isRegex)
-                {
-                    isPatternMatch = Regex.IsMatch(normalizedPath, route.MatchPattern, RegexOptions.IgnoreCase);
-                }
-                else
-                {
-                    isPatternMatch = normalizedPath.StartsWith(route.MatchPattern, StringComparison.OrdinalIgnoreCase);
-                }
+                isPatternMatch = GatewayRouteMatcher.TryMatch(route.MatchPattern, normalizedPath, rawUrl, out candidateMatch, out candidateGroups);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Błąd ewaluacji Regex dla wzorca {Pattern}", route.MatchPattern);
+                _logger.LogWarning(ex, "Błąd ewaluacji wzorca {Pattern}", route.MatchPattern);
                 isPatternMatch = false;
             }
 
@@ -261,9 +259,13 @@ public class EfAdminGatewayStore : IAdminGatewayStore
                 if (matchedRoute == null)
                 {
                     matchedRoute = route;
+                    matchedMatch = candidateMatch;
+                    matchedGroups = candidateGroups;
                     isWinner = true;
                     evalStatus = "Dopasowano (Zwycięzca)";
-                    details = $"Trasa ma najwyższy priorytet ({route.Priority}) i pasuje do ścieżki '{normalizedPath}'.";
+                    details = candidateGroups.Count > 0 
+                        ? $"Trasa pasuje (Priorytet {route.Priority}). Wykryto grupy: {string.Join(", ", candidateGroups.Select(kv => $"{{{kv.Key}}}='{kv.Value}'"))}."
+                        : $"Trasa ma najwyższy priorytet ({route.Priority}) i pasuje do ścieżki '{normalizedPath}'.";
                 }
                 else
                 {
@@ -290,11 +292,12 @@ public class EfAdminGatewayStore : IAdminGatewayStore
                 Priority = route.Priority,
                 IsEnabled = route.IsEnabled,
                 AllowedMethods = route.HttpMethods ?? "ALL",
-                IsRegexMatch = isRegex,
+                IsRegexMatch = isRegex || isTemplate,
                 IsMethodMatch = isMethodMatch,
                 IsWinner = isWinner,
                 EvaluationStatus = evalStatus,
-                Details = details
+                Details = details,
+                CapturedGroups = candidateGroups
             });
         }
 
@@ -311,31 +314,11 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         response.Evaluation.IsMatched = true;
         response.Evaluation.MatchedRoute = matchedRoute;
         response.Evaluation.ForwardOriginalHost = matchedRoute.ForwardOriginalHost;
+        response.Evaluation.CapturedGroups = matchedGroups;
 
-        // 4. Konstruowanie docelowego Upstream URI zgodnie z Proxy2ManyHostsMiddleware
-        var targetPortStr = (matchedRoute.AddressPort == 80 && matchedRoute.Scheme == "http") || (matchedRoute.AddressPort == 443 && matchedRoute.Scheme == "https")
-            ? ""
-            : $":{matchedRoute.AddressPort}";
-
-        var basePath = !string.IsNullOrWhiteSpace(matchedRoute.AddressBasePath)
-            ? (matchedRoute.AddressBasePath.StartsWith("/") ? matchedRoute.AddressBasePath.TrimEnd('/') : "/" + matchedRoute.AddressBasePath.TrimEnd('/'))
-            : "";
-
-        var downstreamPath = !string.IsNullOrWhiteSpace(matchedRoute.AddressPath) ? matchedRoute.AddressPath : normalizedPath;
-        if (!downstreamPath.StartsWith("/")) downstreamPath = "/" + downstreamPath;
-
-        var mergedQuery = new List<string>();
-        if (!string.IsNullOrWhiteSpace(matchedRoute.AddressQueryString))
-        {
-            mergedQuery.Add(matchedRoute.AddressQueryString.TrimStart('?'));
-        }
-        if (!string.IsNullOrWhiteSpace(queryString))
-        {
-            mergedQuery.Add(queryString);
-        }
-        var targetQueryStr = mergedQuery.Count > 0 ? "?" + string.Join("&", mergedQuery) : "";
-
-        var targetUri = $"{matchedRoute.Scheme}://{matchedRoute.AddressHost}{targetPortStr}{basePath}{downstreamPath}{targetQueryStr}";
+        // 4. Konstruowanie docelowego Upstream URI z dynamicznym podstawieniem grup
+        var targetUriObj = GatewayRouteMatcher.BuildTargetUri(normalizedPath, queryString, matchedRoute, matchedMatch, matchedGroups);
+        var targetUri = targetUriObj.ToString().TrimEnd('/');
         response.Evaluation.CalculatedUpstreamUrl = targetUri;
 
         // 5. Weryfikacja Scopes & Autoryzacji
@@ -379,11 +362,15 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             }
         }
 
+        var groupSummary = matchedGroups.Count > 0 
+            ? $" [Grupy: {string.Join(", ", matchedGroups.Select(kv => $"{{{kv.Key}}}='{kv.Value}'"))}]" 
+            : "";
+
         response.Evaluation.Explanation = response.Evaluation.AuthPassed
-            ? $"Dopasowano trasę '{matchedRoute.RouteName ?? matchedRoute.MatchPattern}' (Priorytet {matchedRoute.Priority}). Upstream: {targetUri}"
+            ? $"Dopasowano trasę '{matchedRoute.RouteName ?? matchedRoute.MatchPattern}' (Priorytet {matchedRoute.Priority}){groupSummary}. Upstream: {targetUri}"
             : $"Dopasowano trasę '{matchedRoute.RouteName ?? matchedRoute.MatchPattern}', lecz brakuje wymaganych uprawnień: {string.Join(", ", response.Evaluation.MissingScopes)}";
 
-        // 6. Parsowanie niestandardowych nagłówków trasy (route.Headers)
+        // 6. Parsowanie niestandardowych nagłówków trasy (route.Headers) z podstawianiem grup
         if (!string.IsNullOrWhiteSpace(matchedRoute.Headers))
         {
             var headerLines = matchedRoute.Headers.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -392,8 +379,8 @@ public class EfAdminGatewayStore : IAdminGatewayStore
                 var sep = hLine.IndexOf(':');
                 if (sep > 0)
                 {
-                    var k = hLine.Substring(0, sep).Trim();
-                    var v = hLine.Substring(sep + 1).Trim();
+                    var k = GatewayRouteMatcher.ApplyReplacements(hLine.Substring(0, sep).Trim(), matchedMatch, matchedGroups);
+                    var v = GatewayRouteMatcher.ApplyReplacements(hLine.Substring(sep + 1).Trim(), matchedMatch, matchedGroups);
                     if (!string.IsNullOrEmpty(k))
                     {
                         response.Evaluation.InjectedRouteHeaders[k] = v;

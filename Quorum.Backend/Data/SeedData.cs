@@ -236,7 +236,27 @@ public static class SeedData
                 CreatedAt = DateTime.UtcNow
             };
 
-            appDb.GatewayRoutes.AddRange(route1, route2);
+            var route3 = new GatewayRoute
+            {
+                MatchPattern = "/api/v1/{grupa1}/{grupa2}",
+                RouteName = "Dynamiczne Przekierowanie Grup",
+                Description = "Przykładowa trasa z podstawianiem grup {grupa1} i {grupa2} w ścieżce docelowej i nagłówkach",
+                Scheme = "https",
+                AddressHost = "localhost",
+                AddressPort = 5001,
+                AddressBasePath = "",
+                AddressPath = "/{grupa1}/{grupa2}/v1/orders",
+                AddressQueryString = "tenant={grupa1}&mod={grupa2}",
+                Headers = "X-Tenant-Group: {grupa1}\r\nX-Module-Group: {grupa2}",
+                HttpMethods = "GET,POST,PUT,DELETE",
+                AllowAnonymous = true,
+                RequiredScope = false,
+                IsEnabled = true,
+                Priority = 50,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            appDb.GatewayRoutes.AddRange(route1, route2, route3);
             await appDb.SaveChangesAsync();
         }
 

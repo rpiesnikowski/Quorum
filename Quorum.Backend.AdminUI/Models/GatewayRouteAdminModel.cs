@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.AdminUI.Models;
 
@@ -83,7 +84,8 @@ public class GatewayRouteAdminModel
         }
     }
 
-    public bool IsRegex => !string.IsNullOrEmpty(MatchPattern) && (MatchPattern.StartsWith("^") || MatchPattern.Contains(".*"));
+    public bool IsTemplate => GatewayRouteMatcher.IsTemplatePattern(MatchPattern);
+    public bool IsRegex => IsTemplate || (!string.IsNullOrEmpty(MatchPattern) && (MatchPattern.StartsWith("^") || MatchPattern.Contains(".*") || MatchPattern.Contains("(?<") || MatchPattern.Contains("([^")));
 
     // --- 2. Cel przekierowania (Upstream URI & Target Host) ---
 

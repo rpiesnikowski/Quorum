@@ -57,7 +57,11 @@
                     <Template Context="r">
                         <div class="d-flex align-items-center gap-1">
                             <span class="fw-bold text-primary" style="font-family: monospace; font-size: 0.9rem;">@r.MatchPattern</span>
-                            @if (r.IsRegex)
+                            @if (r.IsTemplate)
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Template" IsPill="true" Style="font-size: 0.65rem;" />
+                            }
+                            else if (r.IsRegex)
                             {
                                 <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="Regex" IsPill="true" Style="font-size: 0.65rem;" />
                             }
