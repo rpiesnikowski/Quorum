@@ -4,6 +4,24 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>Quorum.Backend.AdminUI</RootNamespace>
+    </PropertyGroup>
+    <PropertyGroup>
+        <!-- Konfiguracja Paczki NuGet Razor Class Library dla Blazor .NET 10 -->
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageId>Quorum.Backend.EntityFramework</PackageId>
+        <Version>2.0.0</Version>
+        <Authors>Robert Pieśnikowski</Authors>
+        <Product>Quorum EntityFramework biblioteki pomocnicze.</Product>
+        <Title>Quorum EntityFramework biblioteki pomocnicze.</Title>
+        <Description>Nowoczesny, w 100% oparty o Blazor i Radzen Blazor pakiet RCL (Razor Class Library) dostarczający kompletny panel administracyjny CRUD dla Open.IdentityServer, ASP.NET Identity, OIDC Federations i API Gateway. Architektura oparta o abstrakcyjne interfejsy modeli dziedzinowych z gotową implementacją Entity Framework Core.</Description>
+        <PackageTags>identityserver;openidentityserver;admin;adminui;blazor;radzen;radzen-blazor;oidc;oauth2;dotnet10;rcl</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/rpiesnikowski/Quorum</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Quorum/Quorum.Backend</RepositoryUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
