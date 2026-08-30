@@ -1,35 +1,329 @@
 @namespace Quorum.Backend.AdminUI.Components.Layout
+@inject NavigationManager Navigation
 
-<RadzenPanelMenu Style="width: 100%; border: none;">
-    <div class="px-3 py-3 d-flex align-items-center gap-2 border-bottom border-secondary border-opacity-25 mb-2">
-        <RadzenIcon Icon="security" Style="color: #3b82f6; font-size: 1.75rem;" />
-        <div>
-            <div class="fw-bold text-white fs-6">Quorum Admin</div>
-            <div class="text-white-50" style="font-size: 0.72rem; letter-spacing: 0.05em;">PURE BLAZOR & RADZEN</div>
+<div class="quorum-navmenu-container d-flex flex-column h-100 @(IsExpanded ? "is-expanded" : "is-collapsed") @(IsPinned ? "is-pinned" : "is-unpinned")">
+    @* --- Pasek nagłówka menu z logo i pinezką --- *@
+    <div class="quorum-nav-header d-flex align-items-center justify-content-between px-3 py-3 border-bottom border-secondary border-opacity-25">
+        <div class="d-flex align-items-center gap-2 overflow-hidden brand-wrapper">
+            <div class="brand-icon-wrapper flex-shrink-0 d-flex align-items-center justify-content-center">
+                <RadzenIcon Icon="security" Style="color: #3b82f6; font-size: 1.75rem;" />
+            </div>
+            <div class="brand-text-wrapper text-truncate @(IsExpanded ? "visible" : "hidden")">
+                <div class="fw-bold text-white fs-6 text-truncate">Quorum Admin</div>
+                <div class="text-white-50 text-truncate" style="font-size: 0.68rem; letter-spacing: 0.05em;">PURE BLAZOR & RADZEN</div>
+            </div>
         </div>
+
+        @* --- Przycisk Pinezki (Pin / Unpin toggle) --- *@
+        <button type="button" 
+                class="quorum-pin-btn btn btn-sm d-flex align-items-center justify-content-center @(IsPinned ? "btn-primary active-pinned" : "btn-dark-subtle unpinned") @(IsExpanded ? "visible" : "collapsed-hidden")"
+                @onclick="HandlePinToggle"
+                @onclick:stopPropagation="true"
+                title="@(IsPinned ? "Pinezka: Zablokowano rozwinięcie panelu (Kliknij, aby odpiąć i włączyć autozwijanie)" : "Pinezka: Przypnij panel na stałe (Kliknij, aby zablokować zwijanie)")"
+                aria-label="Pinezka blokująca menu">
+            <i class="material-icons pin-icon" style="font-size: 1.1rem;">push_pin</i>
+        </button>
     </div>
 
-    <RadzenPanelMenuItem Text="Pulpit (Dashboard)" Path="admin" Icon="dashboard" />
-    
-    <div class="px-3 pt-3 pb-1 text-uppercase fw-bold text-white-50" style="font-size: 0.68rem; letter-spacing: 0.08em;">
-        Tożsamość & Bezpieczeństwo
+    @* --- Lista pozycji menu --- *@
+    <div class="quorum-nav-body flex-grow-1 overflow-y-auto overflow-x-hidden py-2">
+        <ul class="nav flex-column p-0 m-0">
+            @* Pulpit / Dashboard *@
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin", isExact: true)" href="admin" Match="NavLinkMatch.All" title="Pulpit (Dashboard)">
+                    <span class="nav-icon-wrapper"><i class="material-icons">dashboard</i></span>
+                    <span class="nav-text text-truncate">Pulpit (Dashboard)</span>
+                </NavLink>
+            </li>
+
+            @* Sekcja: Tożsamość & Bezpieczeństwo *@
+            <li class="nav-section-header px-3 pt-3 pb-1">
+                <span class="section-title text-uppercase fw-bold text-white-50">Tożsamość & Bezpieczeństwo</span>
+                <hr class="section-divider my-1 border-secondary border-opacity-25" />
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin/clients")" href="admin/clients" title="Klienci OAuth / OIDC">
+                    <span class="nav-icon-wrapper"><i class="material-icons">devices</i></span>
+                    <span class="nav-text text-truncate">Klienci OAuth / OIDC</span>
+                </NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin/scopes")" href="admin/scopes" title="Zakresy API (Scopes)">
+                    <span class="nav-icon-wrapper"><i class="material-icons">vpn_key</i></span>
+                    <span class="nav-text text-truncate">Zakresy API (Scopes)</span>
+                </NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin/identityresources")" href="admin/identityresources" title="Zasoby Tożsamości">
+                    <span class="nav-icon-wrapper"><i class="material-icons">badge</i></span>
+                    <span class="nav-text text-truncate">Zasoby Tożsamości</span>
+                </NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin/users")" href="admin/users" title="Użytkownicy (Identity)">
+                    <span class="nav-icon-wrapper"><i class="material-icons">people</i></span>
+                    <span class="nav-text text-truncate">Użytkownicy (Identity)</span>
+                </NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin/federations")" href="admin/federations" title="Federacje OIDC (SSO)">
+                    <span class="nav-icon-wrapper"><i class="material-icons">hub</i></span>
+                    <span class="nav-text text-truncate">Federacje OIDC (SSO)</span>
+                </NavLink>
+            </li>
+
+            @* Sekcja: Bramka & Operacje *@
+            <li class="nav-section-header px-3 pt-3 pb-1">
+                <span class="section-title text-uppercase fw-bold text-white-50">Bramka & Operacje</span>
+                <hr class="section-divider my-1 border-secondary border-opacity-25" />
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin/gateway", isExact: true)" href="admin/gateway" Match="NavLinkMatch.All" title="API Gateway & Trasy">
+                    <span class="nav-icon-wrapper"><i class="material-icons">alt_route</i></span>
+                    <span class="nav-text text-truncate">API Gateway & Trasy</span>
+                </NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin/gateway/test")" href="admin/gateway/test" title="Symulator Gateway">
+                    <span class="nav-icon-wrapper"><i class="material-icons">science</i></span>
+                    <span class="nav-text text-truncate">Symulator Gateway</span>
+                </NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="@GetNavLinkClass("/admin/grants")" href="admin/grants" title="Aktywne Granty / Tokeny">
+                    <span class="nav-icon-wrapper"><i class="material-icons">token</i></span>
+                    <span class="nav-text text-truncate">Aktywne Granty / Tokeny</span>
+                </NavLink>
+            </li>
+
+            <li class="my-2 px-3">
+                <hr class="border-secondary border-opacity-25 my-1" />
+            </li>
+
+            @* Powrót do Portalu *@
+            <li class="nav-item">
+                <NavLink class="nav-link quorum-nav-link d-flex align-items-center" href="" Match="NavLinkMatch.All" title="Powrót do Portalu">
+                    <span class="nav-icon-wrapper"><i class="material-icons text-muted">home</i></span>
+                    <span class="nav-text text-truncate text-white-50">Powrót do Portalu</span>
+                </NavLink>
+            </li>
+        </ul>
     </div>
+</div>
 
-    <RadzenPanelMenuItem Text="Klienci OAuth / OIDC" Path="admin/clients" Icon="devices" />
-    <RadzenPanelMenuItem Text="Zakresy API (Scopes)" Path="admin/scopes" Icon="vpn_key" />
-    <RadzenPanelMenuItem Text="Zasoby Tożsamości" Path="admin/identityresources" Icon="badge" />
-    <RadzenPanelMenuItem Text="Użytkownicy (Identity)" Path="admin/users" Icon="people" />
-    <RadzenPanelMenuItem Text="Federacje OIDC (SSO)" Path="admin/federations" Icon="hub" />
+<style>
+    .quorum-navmenu-container {
+        width: 100%;
+        color: #cbd5e1;
+        user-select: none;
+    }
 
-    <div class="px-3 pt-3 pb-1 text-uppercase fw-bold text-white-50" style="font-size: 0.68rem; letter-spacing: 0.08em;">
-        Bramka & Operacje
-    </div>
+    .quorum-nav-header {
+        min-height: 64px;
+        position: relative;
+    }
 
-    <RadzenPanelMenuItem Text="API Gateway & Trasy" Path="admin/gateway" Icon="alt_route" />
-    <RadzenPanelMenuItem Text="Symulator Gateway" Path="admin/gateway/test" Icon="science" />
-    <RadzenPanelMenuItem Text="Aktywne Granty / Tokeny" Path="admin/grants" Icon="token" />
+    .brand-icon-wrapper {
+        width: 36px;
+        height: 36px;
+    }
 
-    <hr class="border-secondary border-opacity-25 mx-3 my-3" />
+    .brand-text-wrapper {
+        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
+    }
+    .brand-text-wrapper.visible {
+        opacity: 1;
+        max-width: 170px;
+        transform: translateX(0);
+    }
+    .brand-text-wrapper.hidden {
+        opacity: 0;
+        max-width: 0;
+        transform: translateX(-10px);
+        pointer-events: none;
+    }
 
-    <RadzenPanelMenuItem Text="Powrót do Portalu" Path="" Icon="home" />
-</RadzenPanelMenu>
+    /* Przycisk Pinezki */
+    .quorum-pin-btn {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border-radius: 6px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .quorum-pin-btn.btn-dark-subtle {
+        background-color: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #94a3b8;
+    }
+    .quorum-pin-btn.btn-dark-subtle:hover {
+        background-color: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.4);
+        color: #60a5fa;
+    }
+    .quorum-pin-btn.active-pinned {
+        background-color: #3b82f6;
+        border: 1px solid #60a5fa;
+        color: #ffffff;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
+    .quorum-pin-btn .pin-icon {
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .quorum-pin-btn.unpinned .pin-icon {
+        transform: rotate(-45deg);
+    }
+    .quorum-pin-btn.active-pinned .pin-icon {
+        transform: rotate(0deg);
+    }
+    .quorum-pin-btn.collapsed-hidden {
+        opacity: 0;
+        pointer-events: none;
+        max-width: 0;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    /* Sekcje nagłówków */
+    .nav-section-header {
+        overflow: hidden;
+        transition: all 0.25s ease;
+    }
+    .nav-section-header .section-title {
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        display: block;
+        transition: opacity 0.2s ease, max-height 0.25s ease;
+    }
+    .is-collapsed .nav-section-header .section-title {
+        opacity: 0;
+        max-height: 0;
+        margin: 0;
+        padding: 0;
+        pointer-events: none;
+    }
+    .is-expanded .nav-section-header .section-title {
+        opacity: 1;
+        max-height: 20px;
+    }
+    .is-collapsed .nav-section-header .section-divider {
+        display: block;
+        margin-top: 6px !important;
+        margin-bottom: 6px !important;
+    }
+    .is-expanded .nav-section-header .section-divider {
+        display: none;
+    }
+
+    /* Elementy menu (NavLinks) */
+    .quorum-nav-link {
+        display: flex;
+        align-items: center;
+        padding: 9px 14px;
+        color: #94a3b8;
+        text-decoration: none;
+        border-radius: 8px;
+        margin: 2px 10px;
+        transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease, padding 0.25s ease;
+        position: relative;
+    }
+    .is-collapsed .quorum-nav-link {
+        padding: 10px 0;
+        margin: 2px 8px;
+        justify-content: center;
+    }
+    .quorum-nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+        color: #f1f5f9;
+    }
+    .quorum-nav-link.active {
+        background: linear-gradient(90deg, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0.08) 100%);
+        color: #60a5fa;
+        font-weight: 600;
+        border-left: 3px solid #3b82f6;
+    }
+    .is-collapsed .quorum-nav-link.active {
+        border-left: none;
+        border-radius: 8px;
+        background: rgba(59, 130, 246, 0.25);
+    }
+
+    .nav-icon-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+    .nav-icon-wrapper .material-icons {
+        font-size: 1.25rem;
+        transition: transform 0.2s ease;
+    }
+    .quorum-nav-link:hover .nav-icon-wrapper .material-icons {
+        transform: scale(1.1);
+        color: #60a5fa;
+    }
+
+    .nav-text {
+        font-size: 0.85rem;
+        margin-left: 8px;
+        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
+        white-space: nowrap;
+    }
+    .is-expanded .nav-text {
+        opacity: 1;
+        max-width: 180px;
+        transform: translateX(0);
+    }
+    .is-collapsed .nav-text {
+        opacity: 0;
+        max-width: 0;
+        margin-left: 0;
+        transform: translateX(-8px);
+        overflow: hidden;
+        pointer-events: none;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public bool IsPinned { get; set; } = false;
+
+    [Parameter]
+    public bool IsExpanded { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnPinToggle { get; set; }
+
+    private async Task HandlePinToggle()
+    {
+        if (OnPinToggle.HasDelegate)
+        {
+            await OnPinToggle.InvokeAsync();
+        }
+    }
+
+    private string GetNavLinkClass(string targetPath, bool isExact = false)
+    {
+        var currentRelativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var normalizedTarget = targetPath.TrimStart('/');
+
+        bool isActive = isExact
+            ? string.Equals(currentRelativePath, normalizedTarget, StringComparison.OrdinalIgnoreCase)
+            : currentRelativePath.StartsWith(normalizedTarget, StringComparison.OrdinalIgnoreCase);
+
+        return $"nav-link quorum-nav-link d-flex align-items-center {(isActive ? "active" : "")}";
+    }
+}

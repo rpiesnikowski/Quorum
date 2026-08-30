@@ -1,16 +1,26 @@
 @namespace Quorum.Backend.AdminUI.Components.Layout
 @inherits LayoutComponentBase
 
-<RadzenLayout Style="grid-template-areas: 'rz-sidebar rz-header' 'rz-sidebar rz-body' 'rz-sidebar rz-footer';">
-    <RadzenHeader>
+<RadzenLayout Class="@($"quorum-admin-layout {(isExpanded ? "sidebar-expanded" : "sidebar-collapsed")} {(isPinned ? "sidebar-pinned" : "sidebar-unpinned")}")"
+              Style="@GetLayoutStyle()">
+    
+    @* --- Górny pasek nawigacyjny Header --- *@
+    <RadzenHeader Class="quorum-header shadow-sm border-bottom border-secondary border-opacity-10">
         <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Gap="0" Class="rz-px-4 rz-py-2 w-100">
             <RadzenColumn Size="6" Class="d-flex align-items-center gap-3">
-                <RadzenSidebarToggle />
+                <button type="button" 
+                        class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-2 rounded-lg"
+                        @onclick="ToggleSidebarPin"
+                        title="@(isPinned ? "Odblokuj automatyczne zwijanie menu bocznego" : "Zablokuj menu boczne na stałe (Pinezka)")">
+                    <i class="material-icons" style="font-size: 1.25rem; color: #60a5fa;">@(isPinned ? "menu_open" : "menu")</i>
+                </button>
+
                 <RadzenBreadcrumb>
                     <RadzenBreadcrumbItem Text="Admin UI" Path="admin" />
                     <RadzenBreadcrumbItem Text="Zarządzanie Tożsamością i Bramką" />
                 </RadzenBreadcrumb>
             </RadzenColumn>
+            
             <RadzenColumn Size="6" Class="d-flex justify-content-end align-items-center gap-3">
                 <AuthorizeView>
                     <Authorized>
@@ -33,15 +43,22 @@
         </RadzenRow>
     </RadzenHeader>
 
-    <RadzenSidebar Style="background-color: #1e293b;">
-        <AdminNavMenu />
+    @* --- Lewy płynny panel boczny Sidebar ze zwijaniem i pinezką --- *@
+    <RadzenSidebar Class="@($"quorum-sidebar {(isExpanded ? "expanded" : "collapsed")} {(isPinned ? "pinned" : "unpinned")}")"
+                   @onmouseenter="HandleMouseEnter"
+                   @onmouseleave="HandleMouseLeave">
+        <AdminNavMenu IsPinned="@isPinned"
+                      IsExpanded="@isExpanded"
+                      OnPinToggle="@ToggleSidebarPin" />
     </RadzenSidebar>
 
-    <RadzenBody Class="rz-p-4">
+    @* --- Główny obszar roboczy GUI dopasowujący się automatycznie --- *@
+    <RadzenBody Class="rz-p-4 quorum-body">
         @Body
     </RadzenBody>
 
-    <RadzenFooter>
+    @* --- Stopka Footer --- *@
+    <RadzenFooter Class="quorum-footer border-top border-secondary border-opacity-10">
         <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Class="rz-px-4 rz-py-1">
             <RadzenText TextStyle="TextStyle.Caption">Quorum IdentityServer & API Gateway Admin UI © 2026</RadzenText>
             <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">Pure Blazor + Radzen Architecture</RadzenText>
@@ -50,3 +67,121 @@
 </RadzenLayout>
 
 <RadzenComponents />
+
+<style>
+    /* --- CSS Variables & Layout Transition --- */
+    :root {
+        --rz-sidebar-collapsed-width: 68px;
+        --rz-sidebar-expanded-width: 260px;
+    }
+
+    .quorum-admin-layout {
+        --sidebar-active-width: var(--rz-sidebar-collapsed-width);
+        display: grid !important;
+        grid-template-areas: 'rz-sidebar rz-header' 'rz-sidebar rz-body' 'rz-sidebar rz-footer' !important;
+        grid-template-columns: var(--sidebar-active-width) 1fr !important;
+        grid-template-rows: auto 1fr auto !important;
+        min-height: 100vh;
+        transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .quorum-admin-layout.sidebar-expanded {
+        --sidebar-active-width: var(--rz-sidebar-expanded-width);
+    }
+
+    .quorum-admin-layout.sidebar-collapsed {
+        --sidebar-active-width: var(--rz-sidebar-collapsed-width);
+    }
+
+    /* Płynny Sidebar */
+    .quorum-sidebar {
+        background-color: #1e293b !important;
+        width: var(--sidebar-active-width) !important;
+        min-width: var(--sidebar-active-width) !important;
+        max-width: var(--sidebar-active-width) !important;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        z-index: 1000;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .quorum-sidebar.expanded {
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .quorum-sidebar.collapsed {
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Dopasowanie obszaru roboczego i nagłówka */
+    .quorum-body {
+        transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background-color: #f8fafc;
+    }
+
+    .quorum-header {
+        background-color: #0f172a !important;
+        z-index: 900;
+    }
+
+    .quorum-footer {
+        background-color: #f1f5f9 !important;
+    }
+
+    /* Stylizacja paska przewijania w sidebarze */
+    .quorum-sidebar::-webkit-scrollbar {
+        width: 4px;
+    }
+    .quorum-sidebar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .quorum-sidebar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+    }
+    .quorum-sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+</style>
+
+@code {
+    private bool isPinned = false;
+    private bool isHovered = false;
+    private bool isExpanded => isPinned || isHovered;
+
+    private void HandleMouseEnter()
+    {
+        if (!isPinned)
+        {
+            isHovered = true;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleMouseLeave()
+    {
+        if (!isPinned)
+        {
+            isHovered = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleSidebarPin()
+    {
+        isPinned = !isPinned;
+        if (!isPinned)
+        {
+            // Po odpięciu, jeśli kursor jest poza sidebarem, zwijamy natychmiast
+            isHovered = false;
+        }
+        StateHasChanged();
+    }
+
+    private string GetLayoutStyle()
+    {
+        var width = isExpanded ? "260px" : "68px";
+        return $"--sidebar-active-width: {width}; grid-template-columns: {width} 1fr;";
+    }
+}
