@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Open.IdentityServer.EntityFramework.DbContexts;
+using Quorum.Backend.AdminAPI.Extensions;
 using Quorum.Backend.AdminUI.Extensions;
 using Quorum.Backend.EntityFramework;
 using Quorum.Backend.EntityFramework.Data;
@@ -117,6 +118,13 @@ builder.Services.AddQuorumAdminUI<ApplicationUser>(options =>
 
 // Rejestracja abstrakcyjnej implementacji Entity Framework Core dla magazynów CRUD
 builder.Services.AddQuorumAdminUIEntityFrameworkStore<ApplicationUser>();
+
+// Rejestracja usług Quorum Admin REST API (odseparowanie GUI od API)
+builder.Services.AddQuorumAdminApi(options =>
+{
+    options.RoutePrefix = "api/admin";
+    options.RequiredRole = "Admin";
+});
 
 var app = builder.Build();
 
@@ -291,5 +299,8 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(
         typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly
     );
+
+// 13. Mapowanie endpointów Quorum Admin REST API
+app.MapQuorumAdminApi();
 
 app.Run();

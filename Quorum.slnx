@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="Quorum.Backend.AdminAPI/Quorum.Backend.AdminAPI.csproj" />
   <Project Path="Quorum.Backend.AdminUI/Quorum.Backend.AdminUI.csproj" />
   <Project Path="Quorum.Backend.EntityFramework/Quorum.Backend.EntityFramework.csproj" />
   <Project Path="Quorum.Backend.Gateway/Quorum.Backend.Gateway.csproj" />

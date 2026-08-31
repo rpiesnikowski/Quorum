@@ -1,0 +1,518 @@
+### ===================================================================
+### QUORUM IDENTITYSERVER & API GATEWAY - ADMIN REST API (CRUD SUITE)
+### ===================================================================
+### Ten plik zawiera gotowe żądania HTTP dla wszystkich modułów CRUD
+### w Quorum.Backend.AdminAPI. Możesz go uruchamiać w Visual Studio,
+### VS Code (REST Client) lub JetBrains Rider.
+
+@baseUrl = https://localhost:5001/api/admin
+@authToken = Bearer TWOJ_BEARER_TOKEN_TUTAJ
+@contentType = application/json
+
+### ===================================================================
+### 1. DASHBOARD & STATYSTYKI
+### ===================================================================
+
+### 1.1. Pobierz podsumowanie i statystyki pulpitu
+GET {{baseUrl}}/dashboard/stats
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+
+### ===================================================================
+### 2. KLIENCI OAUTH2 / OIDC (CLIENTS)
+### ===================================================================
+
+### 2.1. Pobierz listę klientów (stronicowanie i wyszukiwanie)
+GET {{baseUrl}}/clients?search=spa&page=1&pageSize=10
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 2.2. Pobierz szczegóły klienta po ID
+GET {{baseUrl}}/clients/1
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 2.3. Utwórz nowego klienta (SPA / Authorization Code + PKCE)
+POST {{baseUrl}}/clients
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "clientId": "frontend-spa-portal",
+  "clientName": "Frontend Single Page Application (React/Vue)",
+  "description": "Klient SPA używający Authorization Code Flow z PKCE",
+  "enabled": true,
+  "requireClientSecret": false,
+  "requirePkce": true,
+  "allowPlainTextPkce": false,
+  "allowAccessTokensViaBrowser": true,
+  "allowedGrantTypes": [
+    "authorization_code"
+  ],
+  "allowedScopes": [
+    "openid",
+    "profile",
+    "email",
+    "quorum.api",
+    "quorum.gateway"
+  ],
+  "redirectUris": [
+    "https://localhost:3000/callback",
+    "https://portal.example.com/callback"
+  ],
+  "postLogoutRedirectUris": [
+    "https://localhost:3000/",
+    "https://portal.example.com/"
+  ],
+  "allowedCorsOrigins": [
+    "https://localhost:3000",
+    "https://portal.example.com"
+  ],
+  "accessTokenLifetime": 3600,
+  "identityTokenLifetime": 300,
+  "allowOfflineAccess": true
+}
+
+### 2.4. Aktualizuj istniejącego klienta
+PUT {{baseUrl}}/clients/1
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "id": 1,
+  "clientId": "frontend-spa-portal",
+  "clientName": "Frontend Single Page Application (Zaktualizowana)",
+  "description": "Zaktualizowany opis klienta SPA",
+  "enabled": true,
+  "requireClientSecret": false,
+  "requirePkce": true,
+  "allowedGrantTypes": [
+    "authorization_code",
+    "refresh_token"
+  ],
+  "allowedScopes": [
+    "openid",
+    "profile",
+    "email",
+    "quorum.api"
+  ],
+  "redirectUris": [
+    "https://localhost:3000/callback"
+  ],
+  "postLogoutRedirectUris": [
+    "https://localhost:3000/"
+  ],
+  "allowedCorsOrigins": [
+    "https://localhost:3000"
+  ],
+  "accessTokenLifetime": 7200
+}
+
+### 2.5. Dodaj sekret (Client Secret) do klienta Machine-to-Machine
+POST {{baseUrl}}/clients/1/secrets
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "description": "Główny sekret produkcyjny API",
+  "value": "SuperTajneHasloKlienta123!#",
+  "type": "SharedSecret",
+  "expiration": "2028-12-31T23:59:59Z"
+}
+
+### 2.6. Usuń sekret klienta
+DELETE {{baseUrl}}/clients/1/secrets/1
+Authorization: {{authToken}}
+
+### 2.7. Usuń klienta
+DELETE {{baseUrl}}/clients/1
+Authorization: {{authToken}}
+
+
+### ===================================================================
+### 3. ZAKRESY API (API SCOPES)
+### ===================================================================
+
+### 3.1. Pobierz listę zakresów API
+GET {{baseUrl}}/scopes?page=1&pageSize=10
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 3.2. Pobierz szczegóły zakresu API po ID
+GET {{baseUrl}}/scopes/1
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 3.3. Utwórz nowy zakres API (Scope)
+POST {{baseUrl}}/scopes
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "quorum.admin.full",
+  "displayName": "Pełny dostęp do API Administracyjnego Quorum",
+  "description": "Umożliwia pełne zarządzanie tożsamością, konfiguracją i trasami bramki",
+  "enabled": true,
+  "required": false,
+  "emphasize": true,
+  "showInDiscoveryDocument": true,
+  "userClaims": [
+    "role",
+    "permission",
+    "department"
+  ]
+}
+
+### 3.4. Aktualizuj zakres API
+PUT {{baseUrl}}/scopes/1
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "id": 1,
+  "name": "quorum.admin.full",
+  "displayName": "Pełny dostęp do API Administracyjnego Quorum (Aktualizacja)",
+  "description": "Zaktualizowany zakres uprawnień",
+  "enabled": true,
+  "required": false,
+  "emphasize": true,
+  "showInDiscoveryDocument": true,
+  "userClaims": [
+    "role",
+    "email",
+    "permission"
+  ]
+}
+
+### 3.5. Usuń zakres API
+DELETE {{baseUrl}}/scopes/1
+Authorization: {{authToken}}
+
+
+### ===================================================================
+### 4. ZASOBY TOŻSAMOŚCI (IDENTITY RESOURCES)
+### ===================================================================
+
+### 4.1. Pobierz listę zasobów tożsamości
+GET {{baseUrl}}/identity-resources?page=1&pageSize=10
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 4.2. Pobierz szczegóły zasobu tożsamości po ID
+GET {{baseUrl}}/identity-resources/1
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 4.3. Utwórz nowy własny zasób tożsamości
+POST {{baseUrl}}/identity-resources
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "tenant_info",
+  "displayName": "Informacje o Organizacji / Najemcy",
+  "description": "Udostępnia identyfikator firmy, rolę organizacyjną i subskrypcję",
+  "enabled": true,
+  "required": false,
+  "emphasize": false,
+  "showInDiscoveryDocument": true,
+  "userClaims": [
+    "tenant_id",
+    "tenant_name",
+    "tenant_role"
+  ]
+}
+
+### 4.4. Aktualizuj zasób tożsamości
+PUT {{baseUrl}}/identity-resources/1
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "id": 1,
+  "name": "tenant_info",
+  "displayName": "Informacje o Organizacji (Aktualizacja)",
+  "description": "Zaktualizowany zasób organizacyjny",
+  "enabled": true,
+  "required": false,
+  "showInDiscoveryDocument": true,
+  "userClaims": [
+    "tenant_id",
+    "tenant_name",
+    "tenant_role",
+    "company_tier"
+  ]
+}
+
+### 4.5. Zainicjalizuj standardowe zasoby OIDC (openid, profile, email, address, phone)
+POST {{baseUrl}}/identity-resources/seed
+Authorization: {{authToken}}
+
+### 4.6. Usuń zasób tożsamości
+DELETE {{baseUrl}}/identity-resources/1
+Authorization: {{authToken}}
+
+
+### ===================================================================
+### 5. UŻYTKOWNICY ASP.NET CORE IDENTITY (USERS)
+### ===================================================================
+
+### 5.1. Pobierz listę użytkowników
+GET {{baseUrl}}/users?search=admin&page=1&pageSize=10
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 5.2. Pobierz szczegóły użytkownika po ID
+GET {{baseUrl}}/users/user-guid-id-tutaj
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 5.3. Pobierz listę dostępnych ról w systemie
+GET {{baseUrl}}/users/roles
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 5.4. Utwórz nowego użytkownika
+POST {{baseUrl}}/users
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "userName": "jan.kowalski@example.com",
+  "email": "jan.kowalski@example.com",
+  "emailConfirmed": true,
+  "phoneNumber": "+48123456789",
+  "phoneNumberConfirmed": true,
+  "twoFactorEnabled": false,
+  "lockoutEnabled": true,
+  "password": "StrongPassword123!#",
+  "roles": [
+    "Admin",
+    "Manager"
+  ],
+  "claims": [
+    { "type": "department", "value": "IT Security" },
+    { "type": "location", "value": "Warsaw" }
+  ]
+}
+
+### 5.5. Aktualizuj dane użytkownika i role
+PUT {{baseUrl}}/users/user-guid-id-tutaj
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "id": "user-guid-id-tutaj",
+  "userName": "jan.kowalski@example.com",
+  "email": "jan.kowalski@example.com",
+  "emailConfirmed": true,
+  "phoneNumber": "+48987654321",
+  "twoFactorEnabled": true,
+  "roles": [
+    "Admin"
+  ],
+  "claims": [
+    { "type": "department", "value": "Core Architecture" }
+  ]
+}
+
+### 5.6. Zmień / Zresetuj hasło użytkownika
+POST {{baseUrl}}/users/user-guid-id-tutaj/change-password
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "newPassword": "NoweBezpieczneHaslo2026!#"
+}
+
+### 5.7. Zablokuj konto użytkownika
+POST {{baseUrl}}/users/user-guid-id-tutaj/toggle-lockout
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "lockAccount": true
+}
+
+### 5.8. Odblokuj konto użytkownika
+POST {{baseUrl}}/users/user-guid-id-tutaj/toggle-lockout
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "lockAccount": false
+}
+
+### 5.9. Usuń użytkownika
+DELETE {{baseUrl}}/users/user-guid-id-tutaj
+Authorization: {{authToken}}
+
+
+### ===================================================================
+### 6. FEDERACJE OIDC / SINGLE SIGN-ON (FEDERATIONS)
+### ===================================================================
+
+### 6.1. Pobierz listę dostawców federacji OIDC
+GET {{baseUrl}}/federations?page=1&pageSize=10
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 6.2. Pobierz szczegóły dostawcy po ID
+GET {{baseUrl}}/federations/1
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 6.3. Zwaliduj i przetestuj endpoint OIDC Discovery
+POST {{baseUrl}}/federations/test-discovery
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "authority": "https://accounts.google.com"
+}
+
+### 6.4. Zarejestruj nowego dostawcę federacji OIDC (np. Keycloak / Entra ID)
+POST {{baseUrl}}/federations
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "scheme": "Google-SSO",
+  "displayName": "Zaloguj przez Google Workspace",
+  "authority": "https://accounts.google.com",
+  "clientId": "google-client-id.apps.googleusercontent.com",
+  "clientSecret": "google-client-secret",
+  "responseType": "code",
+  "scope": "openid profile email",
+  "isEnabled": true,
+  "saveTokens": true,
+  "getClaimsFromUserInfoEndpoint": true
+}
+
+### 6.5. Aktualizuj dostawcę federacji
+PUT {{baseUrl}}/federations/1
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "id": 1,
+  "scheme": "Google-SSO",
+  "displayName": "Google Workspace SSO (Włączony)",
+  "authority": "https://accounts.google.com",
+  "clientId": "google-client-id.apps.googleusercontent.com",
+  "clientSecret": "nowy-google-client-secret",
+  "responseType": "code",
+  "scope": "openid profile email",
+  "isEnabled": true
+}
+
+### 6.6. Przełącz status dostawcy (Włącz/Wyłącz)
+POST {{baseUrl}}/federations/1/toggle
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "isEnabled": false
+}
+
+### 6.7. Usuń dostawcę federacji
+DELETE {{baseUrl}}/federations/1
+Authorization: {{authToken}}
+
+
+### ===================================================================
+### 7. REGUŁY API GATEWAY & TESTER REVERSE PROXY
+### ===================================================================
+
+### 7.1. Pobierz listę tras Gateway
+GET {{baseUrl}}/gateway/routes?page=1&pageSize=10
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 7.2. Pobierz szczegóły trasy Gateway po ID
+GET {{baseUrl}}/gateway/routes/1
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 7.3. Utwórz nową trasę Gateway (z szablonami grup {version}/{resource})
+POST {{baseUrl}}/gateway/routes
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "pathPattern": "^/api/v(?<ver>\\d+)/(?<res>[a-zA-Z0-9_-]+)(?:/(?<rest>.*))?$",
+  "isRegex": true,
+  "upstreamBaseUrl": "https://internal-microservice.local:8443",
+  "upstreamPathPattern": "/internal/{res}/v{ver}/{rest}",
+  "requiredScope": "quorum.api",
+  "isEnabled": true,
+  "order": 100,
+  "allowedMethods": "GET,POST,PUT,DELETE,PATCH,OPTIONS",
+  "transformHeadersJson": "{\"X-Forwarded-By\":\"Quorum-Gateway\",\"X-Service-Tier\":\"Production\"}"
+}
+
+### 7.4. Aktualizuj trasę Gateway
+PUT {{baseUrl}}/gateway/routes/1
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "id": 1,
+  "pathPattern": "^/api/v(?<ver>\\d+)/(?<res>[a-zA-Z0-9_-]+)(?:/(?<rest>.*))?$",
+  "isRegex": true,
+  "upstreamBaseUrl": "https://internal-microservice.local:8443",
+  "upstreamPathPattern": "/internal/{res}/v{ver}/{rest}",
+  "requiredScope": "quorum.api",
+  "isEnabled": true,
+  "order": 50,
+  "allowedMethods": "GET,POST,PUT,DELETE,PATCH,OPTIONS",
+  "transformHeadersJson": "{\"X-Forwarded-By\":\"Quorum-Gateway-v2\"}"
+}
+
+### 7.5. Przetestuj trasę w Symulatorze Gateway (Ewaluacja Regex i Mapowania Upstream)
+POST {{baseUrl}}/gateway/test
+Authorization: {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "method": "GET",
+  "path": "/api/v2/orders/45829/items",
+  "queryString": "?includeDetails=true",
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "scopes": [
+    "quorum.api",
+    "openid"
+  ]
+}
+
+### 7.6. Usuń trasę Gateway
+DELETE {{baseUrl}}/gateway/routes/1
+Authorization: {{authToken}}
+
+
+### ===================================================================
+### 8. AKTYWNE GRANTY, TOKENY I ZGODY (PERSISTED GRANTS)
+### ===================================================================
+
+### 8.1. Pobierz listę aktywnych grantów (RefreshToken, UserConsent itp.)
+GET {{baseUrl}}/grants?type=refresh_token&page=1&pageSize=10
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 8.2. Pobierz szczegóły pojedynczego grantu po kluczu
+GET {{baseUrl}}/grants/sample-grant-key-tutaj
+Authorization: {{authToken}}
+Accept: {{contentType}}
+
+### 8.3. Unieważnij pojedynczy grant / token
+DELETE {{baseUrl}}/grants/sample-grant-key-tutaj
+Authorization: {{authToken}}
+
+### 8.4. Unieważnij wszystkie tokeny i sesje dla danego użytkownika (SubjectId)
+DELETE {{baseUrl}}/grants/subject/user-guid-id-tutaj
+Authorization: {{authToken}}
+
+### 8.5. Unieważnij wszystkie tokeny wydane dla danego klienta (ClientId)
+DELETE {{baseUrl}}/grants/client/frontend-spa-portal
+Authorization: {{authToken}}

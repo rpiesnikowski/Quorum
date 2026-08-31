@@ -9,8 +9,9 @@ param (
     # Lista projektów do spakowania (obsługuje dokładne nazwy oraz wzorce wieloznaczne wildcard *)
     [Parameter(Mandatory = $false)]
     [string[]]$ProjectNames = @(
-        "Quourum.Backend.AdminUI",
-        "Quourum.Backend.EntityFramework"
+        "Quorum.Backend.AdminAPI",
+        "Quorum.Backend.AdminUI",
+        "Quorum.Backend.EntityFramework"
     ),
 
     [Parameter(Mandatory = $false)]
