@@ -188,6 +188,8 @@ public class GatewayTestResult
     public string Explanation => !string.IsNullOrEmpty(Evaluation.Explanation) 
         ? Evaluation.Explanation 
         : (Evaluation.IsMatched ? "Trasa została dopasowana." : "Brak pasującej trasy Gateway.");
+
+    public bool MatchFound { get; set; }
 }
 
 public class GatewayTestResponse : GatewayTestResult

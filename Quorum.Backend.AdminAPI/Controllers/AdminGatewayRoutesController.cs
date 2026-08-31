@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.AdminUI.Services.Interfaces;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.AdminAPI.Controllers;
 
@@ -125,9 +126,9 @@ public class AdminGatewayRoutesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<GatewayTestResult>> TestRoute([FromBody] GatewayTestRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Path))
+        if (string.IsNullOrWhiteSpace(request.RequestPath))
         {
-            return BadRequest(new { error = "Ścieżka wejściowa (Path) jest wymagana." });
+            return BadRequest(new { error = "Ścieżka wejściowa (RequestPath) jest wymagana." });
         }
 
         var result = await _gatewayStore.TestRouteAsync(request, cancellationToken);

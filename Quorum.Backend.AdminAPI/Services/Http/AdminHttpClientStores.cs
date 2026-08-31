@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.AdminUI.Services.Interfaces;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.AdminAPI.Services.Http;
 
