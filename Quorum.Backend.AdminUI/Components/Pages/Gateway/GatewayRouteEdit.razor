@@ -120,8 +120,8 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- KARTA 2: Cel Przekierowania (Upstream URI & Target) -->
-                    <RadzenTabsItem Text="2. Cel Przekierowania (Upstream Host & URI)">
+                    <!-- KARTA 2: Cel Przekierowania (Upstream Host, URI & Nagłówki) -->
+                    <RadzenTabsItem Text="2. Cel Przekierowania (Upstream Host, URI & Nagłówki)">
                         <RadzenStack Gap="1.25rem" Class="mt-3">
                             <!-- Podgląd docelowego URL w czasie rzeczywistym -->
                             <div class="p-3 rounded border bg-light">
@@ -163,24 +163,34 @@
 
                                 <RadzenColumn Size="12" SizeMD="6">
                                     <RadzenFormField Text="Ścieżka Bazowa Upstream (AddressBasePath)" Class="w-100">
-                                        <RadzenTextBox @bind-Value="model.AddressBasePath" Class="w-100" Placeholder="np. /v1, /api/internal (opcjonalna)" />
+                                        <RadzenTextBox @bind-Value="model.AddressBasePath" Class="w-100" Placeholder="np. /v1 lub (empty)" />
                                     </RadzenFormField>
-                                    <span class="text-muted small">Doklejana przed ścieżką żądania</span>
+                                    <span class="text-muted small">Doklejana przed ścieżką żądania. Wpisz <code>(empty)</code>, aby usunąć bazową ścieżkę.</span>
                                 </RadzenColumn>
 
                                 <RadzenColumn Size="12" SizeMD="6">
                                     <RadzenFormField Text="Nadpisanie Ścieżki Docelowej (AddressPath)" Class="w-100">
-                                        <RadzenTextBox @bind-Value="model.AddressPath" Class="w-100" Placeholder="np. /{grupa1}/{grupa2}/v1/orders lub /$1/$2/orders" />
+                                        <RadzenTextBox @bind-Value="model.AddressPath" Class="w-100" Placeholder="np. /{grupa1}/{grupa2}/v1/orders lub (empty)" />
                                     </RadzenFormField>
                                     <span class="text-muted small">
-                                        Obsługuje podstawianie grup Regex/Szablonu: <code>{grupa1}</code>, <code>$1</code>, <code>$2</code> (np. <code>/{grupa1}/{grupa2}/v1/orders</code>). Puste = zachowaj ścieżkę wejściową.
+                                        Podstawianie grup: <code>{grupa1}</code>, <code>$1</code>. Wpisz <code>(empty)</code>, aby wyczyścić ścieżkę. Puste = zachowaj ścieżkę wejściową.
                                     </span>
                                 </RadzenColumn>
 
                                 <RadzenColumn Size="12">
                                     <RadzenFormField Text="Domyślne Parametry Zapytania (AddressQueryString)" Class="w-100">
-                                        <RadzenTextBox @bind-Value="model.AddressQueryString" Class="w-100" Placeholder="np. format=json&version=2 (doklejane do URL)" />
+                                        <RadzenTextBox @bind-Value="model.AddressQueryString" Class="w-100" Placeholder="np. format=json&version=2 lub (empty)" />
                                     </RadzenFormField>
+                                    <span class="text-muted small">Parametry doklejane do URL. Wpisz <code>(empty)</code>, aby całkowicie wyczyścić query string w upstream.</span>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12">
+                                    <RadzenFormField Text="Niestandardowe Nagłówki HTTP (Headers)" Class="w-100">
+                                        <RadzenTextArea @bind-Value="model.Headers" Rows="3" Class="w-100" Placeholder="np. X-Gateway-Proxy: Quorum&#10;Authorization: (empty)&#10;Cookie: (empty)" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">
+                                        Dodatkowe nagłówki wstrzykiwane lub usuwane z zapytania upstream. Wpisanie wartości <code>(empty)</code> (np. <code>Authorization: (empty)</code>) usuwa dany nagłówek przed przekazaniem do serwera docelowego.
+                                    </span>
                                 </RadzenColumn>
                             </RadzenRow>
                         </RadzenStack>
@@ -376,13 +386,6 @@
                                         </div>
                                     </div>
                                 </RadzenColumn>
-
-                                <RadzenColumn Size="12">
-                                    <RadzenFormField Text="Niestandardowe Nagłówki HTTP (Headers)" Class="w-100">
-                                        <RadzenTextArea @bind-Value="model.Headers" Rows="3" Class="w-100" Placeholder="np. X-Gateway-Proxy: Quorum lub format JSON: { &quot;X-Forwarded-Source&quot;: &quot;Gateway&quot; }" />
-                                    </RadzenFormField>
-                                    <span class="text-muted small">Dodatkowe nagłówki wstrzykiwane do zapytania przekazywanego upstream</span>
-                                </RadzenColumn>
                             </RadzenRow>
 
                             @if (!IsNew)
@@ -560,12 +563,36 @@
     {
         var scheme = !string.IsNullOrWhiteSpace(model.Scheme) ? model.Scheme : "https";
         var host = !string.IsNullOrWhiteSpace(model.AddressHost) ? model.AddressHost : "localhost";
-        var portStr = (model.AddressPort == 80 && scheme == "http") || (model.AddressPort == 443 && scheme == "https") ? "" : $":{model.AddressPort}";
-        var basePath = !string.IsNullOrWhiteSpace(model.AddressBasePath) ? (model.AddressBasePath.StartsWith("/") ? model.AddressBasePath : "/" + model.AddressBasePath) : "";
-        var path = !string.IsNullOrWhiteSpace(model.AddressPath) ? (model.AddressPath.StartsWith("/") ? model.AddressPath : "/" + model.AddressPath) : "{ścieżka_żądania}";
-        var query = !string.IsNullOrWhiteSpace(model.AddressQueryString) ? "?" + model.AddressQueryString.TrimStart('?') : "";
+        if (GatewayRouteMatcher.IsEmptyValue(host)) host = "localhost";
 
-        return $"{scheme}://{host}{portStr}{basePath}{path}{query}";
+        var portStr = (model.AddressPort == 80 && scheme == "http") || (model.AddressPort == 443 && scheme == "https") ? "" : $":{model.AddressPort}";
+
+        var basePath = !string.IsNullOrWhiteSpace(model.AddressBasePath) && !GatewayRouteMatcher.IsEmptyValue(model.AddressBasePath)
+            ? (model.AddressBasePath.StartsWith("/") ? model.AddressBasePath : "/" + model.AddressBasePath)
+            : "";
+
+        string path;
+        if (GatewayRouteMatcher.IsEmptyValue(model.AddressPath))
+        {
+            path = "";
+        }
+        else if (!string.IsNullOrWhiteSpace(model.AddressPath))
+        {
+            path = model.AddressPath.StartsWith("/") ? model.AddressPath : "/" + model.AddressPath;
+        }
+        else
+        {
+            path = "{ścieżka_żądania}";
+        }
+
+        var fullPath = $"{basePath}{path}";
+        if (string.IsNullOrEmpty(fullPath)) fullPath = "/";
+
+        var query = !string.IsNullOrWhiteSpace(model.AddressQueryString) && !GatewayRouteMatcher.IsEmptyValue(model.AddressQueryString)
+            ? "?" + model.AddressQueryString.TrimStart('?')
+            : "";
+
+        return $"{scheme}://{host}{portStr}{fullPath}{query}";
     }
 
     private void SetMethodsPreset(string preset)

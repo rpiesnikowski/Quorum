@@ -225,7 +225,18 @@ public static class GatewayRouteMatcher
     }
 
     /// <summary>
-    /// Buduje pełny obiekt Uri docelowego serwera (Upstream) z uwzględnieniem podstawiania grup Regex.
+    /// Sprawdza czy wartość oznacza jawne wyczyszczenie pola/sekcji w upstream (np. "(empty)", "empty").
+    /// </summary>
+    public static bool IsEmptyValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var trimmed = value.Trim();
+        return trimmed.Equals("(empty)", StringComparison.OrdinalIgnoreCase) 
+            || trimmed.Equals("empty", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Buduje pełny obiekt Uri docelowego serwera (Upstream) z uwzględnieniem podstawiania grup Regex oraz flagi (empty).
     /// </summary>
     public static Uri BuildTargetUri(
         string incomingPath,
@@ -237,50 +248,84 @@ public static class GatewayRouteMatcher
         var scheme = !string.IsNullOrWhiteSpace(route.Scheme) ? route.Scheme : "https";
         var rawHost = !string.IsNullOrWhiteSpace(route.AddressHost) ? route.AddressHost : "localhost";
         var host = ApplyReplacements(rawHost, match, capturedGroups);
+        if (IsEmptyValue(host))
+        {
+            host = "localhost";
+        }
 
         var port = route.AddressPort > 0 ? route.AddressPort : (scheme == "https" ? 443 : 80);
 
         var rawBasePath = route.AddressBasePath?.TrimEnd('/') ?? string.Empty;
         var basePath = ApplyReplacements(rawBasePath, match, capturedGroups);
-        if (!string.IsNullOrEmpty(basePath) && !basePath.StartsWith("/"))
+        if (IsEmptyValue(basePath) || IsEmptyValue(route.AddressBasePath))
+        {
+            basePath = string.Empty;
+        }
+        else if (!string.IsNullOrEmpty(basePath) && !basePath.StartsWith("/"))
         {
             basePath = "/" + basePath;
         }
 
         string downstreamPath;
-        if (!string.IsNullOrWhiteSpace(route.AddressPath))
+        if (IsEmptyValue(route.AddressPath))
+        {
+            downstreamPath = string.Empty;
+        }
+        else if (!string.IsNullOrWhiteSpace(route.AddressPath))
         {
             downstreamPath = ApplyReplacements(route.AddressPath, match, capturedGroups);
+            if (IsEmptyValue(downstreamPath))
+            {
+                downstreamPath = string.Empty;
+            }
         }
         else
         {
             downstreamPath = incomingPath;
         }
 
-        if (!downstreamPath.StartsWith("/"))
+        if (!string.IsNullOrEmpty(downstreamPath) && !downstreamPath.StartsWith("/"))
         {
             downstreamPath = "/" + downstreamPath;
         }
 
-        var mergedQuery = new List<string>();
-        if (!string.IsNullOrWhiteSpace(route.AddressQueryString))
+        var fullPath = $"{basePath}{downstreamPath}";
+        if (string.IsNullOrEmpty(fullPath))
         {
-            var resolvedRouteQuery = ApplyReplacements(route.AddressQueryString, match, capturedGroups);
-            mergedQuery.Add(resolvedRouteQuery.TrimStart('?'));
-        }
-        if (!string.IsNullOrWhiteSpace(incomingQueryString))
-        {
-            mergedQuery.Add(incomingQueryString.TrimStart('?'));
+            fullPath = "/";
         }
 
-        var queryString = mergedQuery.Count > 0 ? string.Join("&", mergedQuery) : null;
+        string? queryString = null;
+        if (IsEmptyValue(route.AddressQueryString))
+        {
+            // Jawne (empty) w querystring usuwa wszystkie parametry zapytania przy przekazywaniu do upstream
+            queryString = null;
+        }
+        else
+        {
+            var mergedQuery = new List<string>();
+            if (!string.IsNullOrWhiteSpace(route.AddressQueryString))
+            {
+                var resolvedRouteQuery = ApplyReplacements(route.AddressQueryString, match, capturedGroups);
+                if (!IsEmptyValue(resolvedRouteQuery))
+                {
+                    mergedQuery.Add(resolvedRouteQuery.TrimStart('?'));
+                }
+            }
+            if (!string.IsNullOrWhiteSpace(incomingQueryString))
+            {
+                mergedQuery.Add(incomingQueryString.TrimStart('?'));
+            }
+
+            queryString = mergedQuery.Count > 0 ? string.Join("&", mergedQuery) : null;
+        }
 
         var builder = new UriBuilder
         {
             Scheme = scheme,
             Host = host,
             Port = port,
-            Path = $"{basePath}{downstreamPath}",
+            Path = fullPath,
             Query = queryString
         };
 

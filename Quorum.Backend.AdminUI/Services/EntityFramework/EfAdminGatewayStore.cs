@@ -446,7 +446,14 @@ public class EfAdminGatewayStore : IAdminGatewayStore
                     var v = GatewayRouteMatcher.ApplyReplacements(hLine.Substring(sep + 1).Trim(), matchedMatch, matchedGroups);
                     if (!string.IsNullOrEmpty(k))
                     {
-                        response.Evaluation.InjectedRouteHeaders[k] = v;
+                        if (GatewayRouteMatcher.IsEmptyValue(v))
+                        {
+                            response.Evaluation.InjectedRouteHeaders[k] = "(usunięty / empty)";
+                        }
+                        else
+                        {
+                            response.Evaluation.InjectedRouteHeaders[k] = v;
+                        }
                     }
                 }
             }
@@ -526,10 +533,17 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             rawReqHeaderDict["Authorization"] = $"Bearer {request.BearerToken.Trim()}";
         }
 
-        // B. Dodawanie wstrzykniętych nagłówków z konfiguracji trasy (route.Headers)
+        // B. Dodawanie lub usuwanie nagłówków z konfiguracji trasy (route.Headers)
         foreach (var kvp in result.Evaluation.InjectedRouteHeaders)
         {
-            rawReqHeaderDict[kvp.Key] = kvp.Value;
+            if (GatewayRouteMatcher.IsEmptyValue(kvp.Value) || kvp.Value.StartsWith("(usunięty"))
+            {
+                rawReqHeaderDict.Remove(kvp.Key);
+            }
+            else
+            {
+                rawReqHeaderDict[kvp.Key] = kvp.Value;
+            }
         }
 
         // C. Ustawienie nagłówka Host (zgodnie z ForwardOriginalHost)

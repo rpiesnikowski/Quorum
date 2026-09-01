@@ -105,7 +105,18 @@ public class Proxy2ManyHostsMiddleware
         // 5. Przygotowanie żądania proxy (HttpRequestMessage)
         using var proxyRequest = new HttpRequestMessage(new HttpMethod(method), targetUri);
 
-        // Kopiowanie nagłówków przychodzących
+        // Kopiowanie treści żądania (Body) dla metod POST, PUT, PATCH itp.
+        if (HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsPatch(method))
+        {
+            var streamContent = new StreamContent(context.Request.Body);
+            if (context.Request.ContentType != null)
+            {
+                streamContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(context.Request.ContentType);
+            }
+            proxyRequest.Content = streamContent;
+        }
+
+        // Kopiowanie nagłówków przychodzących od klienta
         foreach (var header in context.Request.Headers)
         {
             if (header.Key.StartsWith(":") || header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase))
@@ -117,7 +128,8 @@ public class Proxy2ManyHostsMiddleware
             }
         }
 
-        // Wstrzykiwanie niestandardowych nagłówków skonfigurowanych w regule trasy (route.Headers) z podstawieniem grup
+        // Wstrzykiwanie lub usuwanie nagłówków skonfigurowanych w regule trasy (route.Headers)
+        // Jeśli wartość nagłówka to (empty), nagłówek jest usuwany przed przekazaniem do upstream (np. Authorization: (empty))
         if (!string.IsNullOrWhiteSpace(matchedRoute.Headers))
         {
             var headerLines = matchedRoute.Headers.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -130,7 +142,24 @@ public class Proxy2ManyHostsMiddleware
                     var hVal = GatewayRouteMatcher.ApplyReplacements(hLine.Substring(separatorIdx + 1).Trim(), matchedMatch, capturedGroups);
                     if (!string.IsNullOrEmpty(hKey))
                     {
-                        proxyRequest.Headers.TryAddWithoutValidation(hKey, hVal);
+                        if (GatewayRouteMatcher.IsEmptyValue(hVal))
+                        {
+                            // Jawne (empty) = usunięcie nagłówka z zapytania upstream
+                            proxyRequest.Headers.Remove(hKey);
+                            if (proxyRequest.Content != null)
+                            {
+                                proxyRequest.Content.Headers.Remove(hKey);
+                            }
+                        }
+                        else
+                        {
+                            proxyRequest.Headers.Remove(hKey);
+                            if (!proxyRequest.Headers.TryAddWithoutValidation(hKey, hVal) && proxyRequest.Content != null)
+                            {
+                                proxyRequest.Content.Headers.Remove(hKey);
+                                proxyRequest.Content.Headers.TryAddWithoutValidation(hKey, hVal);
+                            }
+                        }
                     }
                 }
             }
@@ -144,20 +173,13 @@ public class Proxy2ManyHostsMiddleware
         else
         {
             var resolvedHost = GatewayRouteMatcher.ApplyReplacements(matchedRoute.AddressHost, matchedMatch, capturedGroups);
+            if (GatewayRouteMatcher.IsEmptyValue(resolvedHost))
+            {
+                resolvedHost = "localhost";
+            }
             proxyRequest.Headers.Host = matchedRoute.AddressPort is 80 or 443
                 ? resolvedHost
                 : $"{resolvedHost}:{matchedRoute.AddressPort}";
-        }
-
-        // Kopiowanie treści żądania (Body) dla metod POST, PUT, PATCH itp.
-        if (HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsPatch(method))
-        {
-            var streamContent = new StreamContent(context.Request.Body);
-            if (context.Request.ContentType != null)
-            {
-                streamContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(context.Request.ContentType);
-            }
-            proxyRequest.Content = streamContent;
         }
 
         // 6. Wykonanie zapytania proxy z uwzględnieniem Timeout
