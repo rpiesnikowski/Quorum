@@ -30,8 +30,8 @@ public static class GatewayBodyTransformer
         string? bodyTemplate,
         string? transformType,
         Match? match,
-        IDictionary<string, string>? capturedGroups,
-        IDictionary<string, string>? headers,
+        IReadOnlyDictionary<string, string>? capturedGroups,
+        IReadOnlyDictionary<string, string>? headers,
         out string? errorMessage)
     {
         errorMessage = null;
@@ -71,8 +71,8 @@ public static class GatewayBodyTransformer
     public static string? TransformWithFluid(
         string? inputBody,
         string templateString,
-        IDictionary<string, string>? capturedGroups,
-        IDictionary<string, string>? headers,
+        IReadOnlyDictionary<string, string>? capturedGroups,
+        IReadOnlyDictionary<string, string>? headers,
         out string? errorMessage)
     {
         errorMessage = null;
@@ -152,7 +152,8 @@ public static class GatewayBodyTransformer
         try
         {
             // JUST.JsonTransformer wykonuje transformację JSON -> JSON
-            var result = JUST.JsonTransformer.Transform(transformerJson, sourceJson);
+            var transformer = new JUST.JsonTransformer();
+            var result = transformer.Transform(transformerJson, sourceJson);
             return result;
         }
         catch (Exception ex)
