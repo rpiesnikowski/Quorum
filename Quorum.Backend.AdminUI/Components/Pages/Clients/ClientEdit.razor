@@ -1,12 +1,6 @@
 @page "/admin/clients/create"
 @page "/admin/clients/{Id:int}/edit"
 @layout AdminLayout
-@inject IAdminClientStore ClientStore
-@inject IAdminApiScopeStore ApiScopeStore
-@inject IAdminIdentityResourceStore IdentityResourceStore
-@inject NotificationService NotificationService
-@inject DialogService DialogService
-@inject NavigationManager NavigationManager
 
 <PageTitle>@(IsNew ? "Nowy Klient OAuth" : "Edycja Klienta OAuth") | Quorum Admin UI</PageTitle>
 

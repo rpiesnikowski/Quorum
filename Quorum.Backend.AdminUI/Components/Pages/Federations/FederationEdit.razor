@@ -1,9 +1,6 @@
 @page "/admin/federations/create"
 @page "/admin/federations/{Id:int}/edit"
 @layout AdminLayout
-@inject IAdminFederationStore FederationStore
-@inject NotificationService NotificationService
-@inject NavigationManager NavigationManager
 
 <PageTitle>@(IsNew ? "Nowy Dostawca OIDC" : "Edycja Dostawcy OIDC") | Quorum Admin UI</PageTitle>
 

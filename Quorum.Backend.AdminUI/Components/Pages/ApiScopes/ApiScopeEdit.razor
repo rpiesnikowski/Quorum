@@ -1,9 +1,6 @@
 @page "/admin/scopes/create"
 @page "/admin/scopes/{Id:int}/edit"
 @layout AdminLayout
-@inject IAdminApiScopeStore ApiScopeStore
-@inject NotificationService NotificationService
-@inject NavigationManager NavigationManager
 
 <PageTitle>@(IsNew ? "Nowy Zakres API" : "Edycja Zakresu API") | Quorum Admin UI</PageTitle>
 

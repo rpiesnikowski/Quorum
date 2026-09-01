@@ -1,9 +1,6 @@
 @page "/admin/users/create"
 @page "/admin/users/{Id}/edit"
 @layout AdminLayout
-@inject IAdminUserStore UserStore
-@inject NotificationService NotificationService
-@inject NavigationManager NavigationManager
 
 <PageTitle>@(IsNew ? "Nowy Użytkownik" : "Edycja Użytkownika") | Quorum Admin UI</PageTitle>
 
