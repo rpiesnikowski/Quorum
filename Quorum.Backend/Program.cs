@@ -126,6 +126,33 @@ builder.Services.AddQuorumAdminApi(options =>
     options.RequiredRole = "Admin";
 });
 
+// 8b. Konfiguracja SignalR z opcjonalnym Redis Backplane dla klastra wielu replik i powiadomień Gateway
+var redisConnection = builder.Configuration.GetConnectionString("Redis") 
+    ?? builder.Configuration["Redis:ConnectionString"];
+
+var signalRBuilder = builder.Services.AddSignalR(hubOptions =>
+{
+    hubOptions.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    hubOptions.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    hubOptions.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+});
+
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    Console.WriteLine($"[SignalR] Skonfigurowano Redis Backplane dla synchronizacji replik Quorum: {redisConnection}");
+    signalRBuilder.AddStackExchangeRedis(redisConnection, redisOptions =>
+    {
+        redisOptions.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("QuorumSignalR");
+    });
+}
+else
+{
+    Console.WriteLine("[SignalR] Uruchomiono wbudowany SignalR In-Memory (dla klastra wielu replik skonfiguruj ConnectionStrings:Redis np. 'localhost:6379').");
+}
+
+// Rejestracja serwisu powiadomień SignalR dla magazynu reguł bramki
+builder.Services.AddScoped<Quorum.Backend.AdminUI.Services.Interfaces.IGatewayNotificationService, Quorum.Backend.Services.SignalRGatewayNotificationService>();
+
 var app = builder.Build();
 
 app.UseStaticFiles();
@@ -302,5 +329,8 @@ app.MapRazorComponents<App>()
 
 // 13. Mapowanie endpointów Quorum Admin REST API
 app.MapQuorumAdminApi();
+
+// 14. Mapowanie SignalR Hub dla powiadomień API Gateway
+app.MapHub<Quorum.Backend.Hubs.GatewayConfigHub>("/hubs/gateway-config");
 
 app.Run();

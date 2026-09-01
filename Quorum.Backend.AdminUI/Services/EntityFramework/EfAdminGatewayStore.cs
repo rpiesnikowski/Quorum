@@ -17,13 +17,16 @@ public class EfAdminGatewayStore : IAdminGatewayStore
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<EfAdminGatewayStore> _logger;
+    private readonly IGatewayNotificationService _notificationService;
 
     public EfAdminGatewayStore(
         ApplicationDbContext context,
-        ILogger<EfAdminGatewayStore> logger)
+        ILogger<EfAdminGatewayStore> logger,
+        IGatewayNotificationService? notificationService = null)
     {
         _context = context;
         _logger = logger;
+        _notificationService = notificationService ?? new NullGatewayNotificationService();
     }
 
     public async Task<PagedResult<GatewayRouteAdminModel>> GetRoutesAsync(
@@ -112,6 +115,26 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         await _context.SaveChangesAsync(cancellationToken);
 
         model.Id = entity.Id;
+
+        if (model.NotifyGateway)
+        {
+            try
+            {
+                await _notificationService.NotifyRoutesChangedAsync(new GatewayRouteNotificationPayload
+                {
+                    RouteId = entity.Id,
+                    Action = "Created",
+                    MatchPattern = entity.MatchPattern,
+                    TimestampUtc = DateTime.UtcNow,
+                    Message = $"Utworzono nową regułę routingu: '{entity.RouteName ?? entity.MatchPattern}'"
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Nie udało się wysłać powiadomienia o utworzeniu trasy {RouteId}", entity.Id);
+            }
+        }
+
         return (true, null);
     }
 
@@ -163,6 +186,26 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        if (model.NotifyGateway)
+        {
+            try
+            {
+                await _notificationService.NotifyRoutesChangedAsync(new GatewayRouteNotificationPayload
+                {
+                    RouteId = entity.Id,
+                    Action = "Updated",
+                    MatchPattern = entity.MatchPattern,
+                    TimestampUtc = DateTime.UtcNow,
+                    Message = $"Zaktualizowano regułę routingu: '{entity.RouteName ?? entity.MatchPattern}'"
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Nie udało się wysłać powiadomienia o aktualizacji trasy {RouteId}", entity.Id);
+            }
+        }
+
         return (true, null);
     }
 
@@ -171,8 +214,28 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         var entity = await _context.GatewayRoutes.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
         if (entity == null) return (true, null);
 
+        var matchPattern = entity.MatchPattern;
+        var routeName = entity.RouteName;
+
         _context.GatewayRoutes.Remove(entity);
         await _context.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _notificationService.NotifyRoutesChangedAsync(new GatewayRouteNotificationPayload
+            {
+                RouteId = id,
+                Action = "Deleted",
+                MatchPattern = matchPattern,
+                TimestampUtc = DateTime.UtcNow,
+                Message = $"Usunięto regułę routingu: '{routeName ?? matchPattern}'"
+            }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Nie udało się wysłać powiadomienia o usunięciu trasy {RouteId}", id);
+        }
+
         return (true, null);
     }
 

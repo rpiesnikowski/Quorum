@@ -60,6 +60,11 @@ public class GatewayRouteAdminModel
     public bool IsEnabled { get; set; } = true;
 
     /// <summary>
+    /// Czy wysłać powiadomienie o aktualizacji (SignalR / Redis) do działających instancji API Gateway (domyślnie true).
+    /// </summary>
+    public bool NotifyGateway { get; set; } = true;
+
+    /// <summary>
     /// Dozwolone metody HTTP (np. GET, POST, PUT, DELETE lub ALL)
     /// </summary>
     public List<string> AllowedHttpMethods { get; set; } = new() { "GET", "POST", "PUT", "DELETE" };

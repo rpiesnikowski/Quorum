@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Quorum.Backend.EntityFramework.Data;
 using Quorum.Backend.EntityFramework.Models;
+using Quorum.Backend.Gateway.Services;
 using Microsoft.AspNetCore.Http.Extensions;
 
 namespace Quorum.Backend.Gateway.Middleware;
@@ -23,18 +24,13 @@ public class Proxy2ManyHostsMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, ApplicationDbContext dbContext)
+    public async Task InvokeAsync(HttpContext context, IGatewayRouteCache routeCache)
     {
         var uri = context.Request.GetDisplayUrl();
         var method = context.Request.Method;
 
-        // 1. Pobranie aktywnych reguł z bazy, posortowanych według priorytetu
-        var activeRoutes = await dbContext.GatewayRoutes
-            .Include(r => r.Scopes)
-            .AsNoTracking()
-            .Where(r => r.IsEnabled)
-            .OrderByDescending(r => r.Priority)
-            .ToListAsync();
+        // 1. Pobranie aktywnych reguł z pamięci podręcznej (in-memory cache synchronizowany przez SignalR)
+        var activeRoutes = await routeCache.GetActiveRoutesAsync(context.RequestAborted);
 
         // 2. Dopasowanie trasy za pomocą GatewayRouteMatcher (Regex, szablony {grupa}, prefiksy) i metody HTTP
         GatewayRoute? matchedRoute = null;

@@ -1,6 +1,7 @@
 using Quorum.Backend.EntityFramework;
 using Quorum.Backend.EntityFramework.Data;
 using Quorum.Backend.Gateway.Middleware;
+using Quorum.Backend.Gateway.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Rejestracja interfejsu IFederationDbContext dla panelu AdminUI
 builder.Services.AddScoped<IFederationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 builder.Services.AddScoped<IGatewayDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+
+// 3. Rejestracja pamięci podręcznej tras w RAM (In-Memory Cache) oraz klienta SignalR do powiadomień w czasie rzeczywistym
+builder.Services.AddSingleton<IGatewayRouteCache, GatewayRouteCache>();
+builder.Services.AddHostedService<GatewaySignalRClientService>();
 
 builder.Services.AddHttpClient("GatewayProxyClient")
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
@@ -42,7 +47,13 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Przykładowy endpoint typu Health Check
-app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Service = "Quorum.Backend.Gateway" }));
+// Przykładowy endpoint typu Health Check z diagnostyką pamięci podręcznej reguł
+app.MapGet("/health", (IGatewayRouteCache routeCache) => Results.Ok(new 
+{ 
+    Status = "Healthy", 
+    Service = "Quorum.Backend.Gateway",
+    CachedRoutesCount = routeCache.RouteCount,
+    LastRefreshedUtc = routeCache.LastRefreshedUtc
+}));
 
 app.Run();

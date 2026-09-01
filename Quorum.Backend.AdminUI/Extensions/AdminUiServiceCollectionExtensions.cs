@@ -91,6 +91,7 @@ public static class AdminUiServiceCollectionExtensions
         services.TryAddScoped<IAdminGatewayStore, EfAdminGatewayStore>();
         services.TryAddScoped<IAdminGrantStore, EfAdminGrantStore>();
         services.TryAddScoped<IAdminDashboardStore, EfAdminDashboardStore<TUser>>();
+        services.TryAddSingleton<IGatewayNotificationService, NullGatewayNotificationService>();
 
         return services;
     }

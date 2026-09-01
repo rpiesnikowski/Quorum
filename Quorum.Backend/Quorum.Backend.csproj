@@ -22,9 +22,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-<ItemGroup>
-  <PackageReference Include="Radzen.Blazor" Version="11.2.7" />
-</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Radzen.Blazor" Version="11.2.7" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="10.0.10" />
+  </ItemGroup>
   <ItemGroup>
     <!-- Referencje do projektów wewnętrznych Quorum -->
     <ProjectReference Include="..\Quorum.Backend.AdminAPI\Quorum.Backend.AdminAPI.csproj" />
