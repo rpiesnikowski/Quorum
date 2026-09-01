@@ -115,6 +115,16 @@ public class GatewayEvaluationResult
     public string CalculatedUpstreamUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// Przetransformowana treść żądania (Body) przygotowana do wysłania do serwera docelowego.
+    /// </summary>
+    public string? CalculatedBody { get; set; }
+
+    /// <summary>
+    /// Błąd transformacji Body (jeśli wystąpił podczas ewaluacji szablonu Fluid / JUST.net).
+    /// </summary>
+    public string? BodyTransformError { get; set; }
+
+    /// <summary>
     /// Wszystkie nagłówki przygotowane do wysłania do serwera docelowego.
     /// </summary>
     public Dictionary<string, string> CalculatedHeaders { get; set; } = new(StringComparer.OrdinalIgnoreCase);

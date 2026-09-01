@@ -229,6 +229,20 @@ public class GatewayRouteAdminModel
     public string? Headers { get; set; }
 
     /// <summary>
+    /// Szablon transformacji treści żądania (Body) przekazywanej do upstream.
+    /// Puste = przekazywanie treści bez zmian.
+    /// (empty) = całkowite usunięcie treści żądania przed wysłaniem upstream.
+    /// Szablon Fluid: np. { "userId": {{ body.id }}, "targetEmail": "{{ body.email }}" }
+    /// Szablon JUST.net: np. { "userId": "#valueof($.id)", "targetEmail": "#valueof($.email)" }
+    /// </summary>
+    public string? Body { get; set; }
+
+    /// <summary>
+    /// Silnik transformacji treści żądania: "Fluid" (Liquid) lub "JUST" (JUST.net).
+    /// </summary>
+    public string BodyTransformType { get; set; } = "Fluid";
+
+    /// <summary>
     /// Data utworzenia rekordu
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

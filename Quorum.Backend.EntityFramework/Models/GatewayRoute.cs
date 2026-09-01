@@ -75,6 +75,21 @@ public class GatewayRoute
     public string? Headers { get; set; }
 
     /// <summary>
+    /// Szablon transformacji treści żądania (Body) przekazywanej do serwera docelowego (Upstream).
+    /// Puste = przekazywanie treści bez zmian.
+    /// (empty) = całkowite usunięcie treści żądania przed wysłaniem upstream.
+    /// Szablon JSON Fluid: np. { "userId": {{ body.id }}, "targetEmail": "{{ body.email }}" }
+    /// Szablon JSON JUST.net: np. { "userId": "#valueof($.id)", "targetEmail": "#valueof($.email)" }
+    /// </summary>
+    public string? Body { get; set; }
+
+    /// <summary>
+    /// Silnik transformacji treści żądania: "Fluid" (Liquid - podwójne klamerki {{ body.JsonProperty }}) lub "JUST" (JUST.net JSON transformer).
+    /// </summary>
+    [MaxLength(32)]
+    public string BodyTransformType { get; set; } = "Fluid";
+
+    /// <summary>
     /// Limit czasu oczekiwania w sekundach (Timeout)
     /// </summary>
     public int TimeoutSeconds { get; set; } = 30;

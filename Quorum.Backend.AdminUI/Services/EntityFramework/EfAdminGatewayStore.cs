@@ -89,6 +89,8 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             AddressPath = model.AddressPath,
             AddressQueryString = model.AddressQueryString,
             Headers = model.Headers,
+            Body = model.Body,
+            BodyTransformType = model.BodyTransformType ?? "Fluid",
             TimeoutSeconds = model.TimeoutSeconds > 0 ? model.TimeoutSeconds : 30,
             HttpMethods = model.AllowedHttpMethods != null && model.AllowedHttpMethods.Count > 0 ? string.Join(",", model.AllowedHttpMethods) : "ALL",
             AllowAnonymous = model.AllowAnonymous,
@@ -163,6 +165,8 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         entity.AddressPath = model.AddressPath;
         entity.AddressQueryString = model.AddressQueryString;
         entity.Headers = model.Headers;
+        entity.Body = model.Body;
+        entity.BodyTransformType = model.BodyTransformType ?? "Fluid";
         entity.TimeoutSeconds = model.TimeoutSeconds > 0 ? model.TimeoutSeconds : 30;
         entity.HttpMethods = model.AllowedHttpMethods != null && model.AllowedHttpMethods.Count > 0 ? string.Join(",", model.AllowedHttpMethods) : "ALL";
         entity.AllowAnonymous = model.AllowAnonymous;
@@ -459,15 +463,36 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             }
         }
 
-        // 7. Jeśli użytkownik nie wybrał opcji wykonania żądania sieciowego (tylko dry-run sprawdzenie trasy), zwracamy wynik ewaluacji
+        // 7. Ewaluacja transformacji treści żądania (Body)
+        string? effectiveBody = request.RequestBody;
+        if (!string.IsNullOrWhiteSpace(matchedRoute.Body))
+        {
+            effectiveBody = GatewayBodyTransformer.Transform(
+                request.RequestBody,
+                matchedRoute.Body,
+                matchedRoute.BodyTransformType,
+                matchedMatch,
+                matchedGroups,
+                response.Evaluation.InjectedRouteHeaders,
+                out var bodyTransformErr);
+
+            response.Evaluation.CalculatedBody = effectiveBody;
+            response.Evaluation.BodyTransformError = bodyTransformErr;
+        }
+        else
+        {
+            response.Evaluation.CalculatedBody = request.RequestBody;
+        }
+
+        // 8. Jeśli użytkownik nie wybrał opcji wykonania żądania sieciowego (tylko dry-run sprawdzenie trasy), zwracamy wynik ewaluacji
         if (!request.ExecuteLiveRequest)
         {
             response.Execution.Executed = false;
             return response;
         }
 
-        // 8. RZECZYWISTE WYKONANIE ŻĄDANIA PROXY DO BACKEND SERVICE
-        await ExecuteLiveProxyRequestAsync(request, matchedRoute, targetUri, hostHeaderValue, response, cancellationToken);
+        // 9. RZECZYWISTE WYKONANIE ŻĄDANIA PROXY DO BACKEND SERVICE
+        await ExecuteLiveProxyRequestAsync(request, matchedRoute, targetUri, hostHeaderValue, effectiveBody, response, cancellationToken);
 
         return response;
     }
@@ -477,6 +502,7 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         GatewayRoute matchedRoute,
         string targetUri,
         string clientHostHeader,
+        string? effectiveBody,
         GatewayTestResult result,
         CancellationToken cancellationToken)
     {
@@ -561,14 +587,14 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             }
         }
 
-        // D. Ustawienie ciała żądania (RequestBody)
-        bool hasBody = method != HttpMethod.Get && method != HttpMethod.Head && method != HttpMethod.Options && !string.IsNullOrEmpty(request.RequestBody);
+        // D. Ustawienie ciała żądania (RequestBody) z uwzględnieniem transformacji
+        bool hasBody = method != HttpMethod.Get && method != HttpMethod.Head && method != HttpMethod.Options && !string.IsNullOrEmpty(effectiveBody);
         if (hasBody)
         {
             var mediaType = !string.IsNullOrWhiteSpace(request.ContentType) ? request.ContentType : "application/json";
-            proxyRequest.Content = new StringContent(request.RequestBody ?? "", Encoding.UTF8, mediaType);
+            proxyRequest.Content = new StringContent(effectiveBody ?? "", Encoding.UTF8, mediaType);
             rawReqHeaderDict["Content-Type"] = mediaType;
-            rawReqHeaderDict["Content-Length"] = Encoding.UTF8.GetByteCount(request.RequestBody ?? "").ToString();
+            rawReqHeaderDict["Content-Length"] = Encoding.UTF8.GetByteCount(effectiveBody ?? "").ToString();
         }
 
         // Aplikowanie nagłówków do obiektu HttpRequestMessage
@@ -598,7 +624,7 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         if (hasBody)
         {
             rawReqBuilder.AppendLine();
-            rawReqBuilder.AppendLine(request.RequestBody);
+            rawReqBuilder.AppendLine(effectiveBody);
         }
 
         result.Execution.RawRequest = rawReqBuilder.ToString().TrimEnd();
@@ -765,6 +791,8 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             AddressPath = r.AddressPath,
             AddressQueryString = r.AddressQueryString,
             Headers = r.Headers,
+            Body = r.Body,
+            BodyTransformType = r.BodyTransformType ?? "Fluid",
             TimeoutSeconds = r.TimeoutSeconds > 0 ? r.TimeoutSeconds : 30,
             AllowAnonymous = r.AllowAnonymous,
             RequiredScope = r.RequiredScope,

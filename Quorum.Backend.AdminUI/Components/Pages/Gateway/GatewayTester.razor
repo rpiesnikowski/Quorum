@@ -243,11 +243,32 @@
                                 }
                                 @if (testResult.Evaluation.InjectedRouteHeaders.Count > 0)
                                 {
-                                    <div class="py-1">
+                                    <div class="py-1 border-bottom">
                                         <span class="text-muted d-block small">Wstrzykiwane Nagłówki Trasy:</span>
                                         @foreach (var h in testResult.Evaluation.InjectedRouteHeaders)
                                         {
                                             <span class="badge bg-info text-dark me-1 font-monospace">@h.Key: @h.Value</span>
+                                        }
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(testResult.Evaluation.MatchedRoute.Body))
+                                {
+                                    <div class="py-1">
+                                        <span class="text-muted d-block small fw-bold text-primary">
+                                            <i class="bi bi-code-square"></i> Transformacja Body (@(testResult.Evaluation.MatchedRoute.BodyTransformType ?? "Fluid")):
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(testResult.Evaluation.BodyTransformError))
+                                        {
+                                            <span class="badge bg-danger">Błąd: @testResult.Evaluation.BodyTransformError</span>
+                                        }
+                                        else if (GatewayRouteMatcher.IsEmptyValue(testResult.Evaluation.MatchedRoute.Body))
+                                        {
+                                            <span class="badge bg-warning text-dark">(empty) - Treść żądania usunięta</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Zastosowano pomyślnie</span>
+                                            <pre class="font-monospace p-1 mt-1 bg-white border rounded small text-break mb-0" style="max-height: 100px; overflow-y: auto;">@testResult.Evaluation.CalculatedBody</pre>
                                         }
                                     </div>
                                 }

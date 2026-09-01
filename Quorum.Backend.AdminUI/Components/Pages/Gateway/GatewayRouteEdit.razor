@@ -121,8 +121,8 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- KARTA 2: Cel Przekierowania (Upstream Host, URI & Nagłówki) -->
-                    <RadzenTabsItem Text="2. Cel Przekierowania (Upstream Host, URI & Nagłówki)">
+                    <!-- KARTA 2: Cel Przekierowania (Upstream Host, URI, Nagłówki & Body) -->
+                    <RadzenTabsItem Text="2. Upstream, Nagłówki & Body">
                         <RadzenStack Gap="1.25rem" Class="mt-3">
                             <!-- Podgląd docelowego URL w czasie rzeczywistym -->
                             <div class="p-3 rounded border bg-light">
@@ -194,6 +194,97 @@
                                     </span>
                                 </RadzenColumn>
                             </RadzenRow>
+
+                            <!-- SEKCJA TRANSFORMACJI CIAŁA ŻĄDANIA (REQUEST BODY) -->
+                            <div class="p-3 rounded border bg-light mt-2">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <RadzenIcon Icon="code" Style="color: var(--rz-primary);" />
+                                            <span class="fw-bold">Transformacja Treści Żądania (Request Body):</span>
+                                        </div>
+                                        <span class="text-muted small">
+                                            Transformuj wejściowy JSON przed wysłaniem do serwera docelowego za pomocą szablonów <strong>Fluid (Liquid)</strong> lub <strong>JUST.net</strong>.
+                                        </span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="small fw-bold">Silnik:</span>
+                                        <RadzenSelectBar @bind-Value="model.BodyTransformType" TValue="string" Change="@((args) => OnBodySettingsChanged())" Size="ButtonSize.Small">
+                                            <Items>
+                                                <RadzenSelectBarItem Text="Fluid (Liquid: {{ body.prop }})" Value="@("Fluid")" />
+                                                <RadzenSelectBarItem Text="JUST.net (JSON Transform)" Value="@("JUST")" />
+                                            </Items>
+                                        </RadzenSelectBar>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    <span class="small text-muted align-self-center me-1">Szablony pomocnicze:</span>
+                                    @if (model.BodyTransformType == "JUST")
+                                    {
+                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => SetJustPreset(1))">JUST: Mapowanie #valueof</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => SetJustPreset(2))">JUST: #concat & #if</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => SetFluidPreset(1))">Fluid: {{ body.JsonProperty }}</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => SetFluidPreset(2))">Fluid: Warunki & Pętle</button>
+                                    }
+                                    <button type="button" class="btn btn-xs btn-outline-warning btn-sm" @onclick="SetEmptyBodyPreset">(empty) - Usuń treść</button>
+                                    <button type="button" class="btn btn-xs btn-outline-danger btn-sm" @onclick="ClearBody">Wyczyść (brak transformacji)</button>
+                                </div>
+
+                                <RadzenFormField Text="Szablon Transformacji Body (Pozostaw puste, aby przekazać treść bez zmian)" Class="w-100">
+                                    <RadzenTextArea @bind-Value="model.Body" @oninput="@((args) => OnBodyInputChanged(args.Value?.ToString()))" Rows="5" Class="w-100 font-monospace" Placeholder="@(model.BodyTransformType == "JUST" ? "{\n  \"targetId\": \"#valueof($.id)\",\n  \"userName\": \"#valueof($.name)\"\n}" : "{\n  \"userId\": {{ body.id }},\n  \"user\": \"{{ body.name }}\",\n  \"email\": \"{{ body.email }}\"\n}")" />
+                                </RadzenFormField>
+
+                                <div class="mt-2 text-muted small">
+                                    @if (model.BodyTransformType == "JUST")
+                                    {
+                                        <span>
+                                            <i class="bi bi-info-circle"></i> <strong>Składnia JUST.net:</strong> Używaj funkcji takich jak <code>#valueof($.sciezka)</code>, <code>#concat($.a, ' ', $.b)</code>, <code>#if(warunek, prawda, falsz)</code>. Wpisz <code>(empty)</code>, aby usunąć treść żądania.
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            <i class="bi bi-info-circle"></i> <strong>Składnia Fluid (Liquid):</strong> Odwołuj się do pól wejściowego JSON przez <code>{{ body.nazwaPola }}</code>, nagłówków <code>{{ headers.NazwaNaglowka }}</code> lub grup regex <code>{{ groups.nazwaGrupy }}</code>. Wpisz <code>(empty)</code>, aby usunąć treść żądania.
+                                        </span>
+                                    }
+                                </div>
+
+                                <!-- PODGLĄD TRANSFORMACJI BODY NA ŻYWO -->
+                                <div class="mt-3 border-top pt-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-bold small text-secondary">
+                                            <i class="bi bi-play-circle me-1"></i> Podgląd Transformacji Body na Żywo:
+                                        </span>
+                                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @onclick="UpdateBodyPreview">
+                                            <i class="bi bi-arrow-clockwise"></i> Odśwież podgląd
+                                        </button>
+                                    </div>
+
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label small text-muted mb-1">Przykładowy wejściowy JSON żądania:</label>
+                                            <textarea class="form-control form-control-sm font-monospace" rows="4" @bind="sampleBodyInput" @bind:event="oninput" @bind:after="UpdateBodyPreview"></textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small text-muted mb-1">Wygenerowany wynik wysyłany do Upstream:</label>
+                                            @if (!string.IsNullOrEmpty(sampleBodyError))
+                                            {
+                                                <div class="alert alert-danger py-1 px-2 font-monospace small mb-0" style="height: 102px; overflow-y: auto;">
+                                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> @sampleBodyError
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <textarea class="form-control form-control-sm font-monospace bg-light" rows="4" readonly value="@sampleBodyOutput"></textarea>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </RadzenStack>
                     </RadzenTabsItem>
 
@@ -529,6 +620,7 @@
                 model = r;
                 model.RequiredScopes ??= new List<string>();
                 model.AllowedHttpMethods ??= new List<string> { "GET", "POST", "PUT", "DELETE" };
+                model.BodyTransformType ??= "Fluid";
             }
             else
             {
@@ -548,6 +640,7 @@
                 AddressHost = "localhost",
                 AddressPort = 5001,
                 AddressBasePath = "/api",
+                BodyTransformType = "Fluid",
                 TimeoutSeconds = 30,
                 ForwardOriginalHost = true,
                 EnableCaching = false,
@@ -557,6 +650,102 @@
                 AllowedHttpMethods = new List<string> { "GET", "POST", "PUT", "DELETE" },
                 RequiredScopes = new List<string>()
             };
+        }
+
+        UpdateBodyPreview();
+    }
+
+    private string sampleBodyInput = "{\n  \"id\": 101,\n  \"name\": \"Jan Kowalski\",\n  \"email\": \"jan.kowalski@example.com\",\n  \"role\": \"Admin\"\n}";
+    private string? sampleBodyOutput;
+    private string? sampleBodyError;
+
+    private void OnBodySettingsChanged()
+    {
+        UpdateBodyPreview();
+        StateHasChanged();
+    }
+
+    private void OnBodyInputChanged(string? val)
+    {
+        model.Body = val;
+        UpdateBodyPreview();
+    }
+
+    private void SetFluidPreset(int presetNum)
+    {
+        model.BodyTransformType = "Fluid";
+        if (presetNum == 1)
+        {
+            model.Body = "{\n  \"userId\": {{ body.id }},\n  \"fullName\": \"{{ body.name }}\",\n  \"contactEmail\": \"{{ body.email }}\",\n  \"source\": \"Quorum-Gateway\"\n}";
+        }
+        else
+        {
+            model.Body = "{\n  \"userName\": \"{{ body.name }}\",\n  \"isAdmin\": {% if body.role == \"Admin\" %}true{% else %}false{% endif %}\n}";
+        }
+        UpdateBodyPreview();
+        StateHasChanged();
+    }
+
+    private void SetJustPreset(int presetNum)
+    {
+        model.BodyTransformType = "JUST";
+        if (presetNum == 1)
+        {
+            model.Body = "{\n  \"userId\": \"#valueof($.id)\",\n  \"fullName\": \"#valueof($.name)\",\n  \"contactEmail\": \"#valueof($.email)\",\n  \"source\": \"Quorum-Gateway\"\n}";
+        }
+        else
+        {
+            model.Body = "{\n  \"displayName\": \"#concat($.name, ' (', $.role, ')')\",\n  \"status\": \"#if($.id, 'Active', 'Inactive')\"\n}";
+        }
+        UpdateBodyPreview();
+        StateHasChanged();
+    }
+
+    private void SetEmptyBodyPreset()
+    {
+        model.Body = "(empty)";
+        UpdateBodyPreview();
+        StateHasChanged();
+    }
+
+    private void ClearBody()
+    {
+        model.Body = null;
+        UpdateBodyPreview();
+        StateHasChanged();
+    }
+
+    private void UpdateBodyPreview()
+    {
+        if (string.IsNullOrWhiteSpace(model.Body))
+        {
+            sampleBodyOutput = "(brak transformacji - wejściowa treść zostanie przekazana do Upstream bez zmian)";
+            sampleBodyError = null;
+            return;
+        }
+
+        if (GatewayRouteMatcher.IsEmptyValue(model.Body))
+        {
+            sampleBodyOutput = "(empty - treść żądania zostanie usunięta przy przekazywaniu do Upstream)";
+            sampleBodyError = null;
+            return;
+        }
+
+        try
+        {
+            sampleBodyOutput = GatewayBodyTransformer.Transform(
+                sampleBodyInput,
+                model.Body,
+                model.BodyTransformType,
+                null,
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { { "id", "101" }, { "version", "v1" } },
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { { "Authorization", "Bearer sample.token" } },
+                out sampleBodyError);
+        }
+        catch (Exception ex)
+        {
+            sampleBodyError = ex.Message;
+            sampleBodyOutput = null;
         }
     }
 

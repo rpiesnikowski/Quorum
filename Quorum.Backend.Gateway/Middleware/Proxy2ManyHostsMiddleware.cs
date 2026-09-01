@@ -105,15 +105,55 @@ public class Proxy2ManyHostsMiddleware
         // 5. Przygotowanie żądania proxy (HttpRequestMessage)
         using var proxyRequest = new HttpRequestMessage(new HttpMethod(method), targetUri);
 
-        // Kopiowanie treści żądania (Body) dla metod POST, PUT, PATCH itp.
-        if (HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsPatch(method))
+        // Kopiowanie i ewentualna transformacja treści żądania (Body) dla metod zawierających ciało
+        if (HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsPatch(method) || HttpMethods.IsDelete(method))
         {
-            var streamContent = new StreamContent(context.Request.Body);
-            if (context.Request.ContentType != null)
+            if (!string.IsNullOrWhiteSpace(matchedRoute.Body))
             {
-                streamContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(context.Request.ContentType);
+                if (GatewayRouteMatcher.IsEmptyValue(matchedRoute.Body))
+                {
+                    // Jawne (empty) = całkowite usunięcie treści żądania
+                    proxyRequest.Content = null;
+                }
+                else
+                {
+                    // Odczyt wejściowej treści żądania
+                    using var reader = new StreamReader(context.Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
+                    var rawBody = await reader.ReadToEndAsync();
+
+                    var headerDict = context.Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase);
+
+                    var transformedBody = GatewayBodyTransformer.Transform(
+                        rawBody,
+                        matchedRoute.Body,
+                        matchedRoute.BodyTransformType,
+                        matchedMatch,
+                        capturedGroups,
+                        headerDict,
+                        out var transformError);
+
+                    if (!string.IsNullOrEmpty(transformError))
+                    {
+                        _logger.LogWarning("Błąd transformacji Body dla trasy {RouteId}: {Error}", matchedRoute.Id, transformError);
+                    }
+
+                    var mediaType = !string.IsNullOrWhiteSpace(context.Request.ContentType)
+                        ? context.Request.ContentType
+                        : "application/json";
+
+                    proxyRequest.Content = new StringContent(transformedBody ?? "", System.Text.Encoding.UTF8, mediaType);
+                }
             }
-            proxyRequest.Content = streamContent;
+            else
+            {
+                // Brak zdefiniowanego szablonu = przekazywanie strumienia wejściowego bez zmian
+                var streamContent = new StreamContent(context.Request.Body);
+                if (context.Request.ContentType != null)
+                {
+                    streamContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(context.Request.ContentType);
+                }
+                proxyRequest.Content = streamContent;
+            }
         }
 
         // Kopiowanie nagłówków przychodzących od klienta
