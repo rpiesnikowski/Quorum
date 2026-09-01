@@ -175,12 +175,3 @@
         </RadzenRow>
     }
 </RadzenStack>
-
-@code {
-    private DashboardStatsModel? stats;
-
-    protected override async Task OnInitializedAsync()
-    {
-        stats = await DashboardStore.GetStatsAsync();
-    }
-}
