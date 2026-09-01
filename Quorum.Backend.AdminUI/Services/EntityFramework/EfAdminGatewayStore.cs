@@ -254,13 +254,25 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         var rawUrl = (request.RequestUrl ?? request.RequestPath ?? "/").Trim();
         string normalizedPath = rawUrl;
         string? queryString = null;
-        string hostHeaderValue = "localhost";
+        string hostHeaderValue = "localhost:5001";
 
         if (Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsedAbsoluteUri))
         {
             normalizedPath = parsedAbsoluteUri.AbsolutePath;
             queryString = parsedAbsoluteUri.Query?.TrimStart('?');
-            hostHeaderValue = parsedAbsoluteUri.Authority;
+            if (parsedAbsoluteUri.Port > 0 && !parsedAbsoluteUri.IsDefaultPort)
+            {
+                hostHeaderValue = $"{parsedAbsoluteUri.Host}:{parsedAbsoluteUri.Port}";
+            }
+            else if (parsedAbsoluteUri.Authority.Contains(":"))
+            {
+                hostHeaderValue = parsedAbsoluteUri.Authority;
+            }
+            else
+            {
+                var defaultPort = parsedAbsoluteUri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ? 5000 : 5001;
+                hostHeaderValue = $"{parsedAbsoluteUri.Host}:{defaultPort}";
+            }
         }
         else
         {
@@ -553,6 +565,12 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             }
         }
 
+        // Jeśli w RawHeaders podano jawny nagłówek Host, użyj go jako bazowego clientHostHeader
+        if (rawReqHeaderDict.TryGetValue("Host", out var customRawHost) && !string.IsNullOrWhiteSpace(customRawHost))
+        {
+            clientHostHeader = customRawHost.Trim();
+        }
+
         // Jeśli podano BearerToken a nie ma go w RawHeaders, dodaj nagłówek Authorization
         if (!string.IsNullOrWhiteSpace(request.BearerToken) && !rawReqHeaderDict.ContainsKey("Authorization"))
         {
@@ -572,20 +590,33 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             }
         }
 
-        // C. Ustawienie nagłówka Host (zgodnie z ForwardOriginalHost)
+        // C. Ustawienie nagłówka Host (zgodnie z ForwardOriginalHost) z zachowaniem / uzupełnieniem portu (np. localhost:5001)
+        string effectiveHostHeader;
         if (matchedRoute.ForwardOriginalHost)
         {
-            proxyRequest.Headers.Host = clientHostHeader;
-            rawReqHeaderDict["Host"] = clientHostHeader;
+            effectiveHostHeader = clientHostHeader;
+            if (!effectiveHostHeader.Contains(":") && !string.IsNullOrWhiteSpace(effectiveHostHeader))
+            {
+                effectiveHostHeader = $"{effectiveHostHeader}:5001";
+            }
         }
         else
         {
-            if (Uri.TryCreate(targetUri, UriKind.Absolute, out var targetParsedUri))
+            var resolvedHost = GatewayRouteMatcher.ApplyReplacements(matchedRoute.AddressHost, matchedMatch, matchedGroups);
+            if (GatewayRouteMatcher.IsEmptyValue(resolvedHost))
             {
-                proxyRequest.Headers.Host = targetParsedUri.Authority;
-                rawReqHeaderDict["Host"] = targetParsedUri.Authority;
+                resolvedHost = "localhost";
             }
+
+            var targetPort = matchedRoute.AddressPort > 0 
+                ? matchedRoute.AddressPort 
+                : (matchedRoute.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ? 5000 : 5001);
+
+            effectiveHostHeader = $"{resolvedHost}:{targetPort}";
         }
+
+        proxyRequest.Headers.Host = effectiveHostHeader;
+        rawReqHeaderDict["Host"] = effectiveHostHeader;
 
         // D. Ustawienie ciała żądania (RequestBody) z uwzględnieniem transformacji
         bool hasBody = method != HttpMethod.Get && method != HttpMethod.Head && method != HttpMethod.Options && !string.IsNullOrEmpty(effectiveBody);
@@ -616,8 +647,15 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         var targetPathAndQuery = uriObj.PathAndQuery;
         rawReqBuilder.AppendLine($"{request.HttpMethod.ToUpperInvariant()} {targetPathAndQuery} HTTP/1.1");
         
+        // Zawsze wypisz nagłówek Host z numerem portu jako pierwszy nagłówek po linii metody
+        rawReqBuilder.AppendLine($"Host: {effectiveHostHeader}");
+
         foreach (var kvp in rawReqHeaderDict)
         {
+            if (kvp.Key.Equals("Host", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
             rawReqBuilder.AppendLine($"{kvp.Key}: {kvp.Value}");
         }
 

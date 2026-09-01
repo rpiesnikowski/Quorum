@@ -23,7 +23,7 @@ public partial class GatewayTester : ComponentBase
     {
         HttpMethod = "GET",
         RequestUrl = "/api/v1/orders/100?details=true",
-        RawHeaders = "Accept: application/json\nUser-Agent: Quorum-Gateway-Simulator/1.0",
+        RawHeaders = "Host: localhost:5001\nAccept: application/json\nUser-Agent: Quorum-Gateway-Simulator/1.0",
         ContentType = "application/json",
         IgnoreSslErrors = true
     };

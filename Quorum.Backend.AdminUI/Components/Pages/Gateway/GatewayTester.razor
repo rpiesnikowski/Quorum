@@ -57,7 +57,8 @@
                         <RadzenStack Gap="0.75rem" Class="rz-pt-2">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="text-muted small">Wpisz nagłówki żądania w formacie <code>Klucz: Wartość</code> (jeden w każdej linii):</span>
-                                <div class="d-flex gap-1">
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <RadzenButton Text="+ Host: localhost:5001" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => AppendHeader("Host: localhost:5001"))" />
                                     <RadzenButton Text="+ JSON Accept" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => AppendHeader("Accept: application/json"))" />
                                     <RadzenButton Text="+ User-Agent" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => AppendHeader("User-Agent: Quorum-Gateway-Simulator/1.0"))" />
                                     <RadzenButton Text="+ Custom Header" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => AppendHeader("X-Client-Correlation-Id: " + Guid.NewGuid().ToString("N")))" />
@@ -65,7 +66,7 @@
                                 </div>
                             </div>
                             <RadzenTextArea @bind-Value="testRequest.RawHeaders" Rows="5" Class="w-100 font-monospace" 
-                                            Placeholder="Accept: application/json&#10;User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)&#10;X-Correlation-Id: abc-123" />
+                                            Placeholder="Host: localhost:5001&#10;Accept: application/json&#10;User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)&#10;X-Correlation-Id: abc-123" />
                         </RadzenStack>
                     </RadzenTabsItem>
 
