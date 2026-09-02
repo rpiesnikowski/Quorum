@@ -15,13 +15,15 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
-  Server
+  Server,
+  Radio
 } from 'lucide-react';
 import { PROJECT_FILES, ProjectFile } from './data/projectFiles';
+import { OidcFlowTester } from './components/OidcFlowTester/OidcFlowTester';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<ProjectFile>(PROJECT_FILES[0]);
-  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'architecture' | 'guide'>('explorer');
+  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'architecture' | 'guide' | 'oidc-tester'>('explorer');
   const [copied, setCopied] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
   const [zipSuccess, setZipSuccess] = useState(false);
@@ -137,6 +139,9 @@ export default function App() {
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-xs text-slate-300">
                 <Laptop className="w-3.5 h-3.5 text-purple-400" /> Razor Pages + Bootstrap 5
               </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs text-emerald-300">
+                <Radio className="w-3.5 h-3.5 text-emerald-400" /> OIDC Flow Tester (PKCE & M2M)
+              </div>
             </div>
           </div>
 
@@ -171,6 +176,20 @@ export default function App() {
               }`}
             >
               <Layers className="w-4 h-4" /> Architektura i OIDC Endpoints
+            </button>
+            <button
+              onClick={() => setActiveTab('oidc-tester')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                activeTab === 'oidc-tester'
+                  ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <Radio className="w-4 h-4 text-emerald-400" />
+              <span>Tester Przepływów OIDC</span>
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
+                Flow Tester
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('guide')}
@@ -396,6 +415,13 @@ export default function App() {
               <div className="bg-slate-950 p-2.5 rounded-lg font-mono text-[11px] text-slate-400 break-all">
                 GET/POST /connect/authorize
               </div>
+              <button
+                onClick={() => setActiveTab('oidc-tester')}
+                className="mt-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Radio className="w-3.5 h-3.5" />
+                <span>Otwórz w Testerze Przepływów OIDC</span>
+              </button>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col gap-3">
@@ -414,6 +440,11 @@ export default function App() {
               </ul>
             </div>
           </div>
+        )}
+
+        {/* Tab: OIDC Flow Tester */}
+        {activeTab === 'oidc-tester' && (
+          <OidcFlowTester />
         )}
 
         {/* Tab 4: Step-by-Step Local Launch Guide */}

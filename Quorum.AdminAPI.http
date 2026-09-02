@@ -516,3 +516,49 @@ Authorization: {{authToken}}
 ### 8.5. Unieważnij wszystkie tokeny wydane dla danego klienta (ClientId)
 DELETE {{baseUrl}}/grants/client/frontend-spa-portal
 Authorization: {{authToken}}
+
+
+### ===================================================================
+### 9. TESTY PRZEPŁYWÓW OIDC & TOKEN ENDPOINTS (OIDC FLOW TESTER)
+### ===================================================================
+@oidcBaseUrl = https://localhost:5001
+
+### 9.1. Pobierz dokument konfiguracyjny OpenID Connect Discovery
+GET {{oidcBaseUrl}}/.well-known/openid-configuration
+Accept: application/json
+
+### 9.2. Pobierz zestaw kluczy publicznych JWKS (JSON Web Key Set)
+GET {{oidcBaseUrl}}/.well-known/openid-configuration/jwks
+Accept: application/json
+
+### 9.3. Client Credentials Flow (Sekret w ciele żądania)
+POST {{oidcBaseUrl}}/connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=backend-worker-service&client_secret=Pass123$&scope=quorum.api+telemetry.read
+
+### 9.4. Client Credentials Flow (Uwierzytelnienie nagłówkiem HTTP Basic)
+# client_id:client_secret zakodowane w Base64 (np. quorum-gateway-proxy:GatewaySecret2026!#)
+POST {{oidcBaseUrl}}/connect/token
+Authorization: Basic cXVvcnVtLWdhdGV3YXktcHJveHk6R2F0ZXdheVNlY3JldDIwMjYhIw==
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&scope=quorum.gateway+telemetry.write
+
+### 9.5. Authorization Code Exchange z PKCE (Wymiana kodu na tokeny)
+POST {{oidcBaseUrl}}/connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&client_id=frontend-spa-portal&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fcallback&code=MOCK_AUTH_CODE_XYZ&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+
+### 9.6. Odświeżenie tokenu (Refresh Token Flow)
+POST {{oidcBaseUrl}}/connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=refresh_token&client_id=quorum_web_client&client_secret=secret_web_client_987$&refresh_token=SAMPLE_REFRESH_TOKEN_HERE
+
+### 9.7. Pobierz dane profilowe użytkownika (UserInfo Endpoint)
+GET {{oidcBaseUrl}}/connect/userinfo
+Authorization: {{authToken}}
+Accept: application/json
+
