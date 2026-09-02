@@ -18,9 +18,10 @@
                     Architektura Blazor .NET 10 oparta w 100% o komponenty Radzen. Pełne zarządzanie Open.IdentityServer, ASP.NET Identity, OIDC SSO i API Gateway.
                 </RadzenText>
             </RadzenColumn>
-            <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2 mt-3 mt-md-0">
-                <RadzenButton Text="Nowy Klient" Icon="add" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@(() => NavigationManager.NavigateTo("admin/clients/create"))" />
-                <RadzenButton Text="Nowy Użytkownik" Icon="person_add" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Flat" Click="@(() => NavigationManager.NavigateTo("admin/users/create"))" />
+            <RadzenColumn Size="12" SizeMD="5" Class="d-flex justify-content-md-end gap-2 mt-3 mt-md-0 flex-wrap">
+                <RadzenButton Text="Eksport Całości (JSON)" Icon="download" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@ExportFullBackupAsync" />
+                <RadzenButton Text="Import Całości (JSON)" Icon="upload" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Flat" Click="@OpenFullImportDialogAsync" />
+                <RadzenButton Text="Nowy Klient" Icon="add" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" Click="@(() => NavigationManager.NavigateTo("admin/clients/create"))" />
             </RadzenColumn>
         </RadzenRow>
     </RadzenCard>
@@ -167,6 +168,9 @@
                         <RadzenButton Icon="hub" Text="Skonfiguruj OIDC SSO" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/federations/create"))" />
                         <RadzenButton Icon="alt_route" Text="Nowa Trasa Gateway" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/gateway/create"))" />
                         <RadzenButton Icon="science" Text="Symulator API Gateway" ButtonStyle="ButtonStyle.Dark" Variant="Variant.Outlined" Class="w-100 justify-content-start" Click="@(() => NavigationManager.NavigateTo("admin/gateway/test"))" />
+                        <hr class="my-2" />
+                        <RadzenButton Icon="download" Text="Eksportuj Cały System (JSON)" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Filled" Class="w-100 justify-content-start" Click="@ExportFullBackupAsync" />
+                        <RadzenButton Icon="upload" Text="Przywróć / Importuj System (JSON)" ButtonStyle="ButtonStyle.Info" Variant="Variant.Filled" Class="w-100 justify-content-start" Click="@OpenFullImportDialogAsync" />
                     </RadzenStack>
                 </RadzenCard>
             </RadzenColumn>

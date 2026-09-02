@@ -12,6 +12,12 @@ public partial class ClientsList : ComponentBase
     public IAdminClientStore ClientStore { get; set; } = default!;
 
     [Inject]
+    public IAdminImportExportService ImportExportService { get; set; } = default!;
+
+    [Inject]
+    public IJSRuntime JSRuntime { get; set; } = default!;
+
+    [Inject]
     public DialogService DialogService { get; set; } = default!;
 
     [Inject]
@@ -75,6 +81,37 @@ public partial class ClientsList : ComponentBase
             {
                 NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się usunąć klienta.");
             }
+        }
+    }
+
+    private async Task ExportJsonAsync()
+    {
+        try
+        {
+            var json = await ImportExportService.ExportClientsJsonAsync();
+            var fileName = $"quorum-clients-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+            await FileDownloadHelper.DownloadJsonFileAsync(JSRuntime, fileName, json);
+            NotificationService.Notify(NotificationSeverity.Success, "Eksport zakończony", $"Pomyślnie wyeksportowano klientów do pliku {fileName}");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd eksportu", ex.Message);
+        }
+    }
+
+    private async Task OpenImportDialogAsync()
+    {
+        var result = await DialogService.OpenAsync<DataImportDialog>(
+            "Import Klientów OAuth (JSON)",
+            new Dictionary<string, object>
+            {
+                { "EntityType", ImportEntityType.Clients }
+            },
+            new DialogOptions { Width = "750px", Resizable = true, Draggable = true });
+
+        if (result is DataImportResult importResult && importResult.Success)
+        {
+            await LoadDataAsync();
         }
     }
 }

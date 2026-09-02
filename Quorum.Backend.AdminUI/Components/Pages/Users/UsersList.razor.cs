@@ -12,6 +12,12 @@ public partial class UsersList : ComponentBase
     public IAdminUserStore UserStore { get; set; } = default!;
 
     [Inject]
+    public IAdminImportExportService ImportExportService { get; set; } = default!;
+
+    [Inject]
+    public IJSRuntime JSRuntime { get; set; } = default!;
+
+    [Inject]
     public DialogService DialogService { get; set; } = default!;
 
     [Inject]
@@ -89,6 +95,37 @@ public partial class UsersList : ComponentBase
             {
                 NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się usunąć użytkownika.");
             }
+        }
+    }
+
+    private async Task ExportJsonAsync()
+    {
+        try
+        {
+            var json = await ImportExportService.ExportUsersJsonAsync();
+            var fileName = $"quorum-users-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+            await FileDownloadHelper.DownloadJsonFileAsync(JSRuntime, fileName, json);
+            NotificationService.Notify(NotificationSeverity.Success, "Eksport zakończony", $"Pomyślnie wyeksportowano użytkowników do pliku {fileName}");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd eksportu", ex.Message);
+        }
+    }
+
+    private async Task OpenImportDialogAsync()
+    {
+        var result = await DialogService.OpenAsync<DataImportDialog>(
+            "Import Użytkowników i Ról (JSON)",
+            new Dictionary<string, object>
+            {
+                { "EntityType", ImportEntityType.Users }
+            },
+            new DialogOptions { Width = "750px", Resizable = true, Draggable = true });
+
+        if (result is DataImportResult importResult && importResult.Success)
+        {
+            await LoadDataAsync();
         }
     }
 }

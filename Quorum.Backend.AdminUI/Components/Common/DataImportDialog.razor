@@ -1,0 +1,124 @@
+@namespace Quorum.Backend.AdminUI.Components.Common
+@using Quorum.Backend.AdminUI.Models
+@using Quorum.Backend.AdminUI.Services.Interfaces
+@using System.IO
+@using System.Text
+
+<RadzenStack Gap="1.25rem" Class="rz-p-2">
+    <div class="d-flex align-items-center justify-content-between border-bottom pb-2">
+        <div>
+            <div class="fw-bold fs-6">@GetTitle()</div>
+            <div class="text-muted small">@GetDescription()</div>
+        </div>
+        <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@EntityType.ToString()" Class="fs-7" />
+    </div>
+
+    @* --- Wybór strategii importu --- *@
+    <div>
+        <label class="form-label fw-bold small text-muted text-uppercase mb-1">Strategia dopasowywania danych:</label>
+        <RadzenRadioButtonList @bind-Value="selectedStrategy" TValue="ImportStrategy" Class="d-flex flex-wrap gap-3">
+            <Items>
+                <RadzenRadioButtonListItem Text="Aktualizuj i dodawaj (Upsert - zalecane)" Value="ImportStrategy.Upsert" />
+                <RadzenRadioButtonListItem Text="Tylko nowe (pomiń duplikaty)" Value="ImportStrategy.AddNewOnly" />
+                <RadzenRadioButtonListItem Text="Zastąp wszystkie (wyczyść i wgraj)" Value="ImportStrategy.ReplaceAll" />
+            </Items>
+        </RadzenRadioButtonList>
+        <div class="text-muted small mt-1">
+            @if (selectedStrategy == ImportStrategy.Upsert)
+            {
+                <span>Elementy o zgodnych nazwach/identyfikatorach zostaną zaktualizowane, a brakujące dodane.</span>
+            }
+            else if (selectedStrategy == ImportStrategy.AddNewOnly)
+            {
+                <span>Istniejące elementy pozostaną nienaruszone, do bazy trafią wyłącznie nowe rekordy.</span>
+            }
+            else
+            {
+                <span class="text-danger fw-bold">Uwaga: Wszystkie obecne rekordy tego typu zostaną bezpowrotnie usunięte i zastąpione!</span>
+            }
+        </div>
+    </div>
+
+    @* --- Źródło danych: Plik lub Tekst --- *@
+    <RadzenTabs RenderMode="TabRenderMode.Client">
+        <Tabs>
+            <RadzenTabsItem Text="1. Wgraj plik .json">
+                <RadzenStack Gap="1rem" Class="rz-pt-2">
+                    <div class="border border-2 border-dashed rounded p-3 text-center bg-light">
+                        <InputFile OnChange="@OnFileSelected" accept=".json,application/json" class="form-control" />
+                        <div class="text-muted small mt-2">Wybierz lub przeciągnij plik konfiguracyjny <code>.json</code></div>
+                        @if (!string.IsNullOrEmpty(fileName))
+                        {
+                            <div class="text-success fw-bold small mt-1">
+                                <RadzenIcon Icon="check_circle" Class="align-middle me-1" /> Wczytano: @fileName (@fileSizeKb KB)
+                            </div>
+                        }
+                    </div>
+                </RadzenStack>
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="2. Wklej bezpośrednio kod JSON">
+                <RadzenStack Gap="0.75rem" Class="rz-pt-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">Wklej strukturę JSON lub tablicę obiektów:</span>
+                        <RadzenButton Text="Wyczyść" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => { jsonContent = string.Empty; ValidateAndPreview(); })" />
+                    </div>
+                    <RadzenTextArea @bind-Value="jsonContent" Rows="8" Class="w-100 font-monospace" 
+                                    Placeholder="[\n  {\n    ...\n  }\n]" @oninput="@OnJsonInput" />
+                </RadzenStack>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+
+    @* --- Podgląd walidacji i wykrytych elementów --- *@
+    @if (!string.IsNullOrWhiteSpace(jsonContent))
+    {
+        <RadzenCard Class="rz-p-3 bg-light border">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="fw-bold small">
+                    <RadzenIcon Icon="@(preview.IsValidJson ? "verified" : "error")" 
+                                Class="@(preview.IsValidJson ? "text-success align-middle me-1" : "text-danger align-middle me-1")" />
+                    @(preview.IsValidJson ? "Struktura JSON poprawna" : "Błąd składni JSON")
+                </div>
+                @if (preview.IsValidJson)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@($"Wykryto pozycji: {preview.DetectedCount}")" />
+                }
+            </div>
+
+            @if (!preview.IsValidJson && !string.IsNullOrEmpty(preview.ErrorMessage))
+            {
+                <div class="alert alert-danger p-2 small m-0">@preview.ErrorMessage</div>
+            }
+            else if (preview.IsValidJson && preview.DetectedCount > 0)
+            {
+                <div class="text-muted small mb-1">Przykładowe identyfikatory / elementy wykryte w pliku:</div>
+                <div class="d-flex flex-wrap gap-1" style="max-height: 100px; overflow-y: auto;">
+                    @foreach (var id in preview.ItemIdentifiers)
+                    {
+                        <span class="badge bg-secondary font-monospace">@id</span>
+                    }
+                    @if (preview.DetectedCount > preview.ItemIdentifiers.Count)
+                    {
+                        <span class="badge bg-light text-muted">+@(preview.DetectedCount - preview.ItemIdentifiers.Count) więcej...</span>
+                    }
+                </div>
+            }
+            else if (preview.IsValidJson && preview.DetectedCount == 0)
+            {
+                <div class="text-warning small">Nie wykryto pasujących rekordów dla wybranego typu encji.</div>
+            }
+        </RadzenCard>
+    }
+
+    @* --- Przyciski akcji --- *@
+    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+        <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(null))" Disabled="@isProcessing" />
+        <RadzenButton Text="@(isProcessing ? "Importowanie..." : "Rozpocznij Import")" 
+                      Icon="upload" 
+                      ButtonStyle="ButtonStyle.Primary" 
+                      Click="@ExecuteImportAsync" 
+                      Disabled="@(!preview.IsValidJson || preview.DetectedCount == 0 || isProcessing)" 
+                      IsBusy="@isProcessing" />
+    </div>
+</RadzenStack>

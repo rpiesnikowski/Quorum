@@ -5,11 +5,13 @@
 
 <RadzenStack Gap="1.5rem">
     <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
-        <RadzenColumn Size="12" SizeMD="8">
+        <RadzenColumn Size="12" SizeMD="6">
             <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Klienci OAuth 2.0 / OpenID Connect</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Aplikacje SPA, Web Apps, mikroserwisy M2M i urządzenia korzystające z autoryzacji serwera tożsamości.</RadzenText>
         </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+        <RadzenColumn Size="12" SizeMD="6" Class="d-flex justify-content-md-end gap-2 flex-wrap">
+            <RadzenButton Icon="download" Text="Eksportuj (JSON)" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@ExportJsonAsync" />
+            <RadzenButton Icon="upload" Text="Importuj (JSON)" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Click="@OpenImportDialogAsync" />
             <RadzenButton Icon="add" Text="Dodaj Klienta" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/clients/create"))" />
             <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
         </RadzenColumn>

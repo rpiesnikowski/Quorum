@@ -5,11 +5,13 @@
 
 <RadzenStack Gap="1.5rem">
     <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
-        <RadzenColumn Size="12" SizeMD="8">
+        <RadzenColumn Size="12" SizeMD="5">
             <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Dostawcy Federacji OIDC (Single Sign-On)</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Dynamiczna integracja z zewnętrznymi dostawcami tożsamości (Microsoft Entra ID, Google, Okta, Auth0) bez konieczności restartu serwera.</RadzenText>
         </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+        <RadzenColumn Size="12" SizeMD="7" Class="d-flex justify-content-md-end gap-2 flex-wrap">
+            <RadzenButton Icon="download" Text="Eksportuj (JSON)" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@ExportJsonAsync" />
+            <RadzenButton Icon="upload" Text="Importuj (JSON)" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Click="@OpenImportDialogAsync" />
             <RadzenButton Icon="add" Text="Dodaj Dostawcę OIDC" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/federations/create"))" />
             <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
         </RadzenColumn>

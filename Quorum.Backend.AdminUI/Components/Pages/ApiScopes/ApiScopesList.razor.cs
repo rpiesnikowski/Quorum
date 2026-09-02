@@ -12,6 +12,12 @@ public partial class ApiScopesList : ComponentBase
     public IAdminApiScopeStore ApiScopeStore { get; set; } = default!;
 
     [Inject]
+    public IAdminImportExportService ImportExportService { get; set; } = default!;
+
+    [Inject]
+    public IJSRuntime JSRuntime { get; set; } = default!;
+
+    [Inject]
     public DialogService DialogService { get; set; } = default!;
 
     [Inject]
@@ -75,6 +81,37 @@ public partial class ApiScopesList : ComponentBase
             {
                 NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się usunąć zakresu.");
             }
+        }
+    }
+
+    private async Task ExportJsonAsync()
+    {
+        try
+        {
+            var json = await ImportExportService.ExportApiScopesJsonAsync();
+            var fileName = $"quorum-api-scopes-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+            await FileDownloadHelper.DownloadJsonFileAsync(JSRuntime, fileName, json);
+            NotificationService.Notify(NotificationSeverity.Success, "Eksport zakończony", $"Pomyślnie wyeksportowano zakresy API do pliku {fileName}");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd eksportu", ex.Message);
+        }
+    }
+
+    private async Task OpenImportDialogAsync()
+    {
+        var result = await DialogService.OpenAsync<DataImportDialog>(
+            "Import Zakresów API (JSON)",
+            new Dictionary<string, object>
+            {
+                { "EntityType", ImportEntityType.ApiScopes }
+            },
+            new DialogOptions { Width = "750px", Resizable = true, Draggable = true });
+
+        if (result is DataImportResult importResult && importResult.Success)
+        {
+            await LoadDataAsync();
         }
     }
 }

@@ -5,12 +5,14 @@
 
 <RadzenStack Gap="1.5rem">
     <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
-        <RadzenColumn Size="12" SizeMD="7">
+        <RadzenColumn Size="12" SizeMD="5">
             <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Zasoby Tożsamości (Identity Resources)</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">Standardowe i niestandardowe oświadczenia tożsamości OIDC (openid, profile, email, address, phone).</RadzenText>
         </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="5" Class="d-flex justify-content-md-end gap-2">
-            <RadzenButton Icon="auto_fix_high" Text="Zainicjuj Standardowe" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@SeedStandardAsync" />
+        <RadzenColumn Size="12" SizeMD="7" Class="d-flex justify-content-md-end gap-2 flex-wrap">
+            <RadzenButton Icon="download" Text="Eksportuj (JSON)" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@ExportJsonAsync" />
+            <RadzenButton Icon="upload" Text="Importuj (JSON)" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Click="@OpenImportDialogAsync" />
+            <RadzenButton Icon="auto_fix_high" Text="Zainicjuj Standardowe" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" Click="@SeedStandardAsync" />
             <RadzenButton Icon="add" Text="Dodaj Zasób" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/identityresources/create"))" />
             <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
         </RadzenColumn>

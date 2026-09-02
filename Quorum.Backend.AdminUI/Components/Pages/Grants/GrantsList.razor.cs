@@ -12,6 +12,12 @@ public partial class GrantsList : ComponentBase
     public IAdminGrantStore GrantStore { get; set; } = default!;
 
     [Inject]
+    public IAdminImportExportService ImportExportService { get; set; } = default!;
+
+    [Inject]
+    public IJSRuntime JSRuntime { get; set; } = default!;
+
+    [Inject]
     public DialogService DialogService { get; set; } = default!;
 
     [Inject]
@@ -75,6 +81,37 @@ public partial class GrantsList : ComponentBase
             {
                 NotificationService.Notify(NotificationSeverity.Error, "Błąd", result.Error ?? "Nie udało się unieważnić grantu.");
             }
+        }
+    }
+
+    private async Task ExportJsonAsync()
+    {
+        try
+        {
+            var json = await ImportExportService.ExportGrantsJsonAsync();
+            var fileName = $"quorum-grants-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+            await FileDownloadHelper.DownloadJsonFileAsync(JSRuntime, fileName, json);
+            NotificationService.Notify(NotificationSeverity.Success, "Eksport zakończony", $"Pomyślnie wyeksportowano granty/tokeny do pliku {fileName}");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Błąd eksportu", ex.Message);
+        }
+    }
+
+    private async Task OpenImportDialogAsync()
+    {
+        var result = await DialogService.OpenAsync<DataImportDialog>(
+            "Import Grantów i Tokenów (JSON)",
+            new Dictionary<string, object>
+            {
+                { "EntityType", ImportEntityType.Grants }
+            },
+            new DialogOptions { Width = "750px", Resizable = true, Draggable = true });
+
+        if (result is DataImportResult importResult && importResult.Success)
+        {
+            await LoadDataAsync();
         }
     }
 }
