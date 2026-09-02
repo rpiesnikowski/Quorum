@@ -1,0 +1,610 @@
+@page "/admin/telemetry"
+@attribute [Authorize(Policy = "RequireAdminRole")]
+
+@layout AdminLayout
+
+<PageTitle>Telemetria & Metryki OTel | Quorum Admin UI</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <!-- Header banner -->
+    <RadzenCard Class="rz-p-4" Style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0369a1 100%); color: white; border-radius: 12px;">
+        <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenRow AlignItems="AlignItems.Center" Gap="0.75rem">
+                    <RadzenIcon Icon="insights" Style="font-size: 2.4rem; color: #38bdf8;" />
+                    <div>
+                        <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" Class="text-white fw-bold mb-0">
+                            Telemetria & Obserwowalność OpenTelemetry
+                        </RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body2" Class="text-white-50 mb-0">
+                            Śledzenie żądań Proxy2ManyHostsMiddleware, wskaźniki wydajności w czasie rzeczywistym, rozproszony TraceContext oraz integracja z Aspire Dashboard UI.
+                        </RadzenText>
+                    </div>
+                </RadzenRow>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2 mt-3 mt-md-0 flex-wrap">
+                <RadzenButton Text="Odśwież" Icon="refresh" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" Click="@LoadDataAsync" IsBusy="@isLoading" />
+                <RadzenButton Text="Aspire Dashboard UI" Icon="open_in_new" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Click="@OpenAspireDashboard" />
+                <RadzenButton Text="Wyczyść bufor" Icon="delete_sweep" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Click="@ClearBufferAsync" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+
+    @if (isLoading && overview == null)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (overview != null)
+    {
+        <!-- KPI Cards -->
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenCard Class="rz-p-3 border-start border-4 border-primary">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Żądania Bramki (Łącznie)</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 text-primary">@overview.TotalRequests.ToString("N0")</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">~@overview.RequestsPerMinute.ToString("F1") req / min</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="swap_horiz" Style="font-size: 2.2rem; color: #3b82f6;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenCard Class="rz-p-3 border-start border-4 border-success">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Średni Czas Odpowiedzi</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 text-success">@overview.AverageLatencyMs.ToString("F1") ms</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">P95: @overview.P95LatencyMs.ToString("F1") ms</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="speed" Style="font-size: 2.2rem; color: #10b981;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenCard Class="rz-p-3 border-start border-4 @(overview.ErrorRatePercentage > 2 ? "border-danger" : "border-warning")">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Wskaźnik Błędów</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 @(overview.ErrorRatePercentage > 2 ? "text-danger" : "text-warning")">
+                                @overview.ErrorRatePercentage.ToString("F2")%
+                            </RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">Błędy: @overview.TotalErrorsCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="error_outline" Style="font-size: 2.2rem; color: #f59e0b;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
+                <RadzenCard Class="rz-p-3 border-start border-4 border-info">
+                    <RadzenRow AlignItems="AlignItems.Center">
+                        <RadzenColumn Size="8">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Aktywne Połączenia</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 text-info">@overview.ActiveRequestsCount</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">Transformacje: @overview.BodyTransformationsCount</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="4" Class="text-end">
+                            <RadzenIcon Icon="hub" Style="font-size: 2.2rem; color: #06b6d4;" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Main Tabs -->
+        <RadzenTabs TabPosition="TabPosition.Top" Class="w-100">
+            <Tabs>
+                <!-- TAB 1: METRICS & CHARTS -->
+                <RadzenTabsItem Text="Metryki & Wykresy">
+                    <RadzenStack Gap="1.5rem" Class="rz-mt-3">
+                        <RadzenRow Gap="1.5rem">
+                            <!-- Requests over time -->
+                            <RadzenColumn Size="12" SizeLG="8">
+                                <RadzenCard Class="rz-p-3">
+                                    <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-3">
+                                        <RadzenIcon Icon="timeline" Class="me-1 text-primary" /> Liczba żądań bramki w czasie (req / min)
+                                    </RadzenText>
+                                    @if (timeSeriesPoints != null && timeSeriesPoints.Any())
+                                    {
+                                        <RadzenChart Style="height: 280px;">
+                                            <RadzenLineSeries Data="@timeSeriesPoints" CategoryProperty="TimeLabel" Title="Żądania" ValueProperty="RequestsCount" Smooth="true" LineType="LineType.Solid">
+                                                <RadzenSeriesTooltip Visible="true" />
+                                            </RadzenLineSeries>
+                                            <RadzenCategoryAxis Padding="20" />
+                                            <RadzenValueAxis Min="0">
+                                                <RadzenGridLines Visible="true" />
+                                                <RadzenAxisTitle Text="Liczba żądań" />
+                                            </RadzenValueAxis>
+                                        </RadzenChart>
+                                    }
+                                </RadzenCard>
+                            </RadzenColumn>
+
+                            <!-- Status Code Distribution -->
+                            <RadzenColumn Size="12" SizeLG="4">
+                                <RadzenCard Class="rz-p-3">
+                                    <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-3">
+                                        <RadzenIcon Icon="pie_chart" Class="me-1 text-info" /> Rozkład kodów HTTP
+                                    </RadzenText>
+                                    @if (overview.StatusCodeDistribution != null && overview.StatusCodeDistribution.Any())
+                                    {
+                                        <RadzenChart Style="height: 280px;">
+                                            <RadzenDonutSeries Data="@overview.StatusCodeDistribution" CategoryProperty="Category" ValueProperty="Count" TotalAngle="360" StartAngle="0">
+                                                <TitleTemplate>
+                                                    <div class="rz-donut-content">
+                                                        <div class="fw-bold">HTTP</div>
+                                                        <div class="text-muted small">Status</div>
+                                                    </div>
+                                                </TitleTemplate>
+                                            </RadzenDonutSeries>
+                                        </RadzenChart>
+                                    }
+                                </RadzenCard>
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                        <!-- Latency Profile -->
+                        <RadzenRow Gap="1.5rem">
+                            <RadzenColumn Size="12" SizeLG="6">
+                                <RadzenCard Class="rz-p-3">
+                                    <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-3">
+                                        <RadzenIcon Icon="bar_chart" Class="me-1 text-success" /> Profil opóźnień: Średnia vs P95 Latency (ms)
+                                    </RadzenText>
+                                    @if (timeSeriesPoints != null && timeSeriesPoints.Any())
+                                    {
+                                        <RadzenChart Style="height: 260px;">
+                                            <RadzenColumnSeries Data="@timeSeriesPoints" CategoryProperty="TimeLabel" Title="Średnie (ms)" ValueProperty="AvgLatencyMs" Fill="#10b981" />
+                                            <RadzenLineSeries Data="@timeSeriesPoints" CategoryProperty="TimeLabel" Title="P95 (ms)" ValueProperty="P95LatencyMs" Smooth="true" Stroke="#f59e0b" />
+                                            <RadzenCategoryAxis Padding="20" />
+                                            <RadzenValueAxis Min="0">
+                                                <RadzenGridLines Visible="true" />
+                                                <RadzenAxisTitle Text="Opóźnienie (ms)" />
+                                            </RadzenValueAxis>
+                                        </RadzenChart>
+                                    }
+                                </RadzenCard>
+                            </RadzenColumn>
+
+                            <!-- Top Routes Table -->
+                            <RadzenColumn Size="12" SizeLG="6">
+                                <RadzenCard Class="rz-p-3">
+                                    <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-3">
+                                        <RadzenIcon Icon="alt_route" Class="me-1 text-secondary" /> Najpopularniejsze reguły API Gateway
+                                    </RadzenText>
+                                    <RadzenDataGrid Data="@overview.RoutesDistribution" TItem="TelemetryRouteMetric" AllowPaging="false" AllowSorting="true" Density="Density.Compact">
+                                        <Columns>
+                                            <RadzenDataGridColumn TItem="TelemetryRouteMetric" Property="Pattern" Title="Wzorzec ścieżki" Width="180px">
+                                                <Template Context="r">
+                                                    <code class="fw-bold text-primary">@r.Pattern</code>
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn TItem="TelemetryRouteMetric" Property="TargetHost" Title="Upstream Host" />
+                                            <RadzenDataGridColumn TItem="TelemetryRouteMetric" Property="RequestsCount" Title="Wywołania" Width="110px">
+                                                <Template Context="r">
+                                                    <span class="badge bg-light text-dark border">@r.RequestsCount.ToString("N0")</span>
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn TItem="TelemetryRouteMetric" Property="AverageLatencyMs" Title="Śr. czas" Width="100px">
+                                                <Template Context="r">
+                                                    <span>@r.AverageLatencyMs.ToString("F1") ms</span>
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn TItem="TelemetryRouteMetric" Property="ErrorRate" Title="Błędy" Width="90px">
+                                                <Template Context="r">
+                                                    <span class="badge @(r.ErrorRate > 1 ? "bg-danger" : "bg-success")">@r.ErrorRate.ToString("F1")%</span>
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                        </Columns>
+                                    </RadzenDataGrid>
+                                </RadzenCard>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenStack>
+                </RadzenTabsItem>
+
+                <!-- TAB 2: DISTRIBUTED TRACES (Proxy2ManyHosts) -->
+                <RadzenTabsItem Text="Ślady Rozproszone (Traces)">
+                    <RadzenStack Gap="1rem" Class="rz-mt-3">
+                        <!-- Filters -->
+                        <RadzenCard Class="rz-p-3">
+                            <RadzenRow AlignItems="AlignItems.Center" Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenTextBox Placeholder="Filtruj wg TraceId, ścieżki, metody lub adresu upstream..."
+                                                   @bind-Value="@traceSearch"
+                                                   @oninput="@(args => OnTraceSearchChanged(args.Value?.ToString()))"
+                                                   Class="w-100" />
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenDropDown TValue="string"
+                                                    Data="@statusOptions"
+                                                    @bind-Value="@traceStatusFilter"
+                                                    Change="@(args => LoadTracesAsync())"
+                                                    Class="w-100" />
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3" Class="text-end">
+                                    <RadzenButton Text="Odśwież ślady" Icon="sync" ButtonStyle="ButtonStyle.Light" Click="@LoadTracesAsync" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenCard>
+
+                        <!-- Traces Grid -->
+                        <RadzenDataGrid Data="@traces" TItem="GatewayTraceSpanModel"
+                                        Count="@totalTracesCount"
+                                        LoadData="@OnTracesLoadData"
+                                        AllowPaging="true" PageSize="12"
+                                        AllowSorting="false"
+                                        Class="rz-shadow-sm"
+                                        SelectionMode="DataGridSelectionMode.Single"
+                                        RowSelect="@(args => ShowTraceDetails(args))">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="GatewayTraceSpanModel" Property="Timestamp" Title="Godzina (UTC)" Width="130px">
+                                    <Template Context="t">
+                                        <span class="text-muted">@t.Timestamp.ToString("HH:mm:ss.fff")</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="GatewayTraceSpanModel" Property="HttpMethod" Title="Metoda" Width="90px">
+                                    <Template Context="t">
+                                        <span class="badge @GetMethodBadgeClass(t.HttpMethod)">@t.HttpMethod</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="GatewayTraceSpanModel" Property="RequestPath" Title="Ścieżka żądania">
+                                    <Template Context="t">
+                                        <span class="fw-bold">@t.RequestPath</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="GatewayTraceSpanModel" Property="TargetUri" Title="Cel Upstream">
+                                    <Template Context="t">
+                                        <span class="text-truncate d-inline-block" style="max-width: 260px;" title="@t.TargetUri">
+                                            @t.TargetUri
+                                        </span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="GatewayTraceSpanModel" Property="DurationMs" Title="Czas trwania" Width="120px">
+                                    <Template Context="t">
+                                        <span class="fw-bold @(t.DurationMs > 500 ? "text-danger" : (t.DurationMs > 100 ? "text-warning" : "text-success"))">
+                                            @t.DurationMs.ToString("F1") ms
+                                        </span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="GatewayTraceSpanModel" Property="StatusCode" Title="Status HTTP" Width="110px">
+                                    <Template Context="t">
+                                        <span class="badge @GetStatusBadgeClass(t.StatusCode)">@(t.StatusCode?.ToString() ?? "---")</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="GatewayTraceSpanModel" Property="Status" Title="Stan OTel" Width="100px">
+                                    <Template Context="t">
+                                        <span class="badge @(t.Status == "Ok" ? "bg-success" : "bg-danger")">@t.Status</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="GatewayTraceSpanModel" Title="Akcja" Width="100px" TextAlign="TextAlign.Center">
+                                    <Template Context="t">
+                                        <RadzenButton Icon="waterfall_chart" ButtonStyle="ButtonStyle.Info" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => ShowTraceDetails(t))" ToolTip="Pokaż sekwencję Waterfall" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+
+                        <!-- Trace Details Drawer / Modal View -->
+                        @if (selectedTrace != null)
+                        {
+                            <RadzenCard Class="rz-p-4 rz-mt-2 border-primary border-2 shadow">
+                                <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="mb-3">
+                                    <RadzenColumn Size="10">
+                                        <RadzenText TextStyle="TextStyle.H5" Class="fw-bold text-primary mb-1">
+                                            <RadzenIcon Icon="schema" Class="me-2" /> Sekwencja wykonania żądania (Waterfall Trace)
+                                        </RadzenText>
+                                        <RadzenText TextStyle="TextStyle.Body2" Class="text-muted mb-0">
+                                            TraceId: <code class="user-select-all fw-bold text-dark">@selectedTrace.TraceId</code> |
+                                            SpanId: <code>@selectedTrace.SpanId</code> |
+                                            Czas całkowity: <strong>@selectedTrace.DurationMs.ToString("F1") ms</strong>
+                                        </RadzenText>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="2" Class="text-end">
+                                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Text" Click="@(() => selectedTrace = null)" />
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                <!-- Waterfall Diagram -->
+                                <div class="bg-light p-3 rounded border mb-3">
+                                    <div class="d-flex justify-content-between text-muted small border-bottom pb-1 mb-2">
+                                        <span>Etap przetwarzania w potoku Gateway</span>
+                                        <span>Oś czasu (ms)</span>
+                                    </div>
+
+                                    <!-- Step 1: Request Ingress -->
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-5 small fw-bold">
+                                            <RadzenIcon Icon="login" Style="font-size: 1rem;" Class="text-primary me-1" />
+                                            1. Przyjęcie żądania klienta (@selectedTrace.HttpMethod @selectedTrace.RequestPath)
+                                        </div>
+                                        <div class="col-7">
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar bg-primary text-start ps-2" role="progressbar" style="width: 12%;">0.0 ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 2: Route Matching -->
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-5 small fw-bold">
+                                            <RadzenIcon Icon="alt_route" Style="font-size: 1rem;" Class="text-info me-1" />
+                                            2. GatewayRouteMatcher (Dopasowanie reguły i Regex)
+                                        </div>
+                                        <div class="col-7">
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar bg-info text-start ps-2" role="progressbar" style="margin-left: 2%; width: 14%;">+0.8 ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 3: Auth & Scope verification -->
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-5 small fw-bold">
+                                            <RadzenIcon Icon="verified_user" Style="font-size: 1rem;" Class="text-success me-1" />
+                                            3. Autoryzacja OIDC & Weryfikacja Scopes
+                                        </div>
+                                        <div class="col-7">
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar bg-success text-start ps-2" role="progressbar" style="margin-left: 5%; width: 12%;">+1.5 ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 4: Headers & Body Transformation -->
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-5 small fw-bold">
+                                            <RadzenIcon Icon="transform" Style="font-size: 1rem;" Class="text-secondary me-1" />
+                                            4. Transformacja nagłówków & GatewayBodyTransformer
+                                        </div>
+                                        <div class="col-7">
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar bg-secondary text-start ps-2" role="progressbar" style="margin-left: 8%; width: 10%;">+2.1 ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 5: Distributed Tracing Context Injection -->
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-5 small fw-bold">
+                                            <RadzenIcon Icon="tag" Style="font-size: 1rem;" Class="text-dark me-1" />
+                                            5. Propagacja kontekstu W3C (traceparent)
+                                        </div>
+                                        <div class="col-7">
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar bg-dark text-start ps-2" role="progressbar" style="margin-left: 10%; width: 8%;">+2.6 ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 6: Upstream HttpClient proxy call -->
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-5 small fw-bold">
+                                            <RadzenIcon Icon="cloud_upload" Style="font-size: 1rem;" Class="text-warning me-1" />
+                                            6. Upstream Proxy Request: @selectedTrace.TargetUri
+                                        </div>
+                                        <div class="col-7">
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar @(selectedTrace.Status == "Ok" ? "bg-warning" : "bg-danger") text-start ps-2" role="progressbar" style="margin-left: 12%; width: 82%;">
+                                                    Upstream: @Math.Max(1.0, selectedTrace.DurationMs - 4.0).ToString("F1") ms
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Step 7: Response Streaming -->
+                                    <div class="row align-items-center">
+                                        <div class="col-5 small fw-bold">
+                                            <RadzenIcon Icon="logout" Style="font-size: 1rem;" Class="text-success me-1" />
+                                            7. Odpowiedź do klienta (Status: @(selectedTrace.StatusCode?.ToString() ?? "---"))
+                                        </div>
+                                        <div class="col-7">
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar bg-success text-start ps-2" role="progressbar" style="margin-left: 92%; width: 8%;">
+                                                    @selectedTrace.DurationMs.ToString("F1") ms
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- OpenTelemetry Tags Table -->
+                                <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2">
+                                    <RadzenIcon Icon="label" Class="me-1 text-primary" /> Atrybuty OpenTelemetry (Semantic Conventions)
+                                </RadzenText>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped table-bordered mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 250px;">Klucz atrybutu (Tag)</th>
+                                                <th>Wartość</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var tag in selectedTrace.Tags)
+                                            {
+                                                <tr>
+                                                    <td><code class="text-primary fw-bold">@tag.Key</code></td>
+                                                    <td><span class="user-select-all">@tag.Value</span></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </RadzenCard>
+                        }
+                    </RadzenStack>
+                </RadzenTabsItem>
+
+                <!-- TAB 3: STRUCTURED LOGS -->
+                <RadzenTabsItem Text="Dziennik Logów OpenTelemetry">
+                    <RadzenStack Gap="1rem" Class="rz-mt-3">
+                        <RadzenCard Class="rz-p-3">
+                            <RadzenRow AlignItems="AlignItems.Center" Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenTextBox Placeholder="Filtruj logi wg treści, kategorii lub TraceId..."
+                                                   @bind-Value="@logSearch"
+                                                   @oninput="@(args => OnLogSearchChanged(args.Value?.ToString()))"
+                                                   Class="w-100" />
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenDropDown TValue="string"
+                                                    Data="@logLevelOptions"
+                                                    @bind-Value="@logLevelFilter"
+                                                    Change="@(args => LoadLogsAsync())"
+                                                    Class="w-100" />
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3" Class="text-end">
+                                    <RadzenButton Text="Odśwież logi" Icon="sync" ButtonStyle="ButtonStyle.Light" Click="@LoadLogsAsync" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenCard>
+
+                        <RadzenDataGrid Data="@logs" TItem="TelemetryLogEntryModel"
+                                        Count="@totalLogsCount"
+                                        LoadData="@OnLogsLoadData"
+                                        AllowPaging="true" PageSize="15"
+                                        AllowSorting="false"
+                                        Density="Density.Compact"
+                                        Class="rz-shadow-sm">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="TelemetryLogEntryModel" Property="Timestamp" Title="Czas" Width="120px">
+                                    <Template Context="l">
+                                        <span class="text-muted">@l.Timestamp.ToString("HH:mm:ss.fff")</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="TelemetryLogEntryModel" Property="LogLevel" Title="Poziom" Width="100px">
+                                    <Template Context="l">
+                                        <span class="badge @GetLogLevelBadgeClass(l.LogLevel)">@l.LogLevel</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="TelemetryLogEntryModel" Property="Category" Title="Kategoria" Width="220px">
+                                    <Template Context="l">
+                                        <span class="text-truncate d-inline-block small text-muted" style="max-width: 210px;" title="@l.Category">
+                                            @l.Category
+                                        </span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="TelemetryLogEntryModel" Property="Message" Title="Komunikat">
+                                    <Template Context="l">
+                                        <span class="font-monospace small">@l.Message</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="TelemetryLogEntryModel" Property="TraceId" Title="TraceId" Width="180px">
+                                    <Template Context="l">
+                                        @if (!string.IsNullOrEmpty(l.TraceId))
+                                        {
+                                            <a href="javascript:void(0)" class="badge bg-light text-primary text-decoration-none border user-select-all" @onclick="@(() => FilterTraceFromLog(l.TraceId))" title="Filtruj ślady dla tego TraceId">
+                                                @l.TraceId.Substring(0, Math.Min(12, l.TraceId.Length))...
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">---</span>
+                                        }
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    </RadzenStack>
+                </RadzenTabsItem>
+
+                <!-- TAB 4: ASPIRE DASHBOARD & OTLP CONFIG -->
+                <RadzenTabsItem Text="Aspire Dashboard & OTLP">
+                    <RadzenStack Gap="1.5rem" Class="rz-mt-3">
+                        <RadzenRow Gap="1.5rem">
+                            <RadzenColumn Size="12" SizeLG="7">
+                                <RadzenCard Class="rz-p-4">
+                                    <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-2">
+                                        <RadzenIcon Icon="desktop_windows" Class="me-2 text-primary" /> Wizualizacja w .NET Aspire Dashboard
+                                    </RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Body1" Class="text-muted mb-4">
+                                        Rozwiązanie Quorum zawiera dedykowany projekt orkiestracji <code>Quorum.AppHost</code> oraz pakiet standardów <code>Quorum.ServiceDefaults</code>, który automatycznie uruchamia i łączy środowisko z pełnym Aspire Dashboard UI.
+                                    </RadzenText>
+
+                                    <RadzenStack Gap="1rem">
+                                        <div class="p-3 bg-light rounded border">
+                                            <div class="fw-bold text-dark mb-1">
+                                                <RadzenIcon Icon="terminal" Class="me-1 text-primary" /> Jak uruchomić z Aspire Dashboard?
+                                            </div>
+                                            <p class="mb-2 small text-muted">
+                                                Wykonaj poniższe polecenie w katalogu głównym projektu, aby uruchomić AppHost z wbudowanym interfejsem graficznym Aspire:
+                                            </p>
+                                            <pre class="bg-dark text-white p-2 rounded small mb-0 user-select-all"><code>dotnet run --project Quorum.AppHost</code></pre>
+                                        </div>
+
+                                        <div class="p-3 bg-light rounded border">
+                                            <div class="fw-bold text-dark mb-1">
+                                                <RadzenIcon Icon="auto_graph" Class="me-1 text-success" /> Co zyskujesz w Aspire Dashboard?
+                                            </div>
+                                            <ul class="mb-0 small text-muted ps-3">
+                                                <li><strong>Traces</strong>: Pełny diagram kaskadowy śledzenia żądań HTTP przechodzących przez <code>Proxy2ManyHostsMiddleware</code> i serwisy docelowe.</li>
+                                                <li><strong>Metrics</strong>: Wykresy czasu rzeczywistego (promQL/Meters) dla żądań bramki, pamięci RAM i wątków .NET Kestrel.</li>
+                                                <li><strong>Structured Logs</strong>: Logi skorelowane automatycznie z identyfikatorem śladu (TraceId/SpanId).</li>
+                                                <li><strong>Resources</strong>: Monitorowanie stanu procesów (Backend, Gateway) i ich endpointów.</li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="d-flex gap-2 mt-2">
+                                            <RadzenButton Text="Otwórz Aspire Dashboard" Icon="launch" ButtonStyle="ButtonStyle.Primary" Click="@OpenAspireDashboard" />
+                                            <RadzenButton Text="Sprawdź Health (/health)" Icon="health_and_safety" ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined" Click="@(() => NavigationManager.NavigateTo("/health", true))" />
+                                        </div>
+                                    </RadzenStack>
+                                </RadzenCard>
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="12" SizeLG="5">
+                                <RadzenCard Class="rz-p-4">
+                                    <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-2">
+                                        <RadzenIcon Icon="settings_ethernet" Class="me-2 text-info" /> Konfiguracja OTLP & Bramki
+                                    </RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Body2" Class="text-muted mb-3">
+                                        Parametry eksportera OpenTelemetry Protocol (OTLP) skonfigurowane w <code>Quorum.ServiceDefaults</code>.
+                                    </RadzenText>
+
+                                    <table class="table table-sm table-bordered">
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-bold bg-light">OTLP Endpoint</td>
+                                                <td><code>@overview.OtlpEndpointUrl</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold bg-light">Status Połączenia</td>
+                                                <td><span class="badge bg-success">@overview.OtlpStatus</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold bg-light">ActivitySource</td>
+                                                <td><code>@overview.ActivitySourceName</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold bg-light">Meters</td>
+                                                <td><code>Quorum.Backend.Gateway, Microsoft.AspNetCore.Hosting</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold bg-light">Trace Context</td>
+                                                <td><span class="badge bg-info">W3C (traceparent, tracestate)</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold bg-light">Middleware</td>
+                                                <td><code>Proxy2ManyHostsMiddleware</code></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </RadzenCard>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenStack>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    }
+</RadzenStack>

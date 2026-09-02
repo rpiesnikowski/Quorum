@@ -31,6 +31,7 @@
     <ProjectReference Include="..\Quorum.Backend.AdminAPI\Quorum.Backend.AdminAPI.csproj" />
     <ProjectReference Include="..\Quorum.Backend.AdminUI\Quorum.Backend.AdminUI.csproj" />
     <ProjectReference Include="..\Quorum.Backend.EntityFramework\Quorum.Backend.EntityFramework.csproj" />
+    <ProjectReference Include="..\Quorum.ServiceDefaults\Quorum.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

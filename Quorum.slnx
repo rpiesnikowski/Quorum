@@ -1,7 +1,9 @@
 <Solution>
+  <Project Path="Quorum.AppHost/Quorum.AppHost.csproj" />
   <Project Path="Quorum.Backend.AdminAPI/Quorum.Backend.AdminAPI.csproj" />
   <Project Path="Quorum.Backend.AdminUI/Quorum.Backend.AdminUI.csproj" />
   <Project Path="Quorum.Backend.EntityFramework/Quorum.Backend.EntityFramework.csproj" />
   <Project Path="Quorum.Backend.Gateway/Quorum.Backend.Gateway.csproj" />
   <Project Path="Quorum.Backend/Quorum.Backend.csproj" />
+  <Project Path="Quorum.ServiceDefaults/Quorum.ServiceDefaults.csproj" />
 </Solution>

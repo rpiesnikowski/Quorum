@@ -5,6 +5,9 @@ using Quorum.Backend.Gateway.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 1. Integracja OpenTelemetry, Service Discovery i Health Checks (.NET Aspire ServiceDefaults)
+builder.AddServiceDefaults();
+
 // Rejestracja usług w kontenerze DI
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -46,6 +49,7 @@ app.UseMiddleware<Proxy2ManyHostsMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapDefaultEndpoints();
 
 // Przykładowy endpoint typu Health Check z diagnostyką pamięci podręcznej reguł
 app.MapGet("/health", (IGatewayRouteCache routeCache) => Results.Ok(new 

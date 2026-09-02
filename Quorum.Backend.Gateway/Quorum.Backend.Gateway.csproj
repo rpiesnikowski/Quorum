@@ -10,5 +10,6 @@
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Quorum.Backend.EntityFramework\Quorum.Backend.EntityFramework.csproj" />
+      <ProjectReference Include="..\Quorum.ServiceDefaults\Quorum.ServiceDefaults.csproj" />
     </ItemGroup>
 </Project>

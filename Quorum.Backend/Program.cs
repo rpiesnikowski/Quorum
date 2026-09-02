@@ -17,6 +17,9 @@ using Quorum.Backend.Services;
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
 
+// Integracja OpenTelemetry Tracing, Metrics, Logging i Health Checks (.NET Aspire ServiceDefaults)
+builder.AddServiceDefaults();
+
 // 1. Obsługa nagłówków X-Forwarded-Proto / X-Forwarded-For dla Reverse Proxy (Docker/Nginx/Caddy)
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -332,5 +335,8 @@ app.MapQuorumAdminApi();
 
 // 14. Mapowanie SignalR Hub dla powiadomień API Gateway
 app.MapHub<Quorum.Backend.Hubs.GatewayConfigHub>("/hubs/gateway-config");
+
+// Mapowanie endpointów diagnostycznych i health checks Aspire
+app.MapDefaultEndpoints();
 
 app.Run();
