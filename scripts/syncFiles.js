@@ -2,18 +2,29 @@ import fs from 'fs';
 import path from 'path';
 
 const rootDir = process.cwd();
-const targetDirectories = ['Quorum.Backend', 'Quorum.Backend.AdminUI'];
-const rootFiles = ['Quorum.slnx'];
+const targetDirectories = [
+  'Quorum.Backend',
+  'Quorum.Backend.AdminUI',
+  'Quorum.Backend.AdminAPI',
+  'Quorum.Backend.EntityFramework',
+  'Quorum.Backend.Gateway',
+  'Quorum.ServiceDefaults',
+  'Quorum.AppHost'
+];
+const rootFiles = ['Quorum.slnx', 'Quorum.AdminAPI.http'];
 
 function getCategory(filePath) {
   if (filePath.endsWith('.cs')) return 'csharp';
-  if (filePath.endsWith('.cshtml')) return 'razor';
-  if (filePath.endsWith('.json') || filePath.endsWith('.csproj') || filePath.endsWith('.slnx') || filePath.endsWith('.props') || filePath.endsWith('.xml')) return 'config';
+  if (filePath.endsWith('.razor') || filePath.endsWith('.cshtml')) return 'razor';
+  if (filePath.endsWith('.json') || filePath.endsWith('.csproj') || filePath.endsWith('.slnx') || filePath.endsWith('.props') || filePath.endsWith('.xml') || filePath.endsWith('.http')) return 'config';
   if (filePath.endsWith('.md')) return 'docs';
   return 'config';
 }
 
 function getDescription(filePath) {
+  if (filePath.includes('ServiceDefaults/Extensions.cs')) return 'Konfiguracja .NET Aspire ServiceDefaults (OpenTelemetry, HealthChecks, Service Discovery)';
+  if (filePath.includes('Quorum.ServiceDefaults')) return 'Projekt .NET Aspire ServiceDefaults ze wspólną obserwowalnością i healthcheckami';
+  if (filePath.includes('Quorum.AppHost')) return 'Projekt orkiestracji .NET Aspire AppHost integrujący backend i bramkę';
   if (filePath.includes('Gateway/Test')) return 'Widok i logika testera API Gateway (ewaluacja i proxy upstream)';
   if (filePath.includes('GatewayTestModels')) return 'Modele ewaluacji i żądań testowych API Gateway';
   if (filePath.includes('Gateway')) return 'Zarządzanie API Gateway i regułami routingu';
@@ -23,6 +34,7 @@ function getDescription(filePath) {
   if (filePath.includes('Program.cs')) return 'Punkt startowy i potok middleware ASP.NET Core';
   if (filePath.endsWith('.csproj')) return 'Plik projektu .NET';
   if (filePath.endsWith('.slnx')) return 'Plik rozwiązania Solution .NET';
+  if (filePath.endsWith('.http')) return 'Przykładowe żądania HTTP do testowania API i OIDC';
   return 'Plik projektu Quorum';
 }
 

@@ -19,7 +19,7 @@ public static class Extensions
     {
         builder.ConfigureOpenTelemetry();
 
-        builder.Services.AddDefaultHealthChecks();
+        builder.AddDefaultHealthChecks();
 
         builder.Services.AddServiceDiscovery();
 
@@ -88,10 +88,15 @@ public static class Extensions
         return builder;
     }
 
+    public static IHealthChecksBuilder AddDefaultHealthChecks(this IServiceCollection services)
+    {
+        return services.AddHealthChecks()
+            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+    }
+
     public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        builder.Services.AddHealthChecks()
-            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+        builder.Services.AddDefaultHealthChecks();
 
         return builder;
     }
