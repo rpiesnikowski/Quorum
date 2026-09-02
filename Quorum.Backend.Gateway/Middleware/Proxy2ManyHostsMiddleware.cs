@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Trace;
 using Quorum.Backend.EntityFramework.Data;
 using Quorum.Backend.EntityFramework.Models;
 using Quorum.Backend.Gateway.Services;

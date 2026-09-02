@@ -55,6 +55,9 @@ public partial class GatewayRouteEdit : ComponentBase
     private string sampleBodyInput = "{\n  \"id\": 101,\n  \"name\": \"Jan Kowalski\",\n  \"email\": \"jan.kowalski@example.com\",\n  \"role\": \"Admin\"\n}";
     private string? sampleBodyOutput;
     private string? sampleBodyError;
+    private string BodyPlaceholderText => model.BodyTransformType == "JUST" 
+        ? "{\n  \"targetId\": \"#valueof($.id)\",\n  \"userName\": \"#valueof($.name)\"\n}" 
+        : "{\n  \"userId\": {{ body.id }},\n  \"user\": \"{{ body.name }}\",\n  \"email\": \"{{ body.email }}\"\n}";
 
     private IEnumerable<ScopeItemModel> FilteredScopes
     {

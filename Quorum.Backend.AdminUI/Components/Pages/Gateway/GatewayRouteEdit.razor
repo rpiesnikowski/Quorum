@@ -230,7 +230,7 @@
                                 </div>
 
                                 <RadzenFormField Text="Szablon Transformacji Body (Pozostaw puste, aby przekazać treść bez zmian)" Class="w-100">
-                                    <RadzenTextArea @bind-Value="model.Body" @oninput="@((args) => OnBodyInputChanged(args.Value?.ToString()))" Rows="5" Class="w-100 font-monospace" Placeholder="@(model.BodyTransformType == "JUST" ? "{\n  \"targetId\": \"#valueof($.id)\",\n  \"userName\": \"#valueof($.name)\"\n}" : "{\n  \"userId\": {{ body.id }},\n  \"user\": \"{{ body.name }}\",\n  \"email\": \"{{ body.email }}\"\n}")" />
+                                    <RadzenTextArea @bind-Value="model.Body" @oninput="@((args) => OnBodyInputChanged(args.Value?.ToString()))" Rows="5" Class="w-100 font-monospace" Placeholder="@BodyPlaceholderText" />
                                 </RadzenFormField>
 
                                 <div class="mt-2 text-muted small">

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Radzen;
 using Quorum.Backend.AdminUI.Services.Interfaces;
 using Quorum.Backend.EntityFramework.Models;
 
@@ -65,6 +66,11 @@ public partial class GatewayTester : ComponentBase
             testRequest.RawHeaders = "Accept: application/json\nUser-Agent: Quorum-Gateway-Simulator/1.0";
         }
     }
+
+    private void ApplyOrdersGetPreset() => ApplyPreset("GET", "/api/orders/123", "", "orders.read");
+    private void ApplyOrderPostPreset() => ApplyPreset("POST", "/api/orders", "{\n  \"customerId\": 42,\n  \"amount\": 199.99,\n  \"currency\": \"PLN\",\n  \"items\": [\"Książka\", \"Kawa\"]\n}", "orders.write");
+    private void ApplyUserPutPreset() => ApplyPreset("PUT", "/api/users/profile", "{\n  \"displayName\": \"Jan Kowalski\",\n  \"department\": \"IT Security\"\n}", "profile user.manage");
+    private void ApplyDeletePreset() => ApplyPreset("DELETE", "/api/cache/flush", "", "admin.system");
 
     private void AppendHeader(string headerLine)
     {
@@ -155,5 +161,16 @@ public partial class GatewayTester : ComponentBase
             >= 400 and < 500 => "bg-warning text-dark",
             _ => "bg-danger"
         };
+    }
+
+    private AlertStyle GetEvaluationAlertStyle()
+    {
+        if (testResult?.Evaluation == null)
+            return AlertStyle.Info;
+
+        if (!testResult.Evaluation.IsMatched)
+            return AlertStyle.Danger;
+
+        return testResult.Evaluation.AuthPassed ? AlertStyle.Success : AlertStyle.Warning;
     }
 }

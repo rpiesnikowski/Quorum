@@ -1,7 +1,7 @@
 @namespace Quorum.Backend.AdminUI.Components.Layout
 @inherits LayoutComponentBase
 
-<RadzenLayout Class="@($"quorum-admin-layout {(isExpanded ? "sidebar-expanded" : "sidebar-collapsed")} {(isPinned ? "sidebar-pinned" : "sidebar-unpinned")}")"
+<RadzenLayout Class='@($"quorum-admin-layout {(isExpanded ? "sidebar-expanded" : "sidebar-collapsed")} {(isPinned ? "sidebar-pinned" : "sidebar-unpinned")}")'
               Style="@GetLayoutStyle()">
     
     @* --- Górny pasek nawigacyjny Header --- *@
@@ -15,10 +15,10 @@
                     <i class="material-icons" style="font-size: 1.25rem; color: #60a5fa;">@(isPinned ? "menu_open" : "menu")</i>
                 </button>
 
-                <RadzenBreadcrumb>
-                    <RadzenBreadcrumbItem Text="Admin UI" Path="admin" />
-                    <RadzenBreadcrumbItem Text="Zarządzanie Tożsamością i Bramką" />
-                </RadzenBreadcrumb>
+                <RadzenBreadCrumb>
+                    <RadzenBreadCrumbItem Text="Admin UI" Path="admin" />
+                    <RadzenBreadCrumbItem Text="Zarządzanie Tożsamością i Bramką" />
+                </RadzenBreadCrumb>
             </RadzenColumn>
             
             <RadzenColumn Size="6" Class="d-flex justify-content-end align-items-center gap-3">
@@ -44,7 +44,7 @@
     </RadzenHeader>
 
     @* --- Lewy płynny panel boczny Sidebar ze zwijaniem i pinezką --- *@
-    <RadzenSidebar Class="@($"quorum-sidebar {(isExpanded ? "expanded" : "collapsed")} {(isPinned ? "pinned" : "unpinned")}")"
+    <RadzenSidebar Class='@($"quorum-sidebar {(isExpanded ? "expanded" : "collapsed")} {(isPinned ? "pinned" : "unpinned")}")'
                    @onmouseenter="HandleMouseEnter"
                    @onmouseleave="HandleMouseLeave">
         <AdminNavMenu IsPinned="@isPinned"

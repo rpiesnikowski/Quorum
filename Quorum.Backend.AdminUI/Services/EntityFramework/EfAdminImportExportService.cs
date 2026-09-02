@@ -1009,16 +1009,20 @@ public class EfAdminImportExportService<TUser> : IAdminImportExportService
             Scheme = r.Scheme,
             AddressHost = r.AddressHost,
             AddressPort = r.AddressPort,
+            AddressBasePath = r.AddressBasePath,
+            AddressPath = r.AddressPath,
+            AddressQueryString = r.AddressQueryString,
             ForwardOriginalHost = r.ForwardOriginalHost,
-            ForwardOriginalQuery = r.ForwardOriginalQuery,
             TimeoutSeconds = r.TimeoutSeconds,
-            RequireAuthorization = r.RequireAuthorization,
-            RequiredRoles = r.RequiredRoles,
-            RequiredClaims = r.RequiredClaims,
-            HeadersMatch = r.HeadersMatch,
-            TransformAddHeaders = r.TransformAddHeaders,
-            TransformRemoveHeaders = r.TransformRemoveHeaders,
-            RequiredScopesList = r.Scopes.Select(s => s.Scope).ToList()
+            AllowAnonymous = r.AllowAnonymous,
+            RequiredScope = r.RequiredScope,
+            AuthenticationSchemes = r.AuthenticationSchemes,
+            Headers = r.Headers,
+            Body = r.Body,
+            BodyTransformType = r.BodyTransformType,
+            EnableCaching = r.EnableCaching,
+            HttpMethods = r.HttpMethods,
+            RequiredScopes = r.Scopes.Select(s => s.Scope).ToList()
         }).ToList();
 
         return JsonSerializer.Serialize(models, JsonOptions);
@@ -1074,19 +1078,23 @@ public class EfAdminImportExportService<TUser> : IAdminImportExportService
                     existing.Scheme = item.Scheme ?? "https";
                     existing.AddressHost = item.AddressHost ?? "localhost";
                     existing.AddressPort = item.AddressPort > 0 ? item.AddressPort : 443;
+                    existing.AddressBasePath = item.AddressBasePath;
+                    existing.AddressPath = item.AddressPath;
+                    existing.AddressQueryString = item.AddressQueryString;
                     existing.ForwardOriginalHost = item.ForwardOriginalHost;
-                    existing.ForwardOriginalQuery = item.ForwardOriginalQuery;
                     existing.TimeoutSeconds = item.TimeoutSeconds > 0 ? item.TimeoutSeconds : 30;
-                    existing.RequireAuthorization = item.RequireAuthorization;
-                    existing.RequiredRoles = item.RequiredRoles;
-                    existing.RequiredClaims = item.RequiredClaims;
-                    existing.HeadersMatch = item.HeadersMatch;
-                    existing.TransformAddHeaders = item.TransformAddHeaders;
-                    existing.TransformRemoveHeaders = item.TransformRemoveHeaders;
+                    existing.AllowAnonymous = item.AllowAnonymous;
+                    existing.RequiredScope = item.RequiredScope;
+                    existing.AuthenticationSchemes = item.AuthenticationSchemes ?? "Bearer";
+                    existing.Headers = item.Headers;
+                    existing.Body = item.Body;
+                    existing.BodyTransformType = item.BodyTransformType ?? "Fluid";
+                    existing.EnableCaching = item.EnableCaching;
+                    existing.HttpMethods = item.HttpMethods;
 
                     // Sync scopes by name
                     existing.Scopes.Clear();
-                    foreach (var scopeName in item.RequiredScopesList ?? new())
+                    foreach (var scopeName in item.RequiredScopes ?? new())
                     {
                         existing.Scopes.Add(new GatewayRouteScope { Scope = scopeName.Trim() });
                     }
@@ -1106,18 +1114,23 @@ public class EfAdminImportExportService<TUser> : IAdminImportExportService
                         Scheme = item.Scheme ?? "https",
                         AddressHost = item.AddressHost ?? "localhost",
                         AddressPort = item.AddressPort > 0 ? item.AddressPort : 443,
+                        AddressBasePath = item.AddressBasePath,
+                        AddressPath = item.AddressPath,
+                        AddressQueryString = item.AddressQueryString,
                         ForwardOriginalHost = item.ForwardOriginalHost,
-                        ForwardOriginalQuery = item.ForwardOriginalQuery,
                         TimeoutSeconds = item.TimeoutSeconds > 0 ? item.TimeoutSeconds : 30,
-                        RequireAuthorization = item.RequireAuthorization,
-                        RequiredRoles = item.RequiredRoles,
-                        RequiredClaims = item.RequiredClaims,
-                        HeadersMatch = item.HeadersMatch,
-                        TransformAddHeaders = item.TransformAddHeaders,
-                        TransformRemoveHeaders = item.TransformRemoveHeaders
+                        AllowAnonymous = item.AllowAnonymous,
+                        RequiredScope = item.RequiredScope,
+                        AuthenticationSchemes = item.AuthenticationSchemes ?? "Bearer",
+                        Headers = item.Headers,
+                        Body = item.Body,
+                        BodyTransformType = item.BodyTransformType ?? "Fluid",
+                        EnableCaching = item.EnableCaching,
+                        HttpMethods = item.HttpMethods,
+                        CreatedAt = DateTime.UtcNow
                     };
 
-                    foreach (var scopeName in item.RequiredScopesList ?? new())
+                    foreach (var scopeName in item.RequiredScopes ?? new())
                     {
                         entity.Scopes.Add(new GatewayRouteScope { Scope = scopeName.Trim() });
                     }

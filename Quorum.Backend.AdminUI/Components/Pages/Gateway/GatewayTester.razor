@@ -43,10 +43,10 @@
             <!-- Quick Presets -->
             <div class="d-flex flex-wrap align-items-center gap-2 pt-1 border-top">
                 <span class="text-muted small fw-bold me-1">Szablony testowe:</span>
-                <RadzenButton Text="GET Orders" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => ApplyPreset("GET", "/api/orders/123", "", "orders.read"))" />
-                <RadzenButton Text="POST Order (JSON)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => ApplyPreset("POST", "/api/orders", "{\n  \"customerId\": 42,\n  \"amount\": 199.99,\n  \"currency\": \"PLN\",\n  \"items\": [\"Książka\", \"Kawa\"]\n}", "orders.write"))" />
-                <RadzenButton Text="PUT User Update" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => ApplyPreset("PUT", "/api/users/profile", "{\n  \"displayName\": \"Jan Kowalski\",\n  \"department\": \"IT Security\"\n}", "profile user.manage"))" />
-                <RadzenButton Text="DELETE Resource" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => ApplyPreset("DELETE", "/api/cache/flush", "", "admin.system"))" />
+                <RadzenButton Text="GET Orders" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyOrdersGetPreset" />
+                <RadzenButton Text="POST Order (JSON)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyOrderPostPreset" />
+                <RadzenButton Text="PUT User Update" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyUserPutPreset" />
+                <RadzenButton Text="DELETE Resource" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyDeletePreset" />
             </div>
 
             <!-- Configuration Tabs (Headers, Body, Auth, Options) -->
@@ -84,7 +84,7 @@
                                 </div>
                             </div>
                             <RadzenTextArea @bind-Value="testRequest.RequestBody" Rows="8" Class="w-100 font-monospace" 
-                                            Placeholder="{\n  \"key\": \"value\"\n}" />
+                                            Placeholder='{ "key": "value" }' />
                         </RadzenStack>
                     </RadzenTabsItem>
 
@@ -169,7 +169,7 @@
                     }
                 </div>
 
-                <RadzenAlert AlertStyle="@(testResult.Evaluation.IsMatched && testResult.Evaluation.AuthPassed ? AlertStyle.Success : (!testResult.Evaluation.IsMatched ? AlertStyle.Danger : AlertStyle.Warning))" 
+                <RadzenAlert AlertStyle="@GetEvaluationAlertStyle()" 
                              ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
                     <div class="fw-bold">@testResult.Evaluation.Explanation</div>
                 </RadzenAlert>

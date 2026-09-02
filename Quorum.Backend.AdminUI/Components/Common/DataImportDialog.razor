@@ -76,13 +76,13 @@
         <RadzenCard Class="rz-p-3 bg-light border">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="fw-bold small">
-                    <RadzenIcon Icon="@(preview.IsValidJson ? "verified" : "error")" 
-                                Class="@(preview.IsValidJson ? "text-success align-middle me-1" : "text-danger align-middle me-1")" />
+                    <RadzenIcon Icon='@(preview.IsValidJson ? "verified" : "error")' 
+                                Class='@(preview.IsValidJson ? "text-success align-middle me-1" : "text-danger align-middle me-1")' />
                     @(preview.IsValidJson ? "Struktura JSON poprawna" : "Błąd składni JSON")
                 </div>
                 @if (preview.IsValidJson)
                 {
-                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@($"Wykryto pozycji: {preview.DetectedCount}")" />
+                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text='@($"Wykryto pozycji: {preview.DetectedCount}")' />
                 }
             </div>
 

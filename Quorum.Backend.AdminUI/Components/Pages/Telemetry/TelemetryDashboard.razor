@@ -69,11 +69,11 @@
             </RadzenColumn>
 
             <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
-                <RadzenCard Class="rz-p-3 border-start border-4 @(overview.ErrorRatePercentage > 2 ? "border-danger" : "border-warning")">
+                <RadzenCard Class='@($"rz-p-3 border-start border-4 {(overview.ErrorRatePercentage > 2 ? "border-danger" : "border-warning")}")'>
                     <RadzenRow AlignItems="AlignItems.Center">
                         <RadzenColumn Size="8">
                             <RadzenText TextStyle="TextStyle.Caption" Class="text-muted text-uppercase fw-bold">Wskaźnik Błędów</RadzenText>
-                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0 @(overview.ErrorRatePercentage > 2 ? "text-danger" : "text-warning")">
+                            <RadzenText TextStyle="TextStyle.H4" Class='@($"fw-bold mb-0 {(overview.ErrorRatePercentage > 2 ? "text-danger" : "text-warning")}")'>
                                 @overview.ErrorRatePercentage.ToString("F2")%
                             </RadzenText>
                             <RadzenText TextStyle="TextStyle.Caption" Class="text-muted">Błędy: @overview.TotalErrorsCount</RadzenText>
@@ -117,9 +117,7 @@
                                     @if (timeSeriesPoints != null && timeSeriesPoints.Any())
                                     {
                                         <RadzenChart Style="height: 280px;">
-                                            <RadzenLineSeries Data="@timeSeriesPoints" CategoryProperty="TimeLabel" Title="Żądania" ValueProperty="RequestsCount" Smooth="true" LineType="LineType.Solid">
-                                                <RadzenSeriesTooltip Visible="true" />
-                                            </RadzenLineSeries>
+                                            <RadzenLineSeries Data="@timeSeriesPoints" CategoryProperty="TimeLabel" Title="Żądania" ValueProperty="RequestsCount" Smooth="true" LineType="LineType.Solid" />
                                             <RadzenCategoryAxis Padding="20" />
                                             <RadzenValueAxis Min="0">
                                                 <RadzenGridLines Visible="true" />

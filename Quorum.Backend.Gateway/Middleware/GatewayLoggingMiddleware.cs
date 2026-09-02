@@ -18,7 +18,7 @@ public class GatewayLoggingMiddleware
         if (!context.Request.Headers.TryGetValue(CorrelationIdHeaderName, out var correlationId))
         {
             correlationId = Guid.NewGuid().ToString();
-            context.Request.Headers.Add(CorrelationIdHeaderName, correlationId);
+            context.Request.Headers[CorrelationIdHeaderName] = correlationId;
         }
 
         // Dodanie Correlation ID do odpowiedzi
