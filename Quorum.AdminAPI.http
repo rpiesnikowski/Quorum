@@ -562,3 +562,17 @@ GET {{oidcBaseUrl}}/connect/userinfo
 Authorization: {{authToken}}
 Accept: application/json
 
+
+### ===================================================================
+### 10. OPENTELEMETRY & DISTRIBUTED TRACING (W3C TRACE CONTEXT)
+### ===================================================================
+
+### 10.1. Sprawdź stan i metadane OpenTelemetry Middleware
+GET https://localhost:5001/api/telemetry/metrics
+Accept: application/json
+
+### 10.2. Wywołaj endpoint z nagłówkiem W3C traceparent (Śledzenie rozproszone)
+GET {{oidcBaseUrl}}/.well-known/openid-configuration
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+Accept: application/json
+

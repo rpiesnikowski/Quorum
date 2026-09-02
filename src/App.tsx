@@ -16,14 +16,16 @@ import {
   Layers,
   Sparkles,
   Server,
-  Radio
+  Radio,
+  Activity
 } from 'lucide-react';
 import { PROJECT_FILES, ProjectFile } from './data/projectFiles';
 import { OidcFlowTester } from './components/OidcFlowTester/OidcFlowTester';
+import { TelemetryDashboard } from './components/Telemetry/TelemetryDashboard';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<ProjectFile>(PROJECT_FILES[0]);
-  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'architecture' | 'guide' | 'oidc-tester'>('explorer');
+  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'architecture' | 'oidc-tester' | 'telemetry' | 'guide'>('explorer');
   const [copied, setCopied] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
   const [zipSuccess, setZipSuccess] = useState(false);
@@ -189,6 +191,20 @@ export default function App() {
               <span>Tester Przepływów OIDC</span>
               <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
                 Flow Tester
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('telemetry')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                activeTab === 'telemetry'
+                  ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <Activity className="w-4 h-4 text-emerald-400" />
+              <span>Telemetria & Metryki</span>
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
+                OpenTelemetry
               </span>
             </button>
             <button
@@ -445,6 +461,11 @@ export default function App() {
         {/* Tab: OIDC Flow Tester */}
         {activeTab === 'oidc-tester' && (
           <OidcFlowTester />
+        )}
+
+        {/* Tab: OpenTelemetry Dashboard */}
+        {activeTab === 'telemetry' && (
+          <TelemetryDashboard />
         )}
 
         {/* Tab 4: Step-by-Step Local Launch Guide */}
