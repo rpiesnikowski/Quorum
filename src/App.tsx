@@ -22,10 +22,11 @@ import {
 import { PROJECT_FILES, ProjectFile } from './data/projectFiles';
 import { OidcFlowTester } from './components/OidcFlowTester/OidcFlowTester';
 import { TelemetryDashboard } from './components/Telemetry/TelemetryDashboard';
+import { SqlMigrationsTab } from './components/Migrations/SqlMigrationsTab';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<ProjectFile>(PROJECT_FILES[0]);
-  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'architecture' | 'oidc-tester' | 'telemetry' | 'guide'>('explorer');
+  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'migrations' | 'architecture' | 'oidc-tester' | 'telemetry' | 'guide'>('explorer');
   const [copied, setCopied] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
   const [zipSuccess, setZipSuccess] = useState(false);
@@ -168,6 +169,21 @@ export default function App() {
               }`}
             >
               <Database className="w-4 h-4" /> Konfigurator Bazy Danych
+            </button>
+            <button
+              id="tab-migrations-btn"
+              onClick={() => setActiveTab('migrations')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                activeTab === 'migrations'
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <Database className="w-4 h-4 text-amber-400" />
+              <span>Migracje SQL</span>
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30">
+                Idempotent & Compare
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('architecture')}
@@ -456,6 +472,11 @@ export default function App() {
               </ul>
             </div>
           </div>
+        )}
+
+        {/* Tab: SQL Migrations & Schema Compare */}
+        {activeTab === 'migrations' && (
+          <SqlMigrationsTab />
         )}
 
         {/* Tab: OIDC Flow Tester */}
