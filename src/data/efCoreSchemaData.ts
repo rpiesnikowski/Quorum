@@ -1,5 +1,26 @@
 import { TableModel } from '../types/migrations';
 
+export interface SourceDatabaseConfig {
+  databaseProvider: 'Sqlite' | 'PostgreSQL' | 'SqlServer';
+  connectionStrings: {
+    Sqlite: string;
+    PostgreSQL: string;
+    SqlServer: string;
+  };
+}
+
+/**
+ * Rzeczywista konfiguracja źródłowej bazy danych z projektu Quorum.Backend (appsettings.json)
+ */
+export const SOURCE_QUORUM_CONFIG: SourceDatabaseConfig = {
+  databaseProvider: 'Sqlite',
+  connectionStrings: {
+    Sqlite: 'Data Source=identityserver.db',
+    PostgreSQL: 'Host=localhost;Port=5432;Database=identity_server_db;Username=postgres;Password=postgres;',
+    SqlServer: 'Server=(localdb)\\mssqllocaldb;Database=QuorumIdentityDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True'
+  }
+};
+
 export const EF_CORE_TABLES: TableModel[] = [
   // --- 1. Bramka Gateway & Federacje ---
   {
@@ -357,5 +378,113 @@ export const EF_CORE_TABLES: TableModel[] = [
       { name: 'IX_Keys_Use', tableName: 'Keys', columns: ['Use'] }
     ],
     foreignKeys: []
+  },
+  {
+    name: 'DeviceCodes',
+    category: 'grants',
+    categoryLabel: 'Aktywne Sesje i Klucze OIDC',
+    description: 'Tabela kodów autoryzacji urządzeń (OAuth 2.0 Device Flow)',
+    columns: [
+      { name: 'UserCode', type: 'varchar(200)', typeByEngine: { sqlserver: 'nvarchar(200)', postgres: 'varchar(200)', sqlite: 'TEXT PRIMARY KEY', oracle: 'VARCHAR2(200) PRIMARY KEY' }, nullable: false, isPrimaryKey: true },
+      { name: 'DeviceCode', type: 'varchar(200)', typeByEngine: { sqlserver: 'nvarchar(200)', postgres: 'varchar(200)', sqlite: 'TEXT', oracle: 'VARCHAR2(200)' }, nullable: false },
+      { name: 'SubjectId', type: 'varchar(200)', typeByEngine: { sqlserver: 'nvarchar(200)', postgres: 'varchar(200)', sqlite: 'TEXT', oracle: 'VARCHAR2(200)' }, nullable: true },
+      { name: 'SessionId', type: 'varchar(100)', typeByEngine: { sqlserver: 'nvarchar(100)', postgres: 'varchar(100)', sqlite: 'TEXT', oracle: 'VARCHAR2(100)' }, nullable: true },
+      { name: 'ClientId', type: 'varchar(200)', typeByEngine: { sqlserver: 'nvarchar(200)', postgres: 'varchar(200)', sqlite: 'TEXT', oracle: 'VARCHAR2(200)' }, nullable: false },
+      { name: 'Description', type: 'varchar(200)', typeByEngine: { sqlserver: 'nvarchar(200)', postgres: 'varchar(200)', sqlite: 'TEXT', oracle: 'VARCHAR2(200)' }, nullable: true },
+      { name: 'CreationTime', type: 'timestamp', typeByEngine: { sqlserver: 'datetime2', postgres: 'timestamp with time zone', sqlite: 'TEXT', oracle: 'TIMESTAMP WITH TIME ZONE' }, nullable: false },
+      { name: 'Expiration', type: 'timestamp', typeByEngine: { sqlserver: 'datetime2', postgres: 'timestamp with time zone', sqlite: 'TEXT', oracle: 'TIMESTAMP WITH TIME ZONE' }, nullable: false },
+      { name: 'Data', type: 'varchar(max)', typeByEngine: { sqlserver: 'nvarchar(max)', postgres: 'text', sqlite: 'TEXT', oracle: 'CLOB' }, nullable: false }
+    ],
+    indexes: [
+      { name: 'IX_DeviceCodes_DeviceCode', tableName: 'DeviceCodes', columns: ['DeviceCode'], isUnique: true },
+      { name: 'IX_DeviceCodes_Expiration', tableName: 'DeviceCodes', columns: ['Expiration'] }
+    ],
+    foreignKeys: []
+  },
+  {
+    name: 'AspNetUserLogins',
+    category: 'identity',
+    categoryLabel: 'ASP.NET Core Identity',
+    description: 'Powiązania zewnętrznych logowań (Google, Microsoft, OIDC) z kontem Identity',
+    columns: [
+      { name: 'LoginProvider', type: 'varchar(128)', typeByEngine: { sqlserver: 'nvarchar(128)', postgres: 'varchar(128)', sqlite: 'TEXT', oracle: 'VARCHAR2(128)' }, nullable: false, isPrimaryKey: true },
+      { name: 'ProviderKey', type: 'varchar(128)', typeByEngine: { sqlserver: 'nvarchar(128)', postgres: 'varchar(128)', sqlite: 'TEXT', oracle: 'VARCHAR2(128)' }, nullable: false, isPrimaryKey: true },
+      { name: 'ProviderDisplayName', type: 'varchar(max)', typeByEngine: { sqlserver: 'nvarchar(max)', postgres: 'text', sqlite: 'TEXT', oracle: 'VARCHAR2(512)' }, nullable: true },
+      { name: 'UserId', type: 'varchar(450)', typeByEngine: { sqlserver: 'nvarchar(450)', postgres: 'varchar(450)', sqlite: 'TEXT', oracle: 'VARCHAR2(450)' }, nullable: false }
+    ],
+    indexes: [
+      { name: 'IX_AspNetUserLogins_UserId', tableName: 'AspNetUserLogins', columns: ['UserId'] }
+    ],
+    foreignKeys: [
+      { name: 'FK_AspNetUserLogins_AspNetUsers_UserId', tableName: 'AspNetUserLogins', column: 'UserId', principalTable: 'AspNetUsers', principalColumn: 'Id', onDelete: 'CASCADE' }
+    ]
+  },
+  {
+    name: 'AspNetUserTokens',
+    category: 'identity',
+    categoryLabel: 'ASP.NET Core Identity',
+    description: 'Tokeny uwierzytelniające, 2FA i resetowania haseł użytkowników',
+    columns: [
+      { name: 'UserId', type: 'varchar(450)', typeByEngine: { sqlserver: 'nvarchar(450)', postgres: 'varchar(450)', sqlite: 'TEXT', oracle: 'VARCHAR2(450)' }, nullable: false, isPrimaryKey: true },
+      { name: 'LoginProvider', type: 'varchar(128)', typeByEngine: { sqlserver: 'nvarchar(128)', postgres: 'varchar(128)', sqlite: 'TEXT', oracle: 'VARCHAR2(128)' }, nullable: false, isPrimaryKey: true },
+      { name: 'Name', type: 'varchar(128)', typeByEngine: { sqlserver: 'nvarchar(128)', postgres: 'varchar(128)', sqlite: 'TEXT', oracle: 'VARCHAR2(128)' }, nullable: false, isPrimaryKey: true },
+      { name: 'Value', type: 'varchar(max)', typeByEngine: { sqlserver: 'nvarchar(max)', postgres: 'text', sqlite: 'TEXT', oracle: 'CLOB' }, nullable: true }
+    ],
+    indexes: [],
+    foreignKeys: [
+      { name: 'FK_AspNetUserTokens_AspNetUsers_UserId', tableName: 'AspNetUserTokens', column: 'UserId', principalTable: 'AspNetUsers', principalColumn: 'Id', onDelete: 'CASCADE' }
+    ]
+  },
+  {
+    name: 'AspNetRoleClaims',
+    category: 'identity',
+    categoryLabel: 'ASP.NET Core Identity',
+    description: 'Roszczenia (Claims) przypisane do ról systemowych',
+    columns: [
+      { name: 'Id', type: 'integer', typeByEngine: { sqlserver: 'int IDENTITY(1,1)', postgres: 'serial', sqlite: 'INTEGER PRIMARY KEY AUTOINCREMENT', oracle: 'NUMBER GENERATED BY DEFAULT AS IDENTITY' }, nullable: false, isPrimaryKey: true, isAutoIncrement: true },
+      { name: 'RoleId', type: 'varchar(450)', typeByEngine: { sqlserver: 'nvarchar(450)', postgres: 'varchar(450)', sqlite: 'TEXT', oracle: 'VARCHAR2(450)' }, nullable: false },
+      { name: 'ClaimType', type: 'varchar(max)', typeByEngine: { sqlserver: 'nvarchar(max)', postgres: 'text', sqlite: 'TEXT', oracle: 'VARCHAR2(256)' }, nullable: true },
+      { name: 'ClaimValue', type: 'varchar(max)', typeByEngine: { sqlserver: 'nvarchar(max)', postgres: 'text', sqlite: 'TEXT', oracle: 'VARCHAR2(1024)' }, nullable: true }
+    ],
+    indexes: [
+      { name: 'IX_AspNetRoleClaims_RoleId', tableName: 'AspNetRoleClaims', columns: ['RoleId'] }
+    ],
+    foreignKeys: [
+      { name: 'FK_AspNetRoleClaims_AspNetRoles_RoleId', tableName: 'AspNetRoleClaims', column: 'RoleId', principalTable: 'AspNetRoles', principalColumn: 'Id', onDelete: 'CASCADE' }
+    ]
+  },
+  {
+    name: 'ClientCorsOrigins',
+    category: 'openiddict',
+    categoryLabel: 'Klienci i Zakresy OIDC',
+    description: 'Biała lista dozwolonych źródeł CORS dla aplikacji SPA/frontendowych',
+    columns: [
+      { name: 'Id', type: 'integer', typeByEngine: { sqlserver: 'int IDENTITY(1,1)', postgres: 'serial', sqlite: 'INTEGER PRIMARY KEY AUTOINCREMENT', oracle: 'NUMBER GENERATED BY DEFAULT AS IDENTITY' }, nullable: false, isPrimaryKey: true, isAutoIncrement: true },
+      { name: 'ClientId', type: 'integer', typeByEngine: { sqlserver: 'int', postgres: 'integer', sqlite: 'INTEGER', oracle: 'NUMBER(10)' }, nullable: false },
+      { name: 'Origin', type: 'varchar(150)', typeByEngine: { sqlserver: 'nvarchar(150)', postgres: 'varchar(150)', sqlite: 'TEXT', oracle: 'VARCHAR2(150)' }, nullable: false }
+    ],
+    indexes: [
+      { name: 'IX_ClientCorsOrigins_ClientId', tableName: 'ClientCorsOrigins', columns: ['ClientId'] }
+    ],
+    foreignKeys: [
+      { name: 'FK_ClientCorsOrigins_Clients_ClientId', tableName: 'ClientCorsOrigins', column: 'ClientId', principalTable: 'Clients', principalColumn: 'Id', onDelete: 'CASCADE' }
+    ]
+  },
+  {
+    name: 'ClientPostLogoutRedirectUris',
+    category: 'openiddict',
+    categoryLabel: 'Klienci i Zakresy OIDC',
+    description: 'Biała lista adresów powrotu po wylogowaniu klienta OIDC',
+    columns: [
+      { name: 'Id', type: 'integer', typeByEngine: { sqlserver: 'int IDENTITY(1,1)', postgres: 'serial', sqlite: 'INTEGER PRIMARY KEY AUTOINCREMENT', oracle: 'NUMBER GENERATED BY DEFAULT AS IDENTITY' }, nullable: false, isPrimaryKey: true, isAutoIncrement: true },
+      { name: 'ClientId', type: 'integer', typeByEngine: { sqlserver: 'int', postgres: 'integer', sqlite: 'INTEGER', oracle: 'NUMBER(10)' }, nullable: false },
+      { name: 'PostLogoutRedirectUri', type: 'varchar(2000)', typeByEngine: { sqlserver: 'nvarchar(2000)', postgres: 'varchar(2000)', sqlite: 'TEXT', oracle: 'VARCHAR2(2000)' }, nullable: false }
+    ],
+    indexes: [
+      { name: 'IX_ClientPostLogoutRedirectUris_ClientId', tableName: 'ClientPostLogoutRedirectUris', columns: ['ClientId'] }
+    ],
+    foreignKeys: [
+      { name: 'FK_ClientPostLogoutRedirectUris_Clients_ClientId', tableName: 'ClientPostLogoutRedirectUris', column: 'ClientId', principalTable: 'Clients', principalColumn: 'Id', onDelete: 'CASCADE' }
+    ]
   }
 ];

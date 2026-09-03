@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { SqlEngine, OutputFormat, TableModel, SchemaCompareResult, MigrationExecutionStep } from '../../types/migrations';
-import { EF_CORE_TABLES } from '../../data/efCoreSchemaData';
+import { EF_CORE_TABLES, SOURCE_QUORUM_CONFIG } from '../../data/efCoreSchemaData';
 import {
   generatePureIdempotentSql,
   generateLiquibaseXml,
@@ -40,12 +40,21 @@ import {
   performSchemaCompare,
   detectEngineFromConnectionString,
   buildExecutionSteps,
+  generateDeltaScript,
   DatabasePreset
 } from '../../utils/schemaCompareEngine';
 
 export const SqlMigrationsTab: React.FC = () => {
   // Tryb główny: 'generator' (Wariant 1) lub 'compare' (Wariant 2)
   const [activeMode, setActiveMode] = useState<'generator' | 'compare'>('generator');
+
+  // --- STAN ŹRÓDŁA: QUORUM.BACKEND (APPSETTINGS.JSON) ---
+  const [sourceProvider, setSourceProvider] = useState<'Sqlite' | 'PostgreSQL' | 'SqlServer'>(
+    SOURCE_QUORUM_CONFIG.databaseProvider
+  );
+  const sourceConnectionString = SOURCE_QUORUM_CONFIG.connectionStrings[sourceProvider];
+  const [isRefreshingSource, setIsRefreshingSource] = useState<boolean>(false);
+  const [sourceRefreshMessage, setSourceRefreshMessage] = useState<string | null>(null);
 
   // --- STAN DLA WARIANTU 1: GENERATOR SKRYPTÓW ---
   const [selectedEngine, setSelectedEngine] = useState<SqlEngine>('postgres');
@@ -56,8 +65,10 @@ export const SqlMigrationsTab: React.FC = () => {
   );
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [isZipping, setIsZipping] = useState<boolean>(false);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generatedTimestamp, setGeneratedTimestamp] = useState<string>(() => new Date().toLocaleTimeString('pl-PL'));
 
-  // --- STAN DLA WARIANTU 2: SCHEMA COMPARE ---
+  // --- STAN DLA WARIANTU 2: SCHEMA COMPARE & DIFFS ---
   const [selectedPresetId, setSelectedPresetId] = useState<string>('partial-v1');
   const currentPreset = useMemo(
     () => PRESET_DATABASES.find(p => p.id === selectedPresetId) || PRESET_DATABASES[0],
@@ -71,6 +82,8 @@ export const SqlMigrationsTab: React.FC = () => {
     currentPreset.simulatedExistingTables
   );
   const [isComparing, setIsComparing] = useState<boolean>(false);
+  const [deltaFormat, setDeltaFormat] = useState<OutputFormat>('sql');
+  const [copiedDelta, setCopiedDelta] = useState<boolean>(false);
   const [compareResult, setCompareResult] = useState<SchemaCompareResult | null>(() =>
     performSchemaCompare(currentPreset.connectionString, currentPreset.engine, currentPreset.simulatedExistingTables)
   );
@@ -111,6 +124,67 @@ export const SqlMigrationsTab: React.FC = () => {
     }
     return '';
   }, [filteredTables, selectedEngine, outputFormat]);
+
+  // Skrypt różnicowy (Wariant 2 - Delta)
+  const deltaScript = useMemo(() => {
+    if (!compareResult) return '';
+    return generateDeltaScript(compareResult.tables, compareEngine, deltaFormat);
+  }, [compareResult, compareEngine, deltaFormat]);
+
+  // Akcja: Pobranie całości tabel z źródła Quorum.Backend
+  const handleRefreshSourceTables = () => {
+    setIsRefreshingSource(true);
+    setSourceRefreshMessage(null);
+    setTimeout(() => {
+      setIsRefreshingSource(false);
+      selectAllTables();
+      setSourceRefreshMessage(
+        `Załadowano pomyślnie komplet ${EF_CORE_TABLES.length} tabel ze źródła Quorum.Backend (${sourceProvider})`
+      );
+      setTimeout(() => setSourceRefreshMessage(null), 4000);
+    }, 400);
+  };
+
+  // Akcja: Jawne generowanie całości struktur w Wariancie 1
+  const handleGenerateStructures = () => {
+    setIsGenerating(true);
+    setTimeout(() => {
+      setIsGenerating(false);
+      setGeneratedTimestamp(new Date().toLocaleTimeString('pl-PL'));
+    }, 350);
+  };
+
+  // Uniwersalny zapis do pliku
+  const handleSaveToFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Zapis do pliku dla Wariantu 1
+  const handleDownloadVariant1File = () => {
+    const ext = outputFormat === 'liquibase-xml' ? 'xml' : outputFormat === 'liquibase-yaml' ? 'yaml' : 'sql';
+    const filename = `quorum_full_structure_${selectedEngine}_${outputFormat}.${ext}`;
+    handleSaveToFile(generatedScript, filename);
+  };
+
+  // Zapis do pliku dla Wariantu 2 (Delta)
+  const handleDownloadDeltaFile = () => {
+    const ext = deltaFormat === 'liquibase-xml' ? 'xml' : deltaFormat === 'liquibase-yaml' ? 'yaml' : 'sql';
+    const filename = `quorum_diffs_delta_${compareEngine}_${deltaFormat}.${ext}`;
+    handleSaveToFile(deltaScript, filename);
+  };
+
+  // Kopiowanie różnic (Delta)
+  const handleCopyDelta = () => {
+    navigator.clipboard.writeText(deltaScript);
+    setCopiedDelta(true);
+    setTimeout(() => setCopiedDelta(false), 2000);
+  };
 
   // Zmiana presetu bazy danych
   const handleSelectPreset = (preset: DatabasePreset) => {
@@ -345,6 +419,75 @@ Struktura katalogów:
         </div>
       </div>
 
+      {/* PANEL ŹRÓDŁA: QUORUM.BACKEND (POBIERANIE CAŁOŚCI TABEL ZE ŹRÓDŁA) */}
+      <div id="source-backend-config-card" className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 shrink-0 mt-0.5 sm:mt-0">
+              <Server className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                  Źródło Modeli: Quorum.Backend
+                </span>
+                <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                  appsettings.json
+                </span>
+                <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold">
+                  Załadowano {EF_CORE_TABLES.length} tabel
+                </span>
+              </div>
+              <div className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono">
+                <span className="text-slate-500">Domyślny provider:</span>
+                <span className="text-slate-200 font-semibold">{sourceProvider}</span>
+                <span className="text-slate-600">|</span>
+                <span className="text-slate-500">Connection string:</span>
+                <span className="text-slate-300 truncate max-w-lg">{sourceConnectionString}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* Przełącznik providera ze źródłowego appsettings.json */}
+            <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+              {(['Sqlite', 'PostgreSQL', 'SqlServer'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setSourceProvider(p)}
+                  className={`px-2.5 py-1 rounded font-medium transition-all ${
+                    sourceProvider === p
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            {/* Przycisk pobrania całości tabel z Quorum.Backend */}
+            <button
+              id="fetch-source-tables-btn"
+              onClick={handleRefreshSourceTables}
+              disabled={isRefreshingSource}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold transition-all shadow-sm"
+              title="Pobiera całość tabel i modeli z Quorum.Backend"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingSource ? 'animate-spin' : ''}`} />
+              {isRefreshingSource ? 'Pobieranie...' : 'Pobierz tabele ze źródła'}
+            </button>
+          </div>
+        </div>
+
+        {sourceRefreshMessage && (
+          <div className="mt-3 p-2.5 bg-emerald-950/30 border border-emerald-500/30 rounded-lg text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{sourceRefreshMessage}</span>
+          </div>
+        )}
+      </div>
+
       {/* ========================================================================= */}
       {/* WARIANT 1: GENERATOR IDEMPOTENTNYCH SKRYPTÓW SQL I LIQUIBASE */}
       {/* ========================================================================= */}
@@ -352,6 +495,31 @@ Struktura katalogów:
         <div id="generator-mode-panel" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* PANEL BOCZNY: KONFIGURACJA SILNIKA I TABEL */}
           <div className="lg:col-span-4 space-y-5">
+            {/* Przycisk generuj całość struktur */}
+            <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-slate-900 border border-amber-500/30 rounded-xl p-4 shadow-md">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  Wariant 1: Generator Struktur
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  {generatedTimestamp}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mb-3">
+                Generuje pełny, idempotentny schemat na podstawie {filteredTables.length} modeli pobranych ze źródła Quorum.Backend.
+              </p>
+              <button
+                id="generate-full-btn"
+                onClick={handleGenerateStructures}
+                disabled={isGenerating}
+                className="w-full py-2.5 px-4 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98]"
+              >
+                <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                {isGenerating ? 'Generowanie całości...' : 'Generuj całość struktur z bazy'}
+              </button>
+            </div>
+
             {/* Wybór silnika SQL */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">
@@ -507,23 +675,36 @@ Struktura katalogów:
                   </span>
                 </div>
 
+                {/* Przyciski: Generuj, Kopiuj do schowka, Zapisz do pliku */}
                 <div className="flex items-center gap-2">
+                  <button
+                    id="generate-structure-btn"
+                    onClick={handleGenerateStructures}
+                    disabled={isGenerating}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-colors"
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+                    {isGenerating ? 'Generowanie...' : 'Generuj'}
+                  </button>
+
                   <button
                     id="copy-script-btn"
                     onClick={() => handleCopy(generatedScript)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors"
+                    title="Kopiuj do schowka"
                   >
                     {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                    {copiedCode ? 'Skopiowano!' : 'Kopiuj'}
+                    {copiedCode ? 'Skopiowano!' : 'Kopiuj do schowka'}
                   </button>
 
                   <button
-                    id="download-script-btn"
-                    onClick={handleDownloadFile}
+                    id="save-to-file-btn"
+                    onClick={handleDownloadVariant1File}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold transition-colors shadow-sm"
+                    title="Zapisz wygenerowany kod do pliku"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    Pobierz plik
+                    Zapisz do pliku
                   </button>
                 </div>
               </div>
@@ -877,44 +1058,82 @@ Struktura katalogów:
                   </div>
                 </div>
 
-                {/* Prawa kolumna: Wygenerowany skrypt różnicowy (Delta SQL) */}
+                {/* Prawa kolumna: Wygenerowany skrypt różnicowy (Delta SQL / Liquibase) */}
                 <div className="lg:col-span-5 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
                       <FileCode className="w-4 h-4 text-amber-400" />
-                      Skrypt Różnicowy (Delta Migration SQL)
+                      Różnice: Źródło vs Cel
                     </h3>
-                    <button
-                      onClick={() => handleCopy(compareResult.deltaSql)}
-                      className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-mono"
-                    >
-                      <Copy className="w-3 h-3" />
-                      Kopiuj SQL
-                    </button>
+
+                    {/* Format różnic (SQL / Liquibase XML / YAML / Formatted SQL) */}
+                    <div className="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-[11px]">
+                      {[
+                        { id: 'sql', label: 'SQL' },
+                        { id: 'liquibase-xml', label: 'XML' },
+                        { id: 'liquibase-yaml', label: 'YAML' },
+                        { id: 'liquibase-sql', label: 'Liq. SQL' }
+                      ].map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => setDeltaFormat(f.id as OutputFormat)}
+                          className={`px-2 py-0.5 rounded font-mono transition-all ${
+                            deltaFormat === f.id
+                              ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[560px]">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[580px] shadow-lg">
                     <div className="bg-slate-950 px-3.5 py-2.5 border-b border-slate-800 text-xs font-mono text-slate-400 flex items-center justify-between">
-                      <span>delta_migration_{compareEngine}.sql</span>
-                      <span className="text-[11px] text-slate-500">
-                        {compareResult.deltaSql.split('\n').length} linii
+                      <span className="truncate max-w-[220px]">
+                        delta_{compareEngine}_{deltaFormat}.{deltaFormat === 'liquibase-xml' ? 'xml' : deltaFormat === 'liquibase-yaml' ? 'yaml' : 'sql'}
                       </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-500">
+                          {deltaScript.split('\n').length} linii
+                        </span>
+                        <button
+                          id="copy-delta-btn"
+                          onClick={handleCopyDelta}
+                          className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-1 transition-colors"
+                          title="Kopiuj skrypt różnicowy"
+                        >
+                          {copiedDelta ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                          {copiedDelta ? 'Skopiowano' : 'Kopiuj'}
+                        </button>
+                        <button
+                          id="save-delta-file-btn"
+                          onClick={handleDownloadDeltaFile}
+                          className="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs flex items-center gap-1 transition-colors"
+                          title="Zapisz skrypt różnicowy do pliku"
+                        >
+                          <Download className="w-3 h-3" />
+                          Zapisz do pliku
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex-1 p-4 font-mono text-xs text-slate-300 bg-slate-950 overflow-auto whitespace-pre selection:bg-amber-500/30">
-                      <code>{compareResult.deltaSql}</code>
+                      <code>{deltaScript}</code>
                     </div>
 
                     <div className="p-3 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-2">
                       <span className="text-xs text-slate-400">
-                        Gotowy do zaaplikowania na instancji docelowej
+                        Przycisk wgraj zmiany wgrywa czysty SQL
                       </span>
                       <button
+                        id="apply-changes-btn"
                         onClick={handleOpenApplyModal}
                         disabled={compareResult.summary.missingTablesCount + compareResult.summary.missingColumnsCount === 0}
-                        className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
                       >
-                        <Play className="w-3 h-3 fill-current" />
+                        <Play className="w-3.5 h-3.5 fill-current" />
                         Wgraj zmiany
                       </button>
                     </div>
@@ -940,10 +1159,10 @@ Struktura katalogów:
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-100">
-                    Wdrażanie Zmian Schematu (Apply Changes)
+                    Wdrażanie Zmian Schematu (Wgraj czysty SQL)
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Baza: {compareResult?.databaseName} ({compareEngine.toUpperCase()})
+                    Baza: {compareResult?.databaseName} ({compareEngine.toUpperCase()}) &bull; Wgrywanie czystych instrukcji SQL DDL
                   </p>
                 </div>
               </div>

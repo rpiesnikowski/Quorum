@@ -1,5 +1,5 @@
-import { SqlEngine, TableModel, ColumnDefinition, IndexDefinition, TableDiff, SchemaCompareResult, MigrationExecutionStep } from '../types/migrations';
-import { EF_CORE_TABLES } from '../data/efCoreSchemaData';
+import { SqlEngine, OutputFormat, TableModel, ColumnDefinition, IndexDefinition, TableDiff, SchemaCompareResult, MigrationExecutionStep } from '../types/migrations';
+import { EF_CORE_TABLES, SOURCE_QUORUM_CONFIG } from '../data/efCoreSchemaData';
 
 export interface DatabasePreset {
   id: string;
@@ -354,6 +354,281 @@ function generateDeltaMigrationSql(diffs: TableDiff[], engine: SqlEngine): strin
   }
 
   return delta;
+}
+
+export const generateDeltaPureSql = generateDeltaMigrationSql;
+
+/**
+ * Generowanie skryptu Delta w formacie Liquibase XML (tylko różnice)
+ */
+export function generateDeltaLiquibaseXml(diffs: TableDiff[]): string {
+  const missingTables = diffs.filter(d => d.status === 'missing_table');
+  const tablesWithMissingCols = diffs.filter(d => d.status === 'has_missing_columns');
+  const tablesWithMissingIndexes = diffs.filter(d => d.missingIndexes.length > 0);
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<databaseChangeLog\n`;
+  xml += `    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"\n`;
+  xml += `    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n`;
+  xml += `    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog\n`;
+  xml += `        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">\n\n`;
+  xml += `    <!-- ========================================================================= -->\n`;
+  xml += `    <!-- QUORUM SCHEMA COMPARE - LIQUIBASE DELTA CHANGELOG -->\n`;
+  xml += `    <!-- WYGENEROWANO TYLKO WYKRYTE RÓŻNICE (DELTA) Z BAZY ŹRÓDŁOWEJ DO DOCELOWEJ -->\n`;
+  xml += `    <!-- ========================================================================= -->\n\n`;
+
+  if (missingTables.length === 0 && tablesWithMissingCols.length === 0 && tablesWithMissingIndexes.length === 0) {
+    xml += `    <!-- Baza danych jest w 100% zgodna ze schematem Quorum. Brak obiektów delta. -->\n`;
+    xml += `</databaseChangeLog>\n`;
+    return xml;
+  }
+
+  // 1. Brakujące tabele
+  missingTables.forEach(t => {
+    const efModel = EF_CORE_TABLES.find(m => m.name === t.tableName);
+    if (!efModel) return;
+
+    xml += `    <!-- Brakująca tabela: ${t.tableName} -->\n`;
+    xml += `    <changeSet id="delta-create-table-${t.tableName.toLowerCase()}" author="quorum-admin">\n`;
+    xml += `        <preConditions onFail="MARK_RAN">\n`;
+    xml += `            <not>\n`;
+    xml += `                <tableExists tableName="${t.tableName}" />\n`;
+    xml += `            </not>\n`;
+    xml += `        </preConditions>\n`;
+    xml += `        <createTable tableName="${t.tableName}" remarks="Wygenerowano automatycznie przez Quorum Schema Compare">\n`;
+    efModel.columns.forEach(col => {
+      const type = col.type.includes('varchar') ? 'varchar(255)' : col.type;
+      xml += `            <column name="${col.name}" type="${type}">\n`;
+      if (col.isPrimaryKey) {
+        xml += `                <constraints primaryKey="true" nullable="false" />\n`;
+      } else if (!col.nullable) {
+        xml += `                <constraints nullable="false" />\n`;
+      } else {
+        xml += `                <constraints nullable="true" />\n`;
+      }
+      xml += `            </column>\n`;
+    });
+    xml += `        </createTable>\n`;
+    xml += `    </changeSet>\n\n`;
+  });
+
+  // 2. Brakujące kolumny (dodawane jako NULL!)
+  tablesWithMissingCols.forEach(t => {
+    t.missingColumns.forEach(c => {
+      xml += `    <!-- Brakująca kolumna (NULL): ${c.name} w tabeli ${t.tableName} -->\n`;
+      xml += `    <changeSet id="delta-add-col-${t.tableName.toLowerCase()}-${c.name.toLowerCase()}" author="quorum-admin">\n`;
+      xml += `        <preConditions onFail="MARK_RAN">\n`;
+      xml += `            <tableExists tableName="${t.tableName}" />\n`;
+      xml += `            <not>\n`;
+      xml += `                <columnExists tableName="${t.tableName}" columnName="${c.name}" />\n`;
+      xml += `            </not>\n`;
+      xml += `        </preConditions>\n`;
+      xml += `        <addColumn tableName="${t.tableName}">\n`;
+      xml += `            <column name="${c.name}" type="${c.type}">\n`;
+      xml += `                <constraints nullable="true" />\n`;
+      xml += `            </column>\n`;
+      xml += `        </addColumn>\n`;
+      xml += `    </changeSet>\n\n`;
+    });
+  });
+
+  // 3. Brakujące indeksy
+  tablesWithMissingIndexes.forEach(t => {
+    t.missingIndexes.forEach(idx => {
+      xml += `    <!-- Brakujący indeks: ${idx.name} -->\n`;
+      xml += `    <changeSet id="delta-create-idx-${idx.name.toLowerCase()}" author="quorum-admin">\n`;
+      xml += `        <preConditions onFail="MARK_RAN">\n`;
+      xml += `            <tableExists tableName="${t.tableName}" />\n`;
+      xml += `        </preConditions>\n`;
+      xml += `        <createIndex indexName="${idx.name}" tableName="${t.tableName}" unique="${idx.isUnique ? 'true' : 'false'}">\n`;
+      idx.columns.forEach(col => {
+        xml += `            <column name="${col}" />\n`;
+      });
+      xml += `        </createIndex>\n`;
+      xml += `    </changeSet>\n\n`;
+    });
+  });
+
+  xml += `</databaseChangeLog>\n`;
+  return xml;
+}
+
+/**
+ * Generowanie skryptu Delta w formacie Liquibase YAML (tylko różnice)
+ */
+export function generateDeltaLiquibaseYaml(diffs: TableDiff[]): string {
+  const missingTables = diffs.filter(d => d.status === 'missing_table');
+  const tablesWithMissingCols = diffs.filter(d => d.status === 'has_missing_columns');
+  const tablesWithMissingIndexes = diffs.filter(d => d.missingIndexes.length > 0);
+
+  let yaml = `databaseChangeLog:\n`;
+  yaml += `  # =========================================================================\n`;
+  yaml += `  # QUORUM SCHEMA COMPARE - LIQUIBASE DELTA CHANGELOG (YAML)\n`;
+  yaml += `  # TYLKO BRAKUJĄCE TABELE, KOLUMNY I INDEKSY\n`;
+  yaml += `  # =========================================================================\n\n`;
+
+  if (missingTables.length === 0 && tablesWithMissingCols.length === 0 && tablesWithMissingIndexes.length === 0) {
+    yaml += `  # Schemat bazy danych jest w 100% zgodny. Brak zmian delta.\n`;
+    return yaml;
+  }
+
+  // 1. Brakujące tabele
+  missingTables.forEach(t => {
+    const efModel = EF_CORE_TABLES.find(m => m.name === t.tableName);
+    if (!efModel) return;
+
+    yaml += `  - changeSet:\n`;
+    yaml += `      id: delta-create-table-${t.tableName.toLowerCase()}\n`;
+    yaml += `      author: quorum-admin\n`;
+    yaml += `      preConditions:\n`;
+    yaml += `        - onFail: MARK_RAN\n`;
+    yaml += `        - not:\n`;
+    yaml += `            - tableExists:\n`;
+    yaml += `                tableName: ${t.tableName}\n`;
+    yaml += `      changes:\n`;
+    yaml += `        - createTable:\n`;
+    yaml += `            tableName: ${t.tableName}\n`;
+    yaml += `            columns:\n`;
+    efModel.columns.forEach(col => {
+      yaml += `              - column:\n`;
+      yaml += `                  name: ${col.name}\n`;
+      yaml += `                  type: ${col.type.includes('varchar') ? 'varchar(255)' : col.type}\n`;
+      if (col.isPrimaryKey) {
+        yaml += `                  constraints:\n                    primaryKey: true\n                    nullable: false\n`;
+      } else if (!col.nullable) {
+        yaml += `                  constraints:\n                    nullable: false\n`;
+      } else {
+        yaml += `                  constraints:\n                    nullable: true\n`;
+      }
+    });
+  });
+
+  // 2. Brakujące kolumny (NULL)
+  tablesWithMissingCols.forEach(t => {
+    t.missingColumns.forEach(c => {
+      yaml += `  - changeSet:\n`;
+      yaml += `      id: delta-add-col-${t.tableName.toLowerCase()}-${c.name.toLowerCase()}\n`;
+      yaml += `      author: quorum-admin\n`;
+      yaml += `      preConditions:\n`;
+      yaml += `        - onFail: MARK_RAN\n`;
+      yaml += `        - tableExists:\n`;
+      yaml += `            tableName: ${t.tableName}\n`;
+      yaml += `        - not:\n`;
+      yaml += `            - columnExists:\n`;
+      yaml += `                tableName: ${t.tableName}\n`;
+      yaml += `                columnName: ${c.name}\n`;
+      yaml += `      changes:\n`;
+      yaml += `        - addColumn:\n`;
+      yaml += `            tableName: ${t.tableName}\n`;
+      yaml += `            columns:\n`;
+      yaml += `              - column:\n`;
+      yaml += `                  name: ${c.name}\n`;
+      yaml += `                  type: ${c.type}\n`;
+      yaml += `                  constraints:\n                    nullable: true\n`;
+    });
+  });
+
+  // 3. Brakujące indeksy
+  tablesWithMissingIndexes.forEach(t => {
+    t.missingIndexes.forEach(idx => {
+      yaml += `  - changeSet:\n`;
+      yaml += `      id: delta-create-idx-${idx.name.toLowerCase()}\n`;
+      yaml += `      author: quorum-admin\n`;
+      yaml += `      preConditions:\n`;
+      yaml += `        - onFail: MARK_RAN\n`;
+      yaml += `        - tableExists:\n`;
+      yaml += `            tableName: ${t.tableName}\n`;
+      yaml += `      changes:\n`;
+      yaml += `        - createIndex:\n`;
+      yaml += `            indexName: ${idx.name}\n`;
+      yaml += `            tableName: ${t.tableName}\n`;
+      yaml += `            unique: ${idx.isUnique ? 'true' : 'false'}\n`;
+      yaml += `            columns:\n`;
+      idx.columns.forEach(col => {
+        yaml += `              - column:\n                  name: ${col}\n`;
+      });
+    });
+  });
+
+  return yaml;
+}
+
+/**
+ * Generowanie skryptu Delta w formacie Liquibase Formatted SQL (tylko różnice)
+ */
+export function generateDeltaLiquibaseFormattedSql(diffs: TableDiff[], engine: SqlEngine): string {
+  let res = `--liquibase formatted sql\n\n`;
+  res += `-- =========================================================================\n`;
+  res += `-- QUORUM SCHEMA COMPARE - LIQUIBASE FORMATTED SQL DELTA\n`;
+  res += `-- DBMS: ${engine}\n`;
+  res += `-- =========================================================================\n\n`;
+
+  const missingTables = diffs.filter(d => d.status === 'missing_table');
+  const tablesWithMissingCols = diffs.filter(d => d.status === 'has_missing_columns');
+  const tablesWithMissingIndexes = diffs.filter(d => d.missingIndexes.length > 0);
+
+  if (missingTables.length === 0 && tablesWithMissingCols.length === 0 && tablesWithMissingIndexes.length === 0) {
+    res += `-- Baza danych jest w 100% zgodna ze schematem Quorum. Brak obiektów delta.\n`;
+    return res;
+  }
+
+  missingTables.forEach(t => {
+    const efModel = EF_CORE_TABLES.find(m => m.name === t.tableName);
+    if (!efModel) return;
+
+    res += `--changeset quorum-admin:delta-create-table-${t.tableName.toLowerCase()} dbms:${engine}\n`;
+    res += `--preconditions onFail:MARK_RAN\n`;
+    if (engine === 'postgres') {
+      res += `CREATE TABLE IF NOT EXISTS "${t.tableName}" (\n`;
+      res += efModel.columns.map(c => `    "${c.name}" ${c.typeByEngine?.postgres || c.type} ${c.nullable ? 'NULL' : 'NOT NULL'}`).join(',\n') + '\n);\n\n';
+    } else if (engine === 'sqlserver') {
+      res += `IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'${t.tableName}')\n`;
+      res += `CREATE TABLE [dbo].[${t.tableName}] (\n`;
+      res += efModel.columns.map(c => `    [${c.name}] ${c.typeByEngine?.sqlserver || c.type} ${c.nullable ? 'NULL' : 'NOT NULL'}`).join(',\n') + '\n);\nGO\n\n';
+    } else if (engine === 'sqlite') {
+      res += `CREATE TABLE IF NOT EXISTS "${t.tableName}" (\n`;
+      res += efModel.columns.map(c => `    "${c.name}" ${c.typeByEngine?.sqlite || 'TEXT'} ${c.nullable ? 'NULL' : 'NOT NULL'}`).join(',\n') + '\n);\n\n';
+    } else {
+      res += `CREATE TABLE "${t.tableName}" (\n`;
+      res += efModel.columns.map(c => `    "${c.name}" ${c.typeByEngine?.oracle || 'VARCHAR2(255)'} ${c.nullable ? 'NULL' : 'NOT NULL'}`).join(',\n') + '\n);\n\n';
+    }
+  });
+
+  tablesWithMissingCols.forEach(t => {
+    t.missingColumns.forEach(c => {
+      res += `--changeset quorum-admin:delta-add-col-${t.tableName.toLowerCase()}-${c.name.toLowerCase()} dbms:${engine}\n`;
+      if (engine === 'postgres') {
+        res += `ALTER TABLE "${t.tableName}" ADD COLUMN IF NOT EXISTS "${c.name}" ${c.typeByEngine?.postgres || c.type} NULL;\n\n`;
+      } else if (engine === 'sqlserver') {
+        res += `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[${t.tableName}]') AND name = N'${c.name}')\n`;
+        res += `ALTER TABLE [dbo].[${t.tableName}] ADD [${c.name}] ${c.typeByEngine?.sqlserver || c.type} NULL;\nGO\n\n`;
+      } else if (engine === 'sqlite') {
+        res += `ALTER TABLE "${t.tableName}" ADD COLUMN "${c.name}" ${c.typeByEngine?.sqlite || 'TEXT'} NULL;\n\n`;
+      } else {
+        res += `ALTER TABLE "${t.tableName}" ADD ("${c.name}" ${c.typeByEngine?.oracle || 'VARCHAR2(255)'} NULL);\n\n`;
+      }
+    });
+  });
+
+  return res;
+}
+
+/**
+ * Główna uniwersalna funkcja generująca skrypt Delta w wybranym formacie wyjściowym
+ */
+export function generateDeltaScript(diffs: TableDiff[], engine: SqlEngine, format: OutputFormat): string {
+  switch (format) {
+    case 'sql':
+      return generateDeltaPureSql(diffs, engine);
+    case 'liquibase-xml':
+      return generateDeltaLiquibaseXml(diffs);
+    case 'liquibase-yaml':
+      return generateDeltaLiquibaseYaml(diffs);
+    case 'liquibase-sql':
+      return generateDeltaLiquibaseFormattedSql(diffs, engine);
+    default:
+      return generateDeltaPureSql(diffs, engine);
+  }
 }
 
 /**
