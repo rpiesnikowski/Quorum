@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-        <RootNamespace>Quorum.Backend.AdminUI</RootNamespace>
+        <RootNamespace>Quorum.Backend.EntityFramework</RootNamespace>
     </PropertyGroup>
     <PropertyGroup>
         <!-- Konfiguracja Paczki NuGet Razor Class Library dla Blazor .NET 10 -->
@@ -24,18 +24,15 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10"/>
+        <!-- Open.IdentityServer Entity Framework -->
         <PackageReference Include="Open.IdentityServer.EntityFramework.Storage" Version="2.0.0" />
         <PackageReference Include="Open.IdentityServer.EntityFramework" Version="2.0.0" />
-
-        <!-- Open.IdentityServer Entity Framework -->
-
 
         <!-- ASP.NET Core Identity & EF Core -->
         <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
-
+        
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
         <!-- Bazy Danych (SQLite domyślnie + PostgreSQL + Microsoft SQL Server) -->
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />

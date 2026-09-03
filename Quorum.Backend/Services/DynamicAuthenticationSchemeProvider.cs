@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.Services;

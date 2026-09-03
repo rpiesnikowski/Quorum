@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Quorum.Backend.AdminUI.Models;
 using Radzen;
 using Quorum.Backend.AdminUI.Services.Interfaces;
 using Quorum.Backend.EntityFramework.Models;

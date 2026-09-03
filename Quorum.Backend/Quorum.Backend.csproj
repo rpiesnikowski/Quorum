@@ -13,14 +13,6 @@
     <PackageReference Include="Open.IdentityServer.AspNetIdentity" Version="2.0.0" />
     <PackageReference Include="Open.IdentityServer.EntityFramework" Version="2.0.0" />
 
-    <!-- ASP.NET Core Identity & EF Core -->
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Radzen.Blazor" Version="11.2.7" />

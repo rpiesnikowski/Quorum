@@ -5,11 +5,11 @@ using Open.IdentityServer.EntityFramework.DbContexts;
 using Open.IdentityServer.EntityFramework.Entities;
 using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.AdminUI.Services.Interfaces;
-using Quorum.Backend.EntityFramework.Data;
-using Quorum.Backend.EntityFramework.Models;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Quorum.Backend.EntityFramework.Data;
+using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.AdminUI.Services.EntityFramework;
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.AdminUI.Services.Interfaces;
 using Quorum.Backend.EntityFramework.Models;
 using Quorum.Backend.Hubs;
