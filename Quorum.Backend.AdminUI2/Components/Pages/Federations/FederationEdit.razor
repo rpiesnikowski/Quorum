@@ -25,7 +25,7 @@
     <RadzenCard Class="rz-p-4">
         <RadzenTemplateForm TItem="FederationAdminModel" Data="@model" Submit="@HandleSubmitAsync">
             <RadzenStack Gap="1.5rem">
-                <!-- Podstawowa konfiguracja dostawcy -->
+                @* Podstawowa konfiguracja dostawcy *@
                 <RadzenFieldset Text="Podstawowe Informacje o Dostawcy">
                     <RadzenRow Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="4">
@@ -50,7 +50,7 @@
                     </RadzenRow>
                 </RadzenFieldset>
 
-                <!-- Adres Authority i Testowanie Discovery -->
+                @* Adres Authority i Testowanie Discovery *@
                 <RadzenFieldset Text="Konfiguracja OpenID Connect Discovery">
                     <RadzenStack Gap="1rem">
                         <RadzenRow Gap="1rem" AlignItems="AlignItems.Center">
@@ -84,7 +84,7 @@
                     </RadzenStack>
                 </RadzenFieldset>
 
-                <!-- Poświadczenia Klienta -->
+                @* Poświadczenia Klienta *@
                 <RadzenFieldset Text="Poświadczenia Klienta (Client Credentials)">
                     <RadzenRow Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="6">
@@ -120,7 +120,7 @@
                     </RadzenRow>
                 </RadzenFieldset>
 
-                <!-- Opcje i Rejestracja Użytkowników -->
+                @* Opcje i Rejestracja Użytkowników *@
                 <RadzenFieldset Text="Opcje i Prowizjonowanie Kont">
                     <RadzenRow Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="6">

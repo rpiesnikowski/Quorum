@@ -33,7 +33,7 @@
         <RadzenTemplateForm TItem="GatewayRouteAdminModel" Data="@model" Submit="@HandleSubmitAsync">
             <RadzenTabs SelectedIndex="0">
                 <Tabs>
-                    <!-- KARTA 1: Routing Przychodzący i Dopasowanie -->
+                    @* KARTA 1: Routing Przychodzący i Dopasowanie *@
                     <RadzenTabsItem Text="1. Dopasowanie Żądania (Inbound)">
                         <RadzenStack Gap="1.25rem" Class="mt-3">
                             <RadzenRow Gap="1rem">
@@ -116,10 +116,10 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- KARTA 2: Cel Przekierowania (Upstream Host, URI, Nagłówki & Body) -->
+                    @* KARTA 2: Cel Przekierowania (Upstream Host, URI, Nagłówki & Body) *@
                     <RadzenTabsItem Text="2. Upstream, Nagłówki & Body">
                         <RadzenStack Gap="1.25rem" Class="mt-3">
-                            <!-- Podgląd docelowego URL w czasie rzeczywistym -->
+                            @* Podgląd docelowego URL w czasie rzeczywistym *@
                             <div class="p-3 rounded border bg-light">
                                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                                     <div class="d-flex align-items-center gap-2">
@@ -190,7 +190,7 @@
                                 </RadzenColumn>
                             </RadzenRow>
 
-                            <!-- SEKCJA TRANSFORMACJI CIAŁA ŻĄDANIA (REQUEST BODY) -->
+                            @* SEKCJA TRANSFORMACJI CIAŁA ŻĄDANIA (REQUEST BODY) *@
                             <div class="p-3 rounded border bg-light mt-2">
                                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                                     <div>
@@ -248,7 +248,7 @@
                                     }
                                 </div>
 
-                                <!-- PODGLĄD TRANSFORMACJI BODY NA ŻYWO -->
+                                @* PODGLĄD TRANSFORMACJI BODY NA ŻYWO *@
                                 <div class="mt-3 border-top pt-3">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="fw-bold small text-secondary">
@@ -283,7 +283,7 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- KARTA 3: Uwierzytelnianie & Uprawnienia Scopes -->
+                    @* KARTA 3: Uwierzytelnianie & Uprawnienia Scopes *@
                     <RadzenTabsItem Text="3. Uwierzytelnianie & Scopes">
                         <RadzenStack Gap="1.25rem" Class="mt-3">
                             <RadzenRow Gap="1rem">
@@ -327,7 +327,7 @@
                                 </RadzenColumn>
                             </RadzenRow>
 
-                            <!-- ChipList z wybranymi scopes -->
+                            @* ChipList z wybranymi scopes *@
                             <RadzenFieldset Text="Wymagane Zakresy dla tej Trasy (Required Scopes)" Class="rz-p-3">
                                 @if (model.RequiredScopes == null || model.RequiredScopes.Count == 0)
                                 {
@@ -373,7 +373,7 @@
                                 }
                             </RadzenFieldset>
 
-                            <!-- Tabela do wyboru scopes przez kliknięcie -->
+                            @* Tabela do wyboru scopes przez kliknięcie *@
                             <RadzenStack Gap="0.75rem">
                                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                     <div>
@@ -443,7 +443,7 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- KARTA 4: Zaawansowane Parametry Proxy & Wydajność -->
+                    @* KARTA 4: Zaawansowane Parametry Proxy & Wydajność *@
                     <RadzenTabsItem Text="4. Zaawansowane Parametry Proxy">
                         <RadzenStack Gap="1.25rem" Class="mt-3">
                             <RadzenRow Gap="1rem">

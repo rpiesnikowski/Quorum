@@ -64,7 +64,7 @@
                         <RadzenButton Text="Wyczyść" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => { jsonContent = string.Empty; ValidateAndPreview(); })" />
                     </div>
                     <RadzenTextArea @bind-Value="jsonContent" Rows="8" Class="w-100 font-monospace" 
-                                    Placeholder="[\n  {\n    ...\n  }\n]" @oninput="@OnJsonInput" />
+                                    Placeholder="[ { ... } ]" @oninput="@OnJsonInput" />
                 </RadzenStack>
             </RadzenTabsItem>
         </Tabs>
@@ -76,13 +76,13 @@
         <RadzenCard Class="rz-p-3 bg-light border">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="fw-bold small">
-                    <RadzenIcon Icon='@(preview.IsValidJson ? "verified" : "error")' 
-                                Class='@(preview.IsValidJson ? "text-success align-middle me-1" : "text-danger align-middle me-1")' />
-                    @(preview.IsValidJson ? "Struktura JSON poprawna" : "Błąd składni JSON")
+                    <RadzenIcon Icon="@(preview.IsValidJson ? "verified" : "error")" 
+                                Class="@(preview.IsValidJson ? "text-success align-middle me-1" : "text-danger align-middle me-1")" />
+                    <span>@(preview.IsValidJson ? "Struktura JSON poprawna" : "Błąd składni JSON")</span>
                 </div>
                 @if (preview.IsValidJson)
                 {
-                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text='@($"Wykryto pozycji: {preview.DetectedCount}")' />
+                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@($"Wykryto pozycji: {preview.DetectedCount}")" />
                 }
             </div>
 

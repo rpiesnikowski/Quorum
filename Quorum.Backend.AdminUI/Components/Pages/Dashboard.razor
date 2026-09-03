@@ -7,7 +7,7 @@
 <PageTitle>Pulpit Główny | Quorum Admin UI</PageTitle>
 
 <RadzenStack Gap="1.5rem">
-    <!-- Header banner -->
+    @* Header banner *@
     <RadzenCard Class="rz-p-4" Style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border-radius: 12px;">
         <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
             <RadzenColumn Size="12" SizeMD="8">
@@ -32,7 +32,7 @@
     }
     else
     {
-        <!-- Stats cards -->
+        @* Stats cards *@
         <RadzenRow Gap="1rem">
             <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
                 <RadzenCard Class="rz-p-3" Style="cursor: pointer;" @onclick="@(() => NavigationManager.NavigateTo("admin/clients"))">
@@ -135,7 +135,7 @@
             </RadzenColumn>
         </RadzenRow>
 
-        <!-- Quick actions & System summary -->
+        @* Quick actions & System summary *@
         <RadzenRow Gap="1.5rem">
             <RadzenColumn Size="12" SizeLG="8">
                 <RadzenCard Class="rz-p-4">

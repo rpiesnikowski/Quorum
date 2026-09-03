@@ -879,11 +879,11 @@ public class EfAdminImportExportService<TUser> : IAdminImportExportService
             ResponseType = f.ResponseType,
             CallbackPath = f.CallbackPath,
             SignedOutCallbackPath = f.SignedOutCallbackPath,
-            Scopes = f.Scopes,
+            Scopes = f.Scope,
             IsEnabled = f.IsEnabled,
             AutoProvisionUsers = f.AutoProvisionUsers,
-            DefaultRoles = f.DefaultRoles,
-            IconUrl = f.IconUrl
+            DefaultRoles = f.DefaultRole,
+            IconUrl = f.IconType
         }).ToList();
 
         return JsonSerializer.Serialize(models, JsonOptions);
@@ -938,11 +938,11 @@ public class EfAdminImportExportService<TUser> : IAdminImportExportService
                     existing.ResponseType = item.ResponseType ?? "code";
                     existing.CallbackPath = item.CallbackPath ?? "/signin-oidc";
                     existing.SignedOutCallbackPath = item.SignedOutCallbackPath ?? "/signout-callback-oidc";
-                    existing.Scopes = item.Scopes ?? "openid profile email";
+                    existing.Scope = item.Scopes ?? "openid profile email";
                     existing.IsEnabled = item.IsEnabled;
                     existing.AutoProvisionUsers = item.AutoProvisionUsers;
-                    existing.DefaultRoles = item.DefaultRoles ?? "User";
-                    existing.IconUrl = item.IconUrl;
+                    existing.DefaultRole = item.DefaultRoles ?? "User";
+                    existing.IconType = item.IconUrl ?? "openid";
                     existing.UpdatedAt = DateTime.UtcNow;
 
                     result.UpdatedCount++;
@@ -950,7 +950,7 @@ public class EfAdminImportExportService<TUser> : IAdminImportExportService
                 }
                 else
                 {
-                    var entity = new FederationProvider
+                    var entity = new OidcFederationProvider
                     {
                         Id = Guid.NewGuid().ToString("N"),
                         Scheme = item.Scheme.Trim(),
@@ -961,11 +961,11 @@ public class EfAdminImportExportService<TUser> : IAdminImportExportService
                         ResponseType = item.ResponseType ?? "code",
                         CallbackPath = item.CallbackPath ?? "/signin-oidc",
                         SignedOutCallbackPath = item.SignedOutCallbackPath ?? "/signout-callback-oidc",
-                        Scopes = item.Scopes ?? "openid profile email",
+                        Scope = item.Scopes ?? "openid profile email",
                         IsEnabled = item.IsEnabled,
                         AutoProvisionUsers = item.AutoProvisionUsers,
-                        DefaultRoles = item.DefaultRoles ?? "User",
-                        IconUrl = item.IconUrl,
+                        DefaultRole = item.DefaultRoles ?? "User",
+                        IconType = item.IconUrl ?? "openid",
                         CreatedAt = DateTime.UtcNow
                     };
 

@@ -5,7 +5,7 @@
 <PageTitle>Symulator & Tester API Gateway | Quorum Admin</PageTitle>
 
 <RadzenStack Gap="1.5rem">
-    <!-- Header -->
+    @* Header *@
     <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
         <RadzenColumn Size="12" SizeMD="8">
             <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-1">Symulator & Tester API Gateway</RadzenText>
@@ -18,10 +18,10 @@
         </RadzenColumn>
     </RadzenRow>
 
-    <!-- Request Studio Card -->
+    @* Request Studio Card *@
     <RadzenCard Class="rz-p-4">
         <RadzenStack Gap="1.25rem">
-            <!-- URL and Method Row -->
+            @* URL and Method Row *@
             <RadzenRow Gap="0.75rem" AlignItems="AlignItems.Center">
                 <RadzenColumn Size="12" SizeSM="3" SizeMD="2">
                     <RadzenDropDown @bind-Value="testRequest.HttpMethod" Data="@httpMethods" Class="w-100 fw-bold" 
@@ -40,7 +40,7 @@
                 </RadzenColumn>
             </RadzenRow>
 
-            <!-- Quick Presets -->
+            @* Quick Presets *@
             <div class="d-flex flex-wrap align-items-center gap-2 pt-1 border-top">
                 <span class="text-muted small fw-bold me-1">Szablony testowe:</span>
                 <RadzenButton Text="GET Orders" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyOrdersGetPreset" />
@@ -49,10 +49,10 @@
                 <RadzenButton Text="DELETE Resource" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyDeletePreset" />
             </div>
 
-            <!-- Configuration Tabs (Headers, Body, Auth, Options) -->
+            @* Configuration Tabs (Headers, Body, Auth, Options) *@
             <RadzenTabs RenderMode="TabRenderMode.Client" Class="mt-2">
                 <Tabs>
-                    <!-- TAB 1: Headers -->
+                    @* TAB 1: Headers *@
                     <RadzenTabsItem Text="Nagłówki HTTP (Headers)">
                         <RadzenStack Gap="0.75rem" Class="rz-pt-2">
                             <div class="d-flex justify-content-between align-items-center">
@@ -70,7 +70,7 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- TAB 2: Body -->
+                    @* TAB 2: Body *@
                     <RadzenTabsItem Text="Ciało Żądania (Request Body)">
                         <RadzenStack Gap="0.75rem" Class="rz-pt-2">
                             <div class="d-flex justify-content-between align-items-center">
@@ -88,7 +88,7 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- TAB 3: Auth & Scopes -->
+                    @* TAB 3: Auth & Scopes *@
                     <RadzenTabsItem Text="Autoryzacja & Scopes">
                         <RadzenStack Gap="1rem" Class="rz-pt-2">
                             <RadzenRow Gap="1rem">
@@ -114,7 +114,7 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- TAB 4: Advanced Options -->
+                    @* TAB 4: Advanced Options *@
                     <RadzenTabsItem Text="Opcje Sieciowe (Proxy Options)">
                         <RadzenStack Gap="1rem" Class="rz-pt-2">
                             <RadzenRow Gap="1rem" AlignItems="AlignItems.Center">
@@ -141,10 +141,10 @@
         </RadzenStack>
     </RadzenCard>
 
-    <!-- TEST RESULTS SECTION -->
+    @* TEST RESULTS SECTION *@
     @if (testResult != null)
     {
-        <!-- 1. Gateway Routing & Authorization Match Banner -->
+        @* 1. Gateway Routing & Authorization Match Banner *@
         <RadzenCard Class="rz-p-4">
             <RadzenStack Gap="1rem">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -177,7 +177,7 @@
                 @if (testResult.Evaluation.IsMatched && testResult.Evaluation.MatchedRoute != null)
                 {
                     <RadzenRow Gap="1rem">
-                        <!-- Matched Route Details -->
+                        @* Matched Route Details *@
                         <RadzenColumn Size="12" SizeMD="6">
                             <RadzenCard Class="rz-p-3" Style="background: #f8fafc; border: 1px solid #e2e8f0;">
                                 <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold text-primary mb-2">Szczegóły Dopasowanej Trasy</RadzenText>
@@ -220,7 +220,7 @@
                             </RadzenCard>
                         </RadzenColumn>
 
-                        <!-- Calculated Target Upstream & Security -->
+                        @* Calculated Target Upstream & Security *@
                         <RadzenColumn Size="12" SizeMD="6">
                             <RadzenCard Class="rz-p-3" Style="background: #f8fafc; border: 1px solid #e2e8f0;">
                                 <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold text-primary mb-2">Docelowy Upstream URL & Bezpieczeństwo</RadzenText>
@@ -273,7 +273,7 @@
                         </RadzenColumn>
                     </RadzenRow>
 
-                    <!-- Route Candidates Accordion -->
+                    @* Route Candidates Accordion *@
                     <div class="mt-2">
                         <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="@(() => showCandidateMatrix = !showCandidateMatrix)">
                             @(showCandidateMatrix ? "Ukryj" : "Pokaż") pełną analizę kandydatów tras (@testResult.Evaluation.CandidateEvaluations.Count reguł w kolejce)
@@ -323,7 +323,7 @@
             </RadzenStack>
         </RadzenCard>
 
-        <!-- 2. RAW HTTP REQUEST & RESPONSE VIEW -->
+        @* 2. RAW HTTP REQUEST & RESPONSE VIEW *@
         @if (testResult.Execution.Executed)
         {
             <RadzenCard Class="rz-p-4">
@@ -352,7 +352,7 @@
                     }
 
                     <RadzenRow Gap="1.5rem">
-                        <!-- RAW REQUEST -->
+                        @* RAW REQUEST *@
                         <RadzenColumn Size="12" SizeLG="6">
                             <RadzenCard Class="rz-p-3" Style="background: #0f172a; border-radius: 8px;">
                                 <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom border-secondary">
@@ -364,7 +364,7 @@
                             </RadzenCard>
                         </RadzenColumn>
 
-                        <!-- RAW RESPONSE -->
+                        @* RAW RESPONSE *@
                         <RadzenColumn Size="12" SizeLG="6">
                             <RadzenCard Class="rz-p-3" Style="background: #0f172a; border-radius: 8px;">
                                 <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom border-secondary">

@@ -26,7 +26,7 @@
     <RadzenCard Class="rz-p-4">
         <RadzenTemplateForm TItem="GatewayRouteAdminModel" Data="@model" Submit="@HandleSubmitAsync">
             <RadzenStack Gap="1.5rem">
-                <!-- Podstawowe dopasowanie trasy -->
+                @* Podstawowe dopasowanie trasy *@
                 <RadzenFieldset Text="Dopasowanie Żądania (Inbound Routing)">
                     <RadzenRow Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="6">
@@ -56,7 +56,7 @@
                     </RadzenRow>
                 </RadzenFieldset>
 
-                <!-- Cel przekierowania -->
+                @* Cel przekierowania *@
                 <RadzenFieldset Text="Cel Przekierowania (Upstream Host & Backend)">
                     <RadzenRow Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="8">
@@ -80,7 +80,7 @@
                     </RadzenRow>
                 </RadzenFieldset>
 
-                <!-- Autoryzacja i Scopes -->
+                @* Autoryzacja i Scopes *@
                 <RadzenFieldset Text="Autoryzacja i Wymagane Scopes">
                     <RadzenRow Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="8">

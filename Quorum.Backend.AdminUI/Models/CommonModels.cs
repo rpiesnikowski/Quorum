@@ -28,6 +28,7 @@ public class PagedResult<T>
     public IReadOnlyList<T> Items { get; set; } = Array.Empty<T>();
     public int TotalCount { get; set; }
     public int PageIndex { get; set; }
+    public int Page { get => PageIndex; set => PageIndex = value; }
     public int PageSize { get; set; }
 
     public PagedResult() { }

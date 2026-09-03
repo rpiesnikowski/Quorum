@@ -6,7 +6,7 @@
 <PageTitle>Telemetria & Metryki OTel | Quorum Admin UI</PageTitle>
 
 <RadzenStack Gap="1.5rem">
-    <!-- Header banner -->
+    @* Header banner *@
     <RadzenCard Class="rz-p-4" Style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0369a1 100%); color: white; border-radius: 12px;">
         <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
             <RadzenColumn Size="12" SizeMD="8">
@@ -36,7 +36,7 @@
     }
     else if (overview != null)
     {
-        <!-- KPI Cards -->
+        @* KPI Cards *@
         <RadzenRow Gap="1rem">
             <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
                 <RadzenCard Class="rz-p-3 border-start border-4 border-primary">
@@ -101,14 +101,14 @@
             </RadzenColumn>
         </RadzenRow>
 
-        <!-- Main Tabs -->
+        @* Main Tabs *@
         <RadzenTabs TabPosition="TabPosition.Top" Class="w-100">
             <Tabs>
-                <!-- TAB 1: METRICS & CHARTS -->
+                @* TAB 1: METRICS & CHARTS *@
                 <RadzenTabsItem Text="Metryki & Wykresy">
                     <RadzenStack Gap="1.5rem" Class="rz-mt-3">
                         <RadzenRow Gap="1.5rem">
-                            <!-- Requests over time -->
+                            @* Requests over time *@
                             <RadzenColumn Size="12" SizeLG="8">
                                 <RadzenCard Class="rz-p-3">
                                     <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-3">
@@ -128,7 +128,7 @@
                                 </RadzenCard>
                             </RadzenColumn>
 
-                            <!-- Status Code Distribution -->
+                            @* Status Code Distribution *@
                             <RadzenColumn Size="12" SizeLG="4">
                                 <RadzenCard Class="rz-p-3">
                                     <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-3">
@@ -151,7 +151,7 @@
                             </RadzenColumn>
                         </RadzenRow>
 
-                        <!-- Latency Profile -->
+                        @* Latency Profile *@
                         <RadzenRow Gap="1.5rem">
                             <RadzenColumn Size="12" SizeLG="6">
                                 <RadzenCard Class="rz-p-3">
@@ -173,7 +173,7 @@
                                 </RadzenCard>
                             </RadzenColumn>
 
-                            <!-- Top Routes Table -->
+                            @* Top Routes Table *@
                             <RadzenColumn Size="12" SizeLG="6">
                                 <RadzenCard Class="rz-p-3">
                                     <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-3">
@@ -210,10 +210,10 @@
                     </RadzenStack>
                 </RadzenTabsItem>
 
-                <!-- TAB 2: DISTRIBUTED TRACES (Proxy2ManyHosts) -->
+                @* TAB 2: DISTRIBUTED TRACES (Proxy2ManyHosts) *@
                 <RadzenTabsItem Text="Ślady Rozproszone (Traces)">
                     <RadzenStack Gap="1rem" Class="rz-mt-3">
-                        <!-- Filters -->
+                        @* Filters *@
                         <RadzenCard Class="rz-p-3">
                             <RadzenRow AlignItems="AlignItems.Center" Gap="1rem">
                                 <RadzenColumn Size="12" SizeMD="6">
@@ -235,7 +235,7 @@
                             </RadzenRow>
                         </RadzenCard>
 
-                        <!-- Traces Grid -->
+                        @* Traces Grid *@
                         <RadzenDataGrid Data="@traces" TItem="GatewayTraceSpanModel"
                                         Count="@totalTracesCount"
                                         LoadData="@OnTracesLoadData"
@@ -292,7 +292,7 @@
                             </Columns>
                         </RadzenDataGrid>
 
-                        <!-- Trace Details Drawer / Modal View -->
+                        @* Trace Details Drawer / Modal View *@
                         @if (selectedTrace != null)
                         {
                             <RadzenCard Class="rz-p-4 rz-mt-2 border-primary border-2 shadow">
@@ -312,14 +312,14 @@
                                     </RadzenColumn>
                                 </RadzenRow>
 
-                                <!-- Waterfall Diagram -->
+                                @* Waterfall Diagram *@
                                 <div class="bg-light p-3 rounded border mb-3">
                                     <div class="d-flex justify-content-between text-muted small border-bottom pb-1 mb-2">
                                         <span>Etap przetwarzania w potoku Gateway</span>
                                         <span>Oś czasu (ms)</span>
                                     </div>
 
-                                    <!-- Step 1: Request Ingress -->
+                                    @* Step 1: Request Ingress *@
                                     <div class="row align-items-center mb-2">
                                         <div class="col-5 small fw-bold">
                                             <RadzenIcon Icon="login" Style="font-size: 1rem;" Class="text-primary me-1" />
@@ -332,7 +332,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Step 2: Route Matching -->
+                                    @* Step 2: Route Matching *@
                                     <div class="row align-items-center mb-2">
                                         <div class="col-5 small fw-bold">
                                             <RadzenIcon Icon="alt_route" Style="font-size: 1rem;" Class="text-info me-1" />
@@ -345,7 +345,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Step 3: Auth & Scope verification -->
+                                    @* Step 3: Auth & Scope verification *@
                                     <div class="row align-items-center mb-2">
                                         <div class="col-5 small fw-bold">
                                             <RadzenIcon Icon="verified_user" Style="font-size: 1rem;" Class="text-success me-1" />
@@ -358,7 +358,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Step 4: Headers & Body Transformation -->
+                                    @* Step 4: Headers & Body Transformation *@
                                     <div class="row align-items-center mb-2">
                                         <div class="col-5 small fw-bold">
                                             <RadzenIcon Icon="transform" Style="font-size: 1rem;" Class="text-secondary me-1" />
@@ -371,7 +371,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Step 5: Distributed Tracing Context Injection -->
+                                    @* Step 5: Distributed Tracing Context Injection *@
                                     <div class="row align-items-center mb-2">
                                         <div class="col-5 small fw-bold">
                                             <RadzenIcon Icon="tag" Style="font-size: 1rem;" Class="text-dark me-1" />
@@ -384,7 +384,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Step 6: Upstream HttpClient proxy call -->
+                                    @* Step 6: Upstream HttpClient proxy call *@
                                     <div class="row align-items-center mb-2">
                                         <div class="col-5 small fw-bold">
                                             <RadzenIcon Icon="cloud_upload" Style="font-size: 1rem;" Class="text-warning me-1" />
@@ -399,7 +399,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Step 7: Response Streaming -->
+                                    @* Step 7: Response Streaming *@
                                     <div class="row align-items-center">
                                         <div class="col-5 small fw-bold">
                                             <RadzenIcon Icon="logout" Style="font-size: 1rem;" Class="text-success me-1" />
@@ -415,7 +415,7 @@
                                     </div>
                                 </div>
 
-                                <!-- OpenTelemetry Tags Table -->
+                                @* OpenTelemetry Tags Table *@
                                 <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2">
                                     <RadzenIcon Icon="label" Class="me-1 text-primary" /> Atrybuty OpenTelemetry (Semantic Conventions)
                                 </RadzenText>
@@ -443,7 +443,7 @@
                     </RadzenStack>
                 </RadzenTabsItem>
 
-                <!-- TAB 3: STRUCTURED LOGS -->
+                @* TAB 3: STRUCTURED LOGS *@
                 <RadzenTabsItem Text="Dziennik Logów OpenTelemetry">
                     <RadzenStack Gap="1rem" Class="rz-mt-3">
                         <RadzenCard Class="rz-p-3">
@@ -516,7 +516,7 @@
                     </RadzenStack>
                 </RadzenTabsItem>
 
-                <!-- TAB 4: ASPIRE DASHBOARD & OTLP CONFIG -->
+                @* TAB 4: ASPIRE DASHBOARD & OTLP CONFIG *@
                 <RadzenTabsItem Text="Aspire Dashboard & OTLP">
                     <RadzenStack Gap="1.5rem" Class="rz-mt-3">
                         <RadzenRow Gap="1.5rem">

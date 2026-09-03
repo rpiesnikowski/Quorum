@@ -602,17 +602,19 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         }
         else
         {
-            var resolvedHost = GatewayRouteMatcher.ApplyReplacements(matchedRoute.AddressHost, matchedMatch, matchedGroups);
-            if (GatewayRouteMatcher.IsEmptyValue(resolvedHost))
+            if (Uri.TryCreate(targetUri, UriKind.Absolute, out var parsedTargetUri))
             {
-                resolvedHost = "localhost";
+                effectiveHostHeader = parsedTargetUri.Authority;
             }
+            else
+            {
+                var resolvedHost = !string.IsNullOrWhiteSpace(matchedRoute.AddressHost) ? matchedRoute.AddressHost : "localhost";
+                var targetPort = matchedRoute.AddressPort > 0 
+                    ? matchedRoute.AddressPort 
+                    : (matchedRoute.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ? 5000 : 5001);
 
-            var targetPort = matchedRoute.AddressPort > 0 
-                ? matchedRoute.AddressPort 
-                : (matchedRoute.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ? 5000 : 5001);
-
-            effectiveHostHeader = $"{resolvedHost}:{targetPort}";
+                effectiveHostHeader = $"{resolvedHost}:{targetPort}";
+            }
         }
 
         proxyRequest.Headers.Host = effectiveHostHeader;

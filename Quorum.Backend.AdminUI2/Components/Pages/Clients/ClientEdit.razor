@@ -29,7 +29,7 @@
         <RadzenTemplateForm TItem="ClientAdminModel" Data="@model" Submit="@HandleSubmitAsync">
             <RadzenTabs>
                 <Tabs>
-                    <!-- KROK 1: Podstawowe Ustawienia -->
+                    @* KROK 1: Podstawowe Ustawienia *@
                     <RadzenTabsItem Text="Podstawowe Informacje" Icon="info">
                         <RadzenStack Gap="1.25rem" Class="pt-3">
                             <RadzenRow Gap="1rem">
@@ -89,7 +89,7 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- KROK 2: Przepływy & Scopes -->
+                    @* KROK 2: Przepływy & Scopes *@
                     <RadzenTabsItem Text="Przepływy & Uprawnienia" Icon="vpn_key">
                         <RadzenStack Gap="1.25rem" Class="pt-3">
                             <RadzenFormField Text="Typy Przepływów (Grant Types)" Class="w-100">
@@ -123,7 +123,7 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- KROK 3: Adresy URL i Przekierowania -->
+                    @* KROK 3: Adresy URL i Przekierowania *@
                     <RadzenTabsItem Text="Adresy URL i CORS" Icon="link">
                         <RadzenStack Gap="1.25rem" Class="pt-3">
                             <RadzenFormField Text="Dozwolone Adresy Zwrotne (Redirect URIs - jeden na linię)" Class="w-100">
@@ -140,7 +140,7 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    <!-- KROK 4: Sekrety & Czas Życia Tokenów -->
+                    @* KROK 4: Sekrety & Czas Życia Tokenów *@
                     <RadzenTabsItem Text="Sekrety i Czas Życia" Icon="lock">
                         <RadzenStack Gap="1.25rem" Class="pt-3">
                             @if (!IsNew && model.ClientSecrets.Count > 0)

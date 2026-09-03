@@ -22,7 +22,7 @@
     <RadzenCard Class="rz-p-4">
         <RadzenTemplateForm TItem="UserAdminModel" Data="@model" Submit="@HandleSubmitAsync">
             <RadzenStack Gap="1.5rem">
-                <!-- Podstawowe dane -->
+                @* Podstawowe dane *@
                 <RadzenFieldset Text="Podstawowe Informacje">
                     <RadzenRow Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="6">
@@ -54,7 +54,7 @@
                     </RadzenRow>
                 </RadzenFieldset>
 
-                <!-- Bezpieczeństwo i Hasło -->
+                @* Bezpieczeństwo i Hasło *@
                 <RadzenFieldset Text="Bezpieczeństwo i Hasło">
                     <RadzenRow Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="6">

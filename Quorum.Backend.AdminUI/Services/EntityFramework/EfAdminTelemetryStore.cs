@@ -74,7 +74,7 @@ public class EfAdminTelemetryStore : IAdminTelemetryStore, IDisposable
             var evModel = new TraceEventModel
             {
                 Name = ev.Name,
-                Timestamp = ev.Timestamp,
+                Timestamp = ev.Timestamp.UtcDateTime,
                 OffsetMs = Math.Max(0, offset)
             };
             foreach (var attr in ev.Tags)
