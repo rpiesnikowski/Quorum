@@ -19,14 +19,27 @@ public static class FileDownloadHelper
             filename += ".json";
         }
 
-        var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(jsonContent));
+        await DownloadTextFileAsync(jsRuntime, filename, jsonContent, "application/json");
+    }
+
+    /// <summary>
+    /// Pobiera dowolny plik tekstowy (SQL, Liquibase XML, YAML) w przeglądarce użytkownika.
+    /// </summary>
+    public static async Task DownloadTextFileAsync(IJSRuntime jsRuntime, string filename, string content, string mimeType = "text/plain")
+    {
+        if (string.IsNullOrEmpty(filename))
+        {
+            filename = $"script-{DateTime.UtcNow:yyyyMMdd-HHmmss}.txt";
+        }
+
+        var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(content));
         
         var jsScript = $@"
             (function() {{
                 try {{
                     const link = document.createElement('a');
                     link.download = '{filename}';
-                    link.href = 'data:application/json;charset=utf-8;base64,{base64}';
+                    link.href = 'data:{mimeType};charset=utf-8;base64,{base64}';
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);

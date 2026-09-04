@@ -26,7 +26,15 @@ import { SqlMigrationsTab } from './components/Migrations/SqlMigrationsTab';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<ProjectFile>(PROJECT_FILES[0]);
-  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'migrations' | 'architecture' | 'oidc-tester' | 'telemetry' | 'guide'>('explorer');
+  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'migrations' | 'architecture' | 'oidc-tester' | 'telemetry' | 'guide'>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '');
+      if (['explorer', 'database', 'migrations', 'architecture', 'oidc-tester', 'telemetry', 'guide'].includes(hash)) {
+        return hash as any;
+      }
+    }
+    return 'migrations';
+  });
   const [copied, setCopied] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
   const [zipSuccess, setZipSuccess] = useState(false);

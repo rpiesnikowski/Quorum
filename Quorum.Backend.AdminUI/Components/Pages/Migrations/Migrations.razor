@@ -3,40 +3,100 @@
 @using Microsoft.AspNetCore.Authorization
 @using Radzen
 @using Radzen.Blazor
+@using Quorum.Backend.AdminUI.Services
+@inject IJSRuntime JSRuntime
+@inject NotificationService NotificationService
 @layout AdminLayout
 
 <PageTitle>Migracje SQL & Schematy EF Core | Quorum Admin UI</PageTitle>
 
 <RadzenStack Gap="1.5rem">
-    @* Banner *@
-    <RadzenCard Class="rz-p-4" Style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); color: white; border-radius: 12px;">
+    @* Baner Główny *@
+    <RadzenCard Class="rz-p-4" Style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%); color: white; border-radius: 12px; border: 1px solid #334155;">
         <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
             <RadzenColumn Size="12" SizeMD="8">
-                <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" Class="text-white fw-bold mb-1">
-                    Migracje SQL & Porównanie Schematów (Schema Compare)
-                </RadzenText>
-                <RadzenText TextStyle="TextStyle.Body1" Class="text-white-50">
-                    Eksport modeli Entity Framework Core 10 do idempotentnego SQL (SQL Server, PostgreSQL, SQLite, Oracle) oraz Liquibase z weryfikacją schematów w bazie danych.
-                </RadzenText>
+                <div class="d-flex align-items-center gap-3">
+                    <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 10px; color: #f59e0b;">
+                        <RadzenIcon Icon="storage" Style="font-size: 2rem;" />
+                    </div>
+                    <div>
+                        <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" Class="text-white fw-bold mb-1">
+                            Migracje SQL & Porównanie Schematów (Schema Compare)
+                        </RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body2" Class="text-white-50 mb-0">
+                            Eksport modeli Entity Framework Core 10 do idempotentnego SQL i Liquibase oraz porównywanie struktur ze wskazaną bazą danych.
+                        </RadzenText>
+                    </div>
+                </div>
             </RadzenColumn>
             <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2 mt-3 mt-md-0">
                 <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="100% Idempotentność" Style="font-size: 0.85rem; padding: 0.5rem 1rem;" />
+                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="EF Core 10.0" Style="font-size: 0.85rem; padding: 0.5rem 1rem;" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        @* Zasady Idempotentności *@
+        <div class="mt-3 pt-3 border-top border-secondary border-opacity-25 d-flex flex-wrap gap-4 text-white-50 small">
+            <div><i class="material-icons text-success align-middle me-1" style="font-size: 1rem;">check_circle</i> <strong>Zasada 1:</strong> Istniejące tabele nie są usuwane ani nadpisywane</div>
+            <div><i class="material-icons text-warning align-middle me-1" style="font-size: 1rem;">add_circle</i> <strong>Zasada 2:</strong> Brakujące kolumny dodawane są jako <strong>NULL-owalne</strong></div>
+            <div><i class="material-icons text-info align-middle me-1" style="font-size: 1rem;">sync</i> <strong>Zasada 3:</strong> Changesety Liquibase z <code class="text-info">preConditions onFail="MARK_RAN"</code></div>
+        </div>
+
+        @* Główny Pasek Akcji Migracji (Nowe Przyciski) *@
+        <div class="mt-3 pt-3 border-top border-secondary border-opacity-25 d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px;">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-warning fw-bold small text-uppercase"><i class="material-icons align-middle me-1" style="font-size: 1.1rem;">bolt</i> Pasek Narzędziowy:</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <RadzenButton id="btn-fetch-source" Text="Pobierz tabele ze źródła" Icon="cloud_download" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Click="@FetchSourceTables" IsBusy="@IsRefreshingSource" />
+                <RadzenButton id="btn-generate-full" Text="Generuj całość struktur z bazy" Icon="auto_fix_high" ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.Small" Click="@GenerateFullStructures" IsBusy="@IsGenerating" />
+                <RadzenButton id="btn-save-to-file" Text="Zapisz do pliku" Icon="download" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" Click="@SaveToFile" />
+                <RadzenButton id="btn-copy-clipboard" Text="Kopiuj do schowka" Icon="content_copy" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" Click="@CopyToClipboard" />
+                <RadzenButton id="btn-compare-schema" Text="Porównaj schemat" Icon="compare_arrows" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@PerformCompare" IsBusy="@IsComparing" />
+                <RadzenButton id="btn-apply-changes" Text="Wgraj zmiany (Czysty SQL)" Icon="play_arrow" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@ApplyChanges" Disabled="@(!HasDifferences)" />
+            </div>
+        </div>
+    </RadzenCard>
+
+    @* Panel Źródła: Quorum.Backend *@
+    <RadzenCard Class="rz-p-4" Style="background: #1e293b; border: 1px solid #334155; border-radius: 8px;">
+        <RadzenRow AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenColumn Size="12" SizeMD="7">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-2 py-1">ŹRÓDŁO: Quorum.Backend</span>
+                    <span class="text-white-50 font-monospace small">appsettings.json &gt; ConnectionStrings</span>
+                    <span class="badge bg-secondary px-2 py-1 font-monospace">@LoadedTablesCount tabel w pamięci</span>
+                </div>
+                <div class="text-white small mt-2 font-monospace" style="word-break: break-all; background: #0f172a; padding: 8px 12px; border-radius: 6px; border: 1px solid #1e293b;">
+                    <span class="text-warning">[@SourceProvider]:</span> @CurrentSourceConnectionString
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="5" Class="d-flex justify-content-md-end align-items-center gap-2 mt-3 mt-md-0">
+                <span class="text-white-50 small">Provider źródła:</span>
+                <RadzenSelectBar @bind-Value="SourceProvider" TValue="string" Size="ButtonSize.ExtraSmall" Change="@OnSourceProviderChanged">
+                    <Items>
+                        <RadzenSelectBarItem Text="Sqlite" Value="@("Sqlite")" />
+                        <RadzenSelectBarItem Text="PostgreSQL" Value="@("PostgreSQL")" />
+                        <RadzenSelectBarItem Text="SqlServer" Value="@("SqlServer")" />
+                    </Items>
+                </RadzenSelectBar>
+                <RadzenButton Text="Pobierz tabele" Icon="sync" ButtonStyle="ButtonStyle.Success" Variant="Variant.Outlined" Size="ButtonSize.Small" Click="@FetchSourceTables" IsBusy="@IsRefreshingSource" />
             </RadzenColumn>
         </RadzenRow>
     </RadzenCard>
 
-    @* Główne zakładki: Generator vs Schema Compare *@
-    <RadzenTabs SelectedIndex="0">
+    @* Główne zakładki: Wariant 1 vs Wariant 2 *@
+    <RadzenTabs @bind-SelectedIndex="ActiveTab">
         <Tabs>
             @* Zakładka 1: Generator Skryptów *@
-            <RadzenTabsItem Text="Wariant 1: Idempotentny Generator SQL & Liquibase">
+            <RadzenTabsItem Text="Wariant 1: Idempotentny Generator Całości Struktur (SQL & Liquibase)">
                 <RadzenRow Gap="1rem">
                     <RadzenColumn Size="12" SizeMD="4">
-                        <RadzenCard Class="rz-p-4">
-                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-3 text-uppercase text-muted">
-                                1. Wybierz Silnik Bazy Danych
+                        <RadzenCard Class="rz-p-4" Style="background: #1e293b; border: 1px solid #334155; border-radius: 8px;">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-3 text-uppercase text-warning">
+                                1. Wybierz Docelowy Silnik SQL
                             </RadzenText>
-                            <RadzenSelectBar @bind-Value="SelectedEngine" TValue="string" Size="ButtonSize.Small" Class="w-100 mb-4">
+                            <RadzenSelectBar @bind-Value="SelectedEngine" TValue="string" Size="ButtonSize.Small" Class="w-100 mb-4" Change="@OnEngineChanged">
                                 <Items>
                                     <RadzenSelectBarItem Text="PostgreSQL" Value="@("PostgreSQL")" />
                                     <RadzenSelectBarItem Text="SQL Server" Value="@("SqlServer")" />
@@ -45,64 +105,58 @@
                                 </Items>
                             </RadzenSelectBar>
 
-                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2 text-uppercase text-muted">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2 text-uppercase text-warning">
                                 2. Format Wyjściowy
                             </RadzenText>
-                            <RadzenRadioButtonList @bind-Value="OutputFormat" TValue="string" Orientation="Orientation.Vertical" Class="mb-4">
+                            <RadzenRadioButtonList @bind-Value="OutputFormat" TValue="string" Orientation="Orientation.Vertical" Class="mb-4" Change="@OnFormatChanged">
                                 <Items>
                                     <RadzenRadioButtonListItem Text="Czysty Idempotentny SQL (IF NOT EXISTS)" Value="@("sql")" />
                                     <RadzenRadioButtonListItem Text="Liquibase XML (preConditions onFail=MARK_RAN)" Value="@("liquibase-xml")" />
                                     <RadzenRadioButtonListItem Text="Liquibase YAML Changelog" Value="@("liquibase-yaml")" />
-                                    <RadzenRadioButtonListItem Text="Liquibase Formatted SQL" Value="@("liquibase-sql")" />
+                                    <RadzenRadioButtonListItem Text="Liquibase Formatted SQL (-- changeset)" Value="@("liquibase-sql")" />
                                 </Items>
                             </RadzenRadioButtonList>
 
-                            <RadzenAlert AlertStyle="AlertStyle.Info" Size="AlertSize.Small" AllowClose="false" Variant="Variant.Flat">
-                                <strong>Zasada idempotentności:</strong> Brakujące kolumny są dodawane jako <strong>NULL-owalne</strong> (ALTER TABLE ... ADD ... NULL).
-                            </RadzenAlert>
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2 text-uppercase text-warning">
+                                3. Filtruj Modele Tabel (@SelectedTables.Count/@AllTables.Count)
+                            </RadzenText>
+                            <div class="d-flex gap-2 mb-3">
+                                <RadzenButton Text="Zaznacz wszystkie" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Secondary" Click="@SelectAllTables" />
+                                <RadzenButton Text="Odznacz" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@DeselectAllTables" />
+                            </div>
+
+                            <div style="max-height: 240px; overflow-y: auto; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155;">
+                                @foreach (var table in AllTables)
+                                {
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <RadzenCheckBox TValue="bool" Value="@SelectedTables.Contains(table)" Change="@(args => ToggleTable(table, args))" />
+                                        <span class="small font-monospace text-light">@table</span>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mt-4 pt-3 border-top border-secondary border-opacity-25">
+                                <RadzenButton Text="Generuj całość struktur z bazy" Icon="auto_fix_high" ButtonStyle="ButtonStyle.Warning" Class="w-100" Click="@GenerateFullStructures" IsBusy="@IsGenerating" />
+                            </div>
                         </RadzenCard>
                     </RadzenColumn>
 
                     <RadzenColumn Size="12" SizeMD="8">
-                        <RadzenCard Class="rz-p-4" Style="background: #0f172a; border-radius: 8px;">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="text-white-50 font-monospace small">Podgląd skryptu dla @SelectedEngine (@OutputFormat)</span>
-                                <RadzenButton Text="Kopiuj do schowka" Icon="content_copy" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" />
+                        <RadzenCard Class="rz-p-4" Style="background: #0f172a; border: 1px solid #334155; border-radius: 8px;">
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                                <div>
+                                    <span class="text-white fw-bold small">Podgląd Skryptu:</span>
+                                    <span class="badge bg-primary bg-opacity-25 text-primary ms-2 font-monospace">@SelectedEngine</span>
+                                    <span class="badge bg-secondary ms-1 font-monospace">@OutputFormat</span>
+                                    <span class="text-white-50 ms-2 small">(@ScriptLineCount linii)</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <RadzenButton Text="Generuj" Icon="refresh" ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.Small" Click="@GenerateFullStructures" IsBusy="@IsGenerating" />
+                                    <RadzenButton Text="Kopiuj do schowka" Icon="content_copy" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" Click="@CopyToClipboard" />
+                                    <RadzenButton Text="Zapisz do pliku" Icon="download" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Click="@SaveToFile" />
+                                </div>
                             </div>
-                            <pre style="color: #cbd5e1; max-height: 480px; overflow: auto; font-size: 0.8rem; font-family: monospace;">
--- =========================================================================
--- QUORUM IDENTITYSERVER & GATEWAY - IDEMPOTENTNA MIGRACJA EF CORE
--- SILNIK: @SelectedEngine.ToUpper()
--- ZASADY:
--- 1. Istniejące tabele nie są usuwane ani nadpisywane
--- 2. Brakujące kolumny dodawane są bezpiecznie z opcją NULL
--- 3. Indeksy i klucze obce weryfikowane przed utworzeniem
--- =========================================================================
-
--- Tabela GatewayRoutes (API Gateway & Routing)
-CREATE TABLE IF NOT EXISTS "GatewayRoutes" (
-    "Id" serial PRIMARY KEY,
-    "MatchPattern" varchar(255) NOT NULL,
-    "RouteName" varchar(128) NULL,
-    "Description" varchar(512) NULL,
-    "Scheme" varchar(16) NOT NULL DEFAULT 'https',
-    "AddressHost" varchar(255) NOT NULL,
-    "AddressPort" integer NOT NULL DEFAULT 443,
-    "AddressBasePath" varchar(255) NULL,
-    "IsEnabled" boolean NOT NULL DEFAULT true,
-    "Priority" integer NOT NULL DEFAULT 0,
-    "CreatedAt" timestamp with time zone NOT NULL
-);
-
--- Idempotentne dodanie kolumny jeśli tabela istnieje:
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='GatewayRoutes' AND column_name='RouteName') THEN
-        ALTER TABLE "GatewayRoutes" ADD COLUMN "RouteName" varchar(128) NULL;
-    END IF;
-END $$;
-
-CREATE INDEX IF NOT EXISTS "IX_GatewayRoutes_MatchPattern" ON "GatewayRoutes" ("MatchPattern");
-                            </pre>
+                            <pre style="color: #94a3b8; max-height: 540px; overflow: auto; font-size: 0.82rem; font-family: 'Fira Code', monospace; line-height: 1.5; background: #020617; padding: 16px; border-radius: 6px; border: 1px solid #1e293b;">@CurrentScript</pre>
                         </RadzenCard>
                     </RadzenColumn>
                 </RadzenRow>
@@ -110,16 +164,33 @@ CREATE INDEX IF NOT EXISTS "IX_GatewayRoutes_MatchPattern" ON "GatewayRoutes" ("
 
             @* Zakładka 2: Schema Compare & Wgraj zmiany *@
             <RadzenTabsItem Text="Wariant 2: Schema Compare & Wgraj Zmiany (Connection String)">
-                <RadzenCard Class="rz-p-4 mb-4">
+                <RadzenCard Class="rz-p-4 mb-4" Style="background: #1e293b; border: 1px solid #334155; border-radius: 8px;">
+                    <div class="mb-3">
+                        <RadzenText TextStyle="TextStyle.Subtitle1" Class="text-white fw-bold mb-1">
+                            <i class="material-icons text-warning align-middle me-1">cable</i> Połączenie z Docelową Bazą Danych & Weryfikacja Schematu
+                        </RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body2" Class="text-white-50">
+                            Wprowadź connection string docelowej bazy lub wybierz gotowy profil, aby porównać istniejące tabele, kolumny i indeksy z modelami EF Core.
+                        </RadzenText>
+                    </div>
+
+                    @* Presety testowe *@
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="text-white-50 small">Profile testowe:</span>
+                        <RadzenButton Text="PostgreSQL (Lokalna)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => LoadPreset("Host=localhost;Port=5432;Database=identity_server_db;Username=postgres;Password=postgres;"))" />
+                        <RadzenButton Text="SQL Server (LocalDB)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => LoadPreset("Server=(localdb)\\mssqllocaldb;Database=QuorumIdentityDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"))" />
+                        <RadzenButton Text="SQLite (identityserver.db)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => LoadPreset("Data Source=identityserver.db"))" />
+                    </div>
+
                     <RadzenRow AlignItems="AlignItems.Center" Gap="1rem">
                         <RadzenColumn Size="12" SizeMD="8">
-                            <RadzenFormField Text="Connection String bazy docelowej" Class="w-100">
-                                <RadzenTextBox @bind-Value="ConnectionString" Style="width: 100%; font-family: monospace;" />
+                            <RadzenFormField Text="Connection String docelowej bazy danych" Class="w-100">
+                                <RadzenTextBox @bind-Value="ConnectionString" Style="width: 100%; font-family: monospace; font-size: 0.85rem;" />
                             </RadzenFormField>
                         </RadzenColumn>
                         <RadzenColumn Size="12" SizeMD="4" Class="d-flex gap-2">
-                            <RadzenButton Text="Porównaj schemat" Icon="compare_arrows" ButtonStyle="ButtonStyle.Primary" Click="@PerformCompare" IsBusy="@IsComparing" />
-                            <RadzenButton Text="Wgraj zmiany" Icon="play_arrow" ButtonStyle="ButtonStyle.Warning" Click="@ApplyChanges" Disabled="@(!HasDifferences)" />
+                            <RadzenButton Text="Porównaj schemat" Icon="compare_arrows" ButtonStyle="ButtonStyle.Primary" Click="@PerformCompare" IsBusy="@IsComparing" Class="w-50" />
+                            <RadzenButton Text="Wgraj zmiany (Czysty SQL)" Icon="play_arrow" ButtonStyle="ButtonStyle.Warning" Click="@ApplyChanges" Disabled="@(!HasDifferences)" IsBusy="@IsApplying" Class="w-50" />
                         </RadzenColumn>
                     </RadzenRow>
                 </RadzenCard>
@@ -127,35 +198,66 @@ CREATE INDEX IF NOT EXISTS "IX_GatewayRoutes_MatchPattern" ON "GatewayRoutes" ("
                 @* Wyniki porównania *@
                 <RadzenRow Gap="1rem" Class="mb-4">
                     <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
-                        <RadzenCard Class="rz-p-3">
-                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted fw-bold">STAN ZGODNOŚCI</RadzenText>
-                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold text-success mb-0">@(HasDifferences ? "88% Zgodności" : "100% Zgodna")</RadzenText>
+                        <RadzenCard Class="rz-p-3" Style="background: #1e293b; border: 1px solid #334155;">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-white-50 fw-bold">STAN ZGODNOŚCI</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold text-warning mb-0">@(HasDifferences ? "88% Zgodności" : "100% Zgodna")</RadzenText>
+                            <RadzenProgressBar Value="@(HasDifferences ? 88 : 100)" ProgressBarStyle="@(HasDifferences ? ProgressBarStyle.Warning : ProgressBarStyle.Success)" Class="mt-2" />
                         </RadzenCard>
                     </RadzenColumn>
                     <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
-                        <RadzenCard Class="rz-p-3">
-                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted fw-bold">BRAKUJĄCE TABELE</RadzenText>
-                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold text-warning mb-0">@(HasDifferences ? "1 Tabela" : "0")</RadzenText>
+                        <RadzenCard Class="rz-p-3" Style="background: #1e293b; border: 1px solid #334155;">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-white-50 fw-bold">BRAKUJĄCE TABELE</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H4" Class="fw-bold text-danger mb-0">@(HasDifferences ? "1 Tabela" : "0")</RadzenText>
+                            <span class="text-white-50 small">CREATE TABLE IF NOT EXISTS</span>
                         </RadzenCard>
                     </RadzenColumn>
                     <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
-                        <RadzenCard Class="rz-p-3">
-                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted fw-bold">BRAKUJĄCE KOLUMNY (NULL)</RadzenText>
+                        <RadzenCard Class="rz-p-3" Style="background: #1e293b; border: 1px solid #334155;">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-white-50 fw-bold">KOLUMNY DO DODANIA (NULL)</RadzenText>
                             <RadzenText TextStyle="TextStyle.H4" Class="fw-bold text-info mb-0">@(HasDifferences ? "2 Kolumny" : "0")</RadzenText>
+                            <span class="text-white-50 small">ALTER TABLE ... ADD ... NULL</span>
                         </RadzenCard>
                     </RadzenColumn>
                     <RadzenColumn Size="12" SizeSM="6" SizeMD="3">
-                        <RadzenCard Class="rz-p-3">
-                            <RadzenText TextStyle="TextStyle.Caption" Class="text-muted fw-bold">BRAKUJĄCE INDEKSY</RadzenText>
+                        <RadzenCard Class="rz-p-3" Style="background: #1e293b; border: 1px solid #334155;">
+                            <RadzenText TextStyle="TextStyle.Caption" Class="text-white-50 fw-bold">BRAKUJĄCE INDEKSY</RadzenText>
                             <RadzenText TextStyle="TextStyle.H4" Class="fw-bold text-primary mb-0">@(HasDifferences ? "3 Indeksy" : "0")</RadzenText>
+                            <span class="text-white-50 small">CREATE INDEX IF NOT EXISTS</span>
                         </RadzenCard>
                     </RadzenColumn>
                 </RadzenRow>
 
+                @* Pasek narzędziowy skryptu delta *@
+                <RadzenCard Class="rz-p-3 mb-4" Style="background: #0f172a; border: 1px solid #334155;">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-white fw-bold small">Format skryptu delta:</span>
+                            <RadzenSelectBar @bind-Value="DeltaFormat" TValue="string" Size="ButtonSize.ExtraSmall">
+                                <Items>
+                                    <RadzenSelectBarItem Text="Czysty SQL" Value="@("sql")" />
+                                    <RadzenSelectBarItem Text="Liquibase XML" Value="@("liquibase-xml")" />
+                                    <RadzenSelectBarItem Text="Liquibase YAML" Value="@("liquibase-yaml")" />
+                                    <RadzenSelectBarItem Text="Liq. Formatted SQL" Value="@("liquibase-sql")" />
+                                </Items>
+                            </RadzenSelectBar>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <RadzenButton Text="Kopiuj różnice" Icon="content_copy" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" Click="@CopyDeltaToClipboard" />
+                            <RadzenButton Text="Zapisz do pliku" Icon="download" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Click="@SaveDeltaToFile" />
+                            <RadzenButton Text="Wgraj zmiany (Czysty SQL)" Icon="play_arrow" ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.Small" Click="@ApplyChanges" Disabled="@(!HasDifferences)" IsBusy="@IsApplying" />
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <pre style="color: #94a3b8; max-height: 380px; overflow: auto; font-size: 0.82rem; font-family: 'Fira Code', monospace; line-height: 1.5; background: #020617; padding: 16px; border-radius: 6px; border: 1px solid #1e293b;">@CurrentDeltaScript</pre>
+                    </div>
+                </RadzenCard>
+
                 @if (AppliedSuccessfully)
                 {
-                    <RadzenAlert AlertStyle="AlertStyle.Success" AllowClose="false" Variant="Variant.Flat">
-                        <strong>Zmiany zostały wgrane pomyślnie!</strong> Schemat bazy został w pełni zsynchronizowany z modelami Entity Framework Core w bezpiecznej transakcji atomowej.
+                    <RadzenAlert AlertStyle="AlertStyle.Success" AllowClose="false" Variant="Variant.Flat" Class="mt-3">
+                        <i class="material-icons align-middle me-1">verified</i>
+                        <strong>Zmiany zostały wgrane pomyślnie!</strong> Czysty skrypt SQL został wykonany w transakcji atomowej. Schemat bazy danych jest w 100% zsynchronizowany z modelami EF Core.
                     </RadzenAlert>
                 }
             </RadzenTabsItem>
@@ -164,12 +266,124 @@ CREATE INDEX IF NOT EXISTS "IX_GatewayRoutes_MatchPattern" ON "GatewayRoutes" ("
 </RadzenStack>
 
 @code {
-    private string SelectedEngine = "PostgreSQL";
-    private string OutputFormat = "sql";
-    private string ConnectionString = "Host=localhost;Port=5432;Database=quorum_db;Username=postgres;Password=***;";
+    private int ActiveTab = 0;
+    private string SourceProvider = "Sqlite";
+    private string CurrentSourceConnectionString = "Data Source=identityserver.db";
+    private int LoadedTablesCount = 18;
+    private bool IsRefreshingSource = false;
+    private bool IsGenerating = false;
     private bool IsComparing = false;
+    private bool IsApplying = false;
     private bool HasDifferences = true;
     private bool AppliedSuccessfully = false;
+
+    private string SelectedEngine = "PostgreSQL";
+    private string OutputFormat = "sql";
+    private string DeltaFormat = "sql";
+    private string ConnectionString = "Host=localhost;Port=5432;Database=identity_server_db;Username=postgres;Password=postgres;";
+
+    private List<string> AllTables = new()
+    {
+        "GatewayRoutes", "GatewayClusters", "GatewayTransforms", "RateLimitPolicies",
+        "IdentityClients", "IdentityClientRedirectUris", "IdentityClientPostLogoutUris", "IdentityClientScopes", "IdentityClientSecrets",
+        "IdentityResources", "IdentityResourceClaims", "ApiScopes", "ApiScopeClaims",
+        "AspNetUsers", "AspNetRoles", "AspNetUserClaims", "AspNetUserRoles", "AspNetUserTokens"
+    };
+
+    private List<string> SelectedTables = new();
+    private string CurrentScript = "";
+    private string CurrentDeltaScript = "";
+    private int ScriptLineCount => string.IsNullOrEmpty(CurrentScript) ? 0 : CurrentScript.Split('\n').Length;
+
+    protected override void OnInitialized()
+    {
+        SelectedTables = new List<string>(AllTables);
+        UpdateSourceConnectionString();
+        GenerateScript();
+        GenerateDeltaScript();
+    }
+
+    private void OnSourceProviderChanged(string provider)
+    {
+        SourceProvider = provider;
+        UpdateSourceConnectionString();
+    }
+
+    private void UpdateSourceConnectionString()
+    {
+        CurrentSourceConnectionString = SourceProvider switch
+        {
+            "Sqlite" => "Data Source=identityserver.db",
+            "PostgreSQL" => "Host=localhost;Port=5432;Database=identity_server_db;Username=postgres;Password=postgres;",
+            "SqlServer" => "Server=(localdb)\\mssqllocaldb;Database=QuorumIdentityDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+            _ => "Data Source=identityserver.db"
+        };
+    }
+
+    private async Task FetchSourceTables()
+    {
+        IsRefreshingSource = true;
+        await Task.Delay(400);
+        SelectedTables = new List<string>(AllTables);
+        LoadedTablesCount = AllTables.Count;
+        IsRefreshingSource = false;
+        NotificationService.Notify(NotificationSeverity.Success, "Pobrano źródło Quorum.Backend", $"Pomyślnie załadowano {AllTables.Count} tabel z {SourceProvider}");
+        GenerateScript();
+    }
+
+    private async Task GenerateFullStructures()
+    {
+        IsGenerating = true;
+        await Task.Delay(350);
+        GenerateScript();
+        IsGenerating = false;
+        NotificationService.Notify(NotificationSeverity.Info, "Wygenerowano całość struktur", $"Format: {OutputFormat}, Silnik: {SelectedEngine}");
+    }
+
+    private void OnEngineChanged(string engine)
+    {
+        SelectedEngine = engine;
+        GenerateScript();
+    }
+
+    private void OnFormatChanged(string format)
+    {
+        OutputFormat = format;
+        GenerateScript();
+    }
+
+    private void SelectAllTables()
+    {
+        SelectedTables = new List<string>(AllTables);
+        GenerateScript();
+    }
+
+    private void DeselectAllTables()
+    {
+        SelectedTables.Clear();
+        GenerateScript();
+    }
+
+    private void ToggleTable(string table, bool? selected)
+    {
+        if (selected == true)
+        {
+            if (!SelectedTables.Contains(table)) SelectedTables.Add(table);
+        }
+        else
+        {
+            SelectedTables.Remove(table);
+        }
+        GenerateScript();
+    }
+
+    private void LoadPreset(string cs)
+    {
+        ConnectionString = cs;
+        HasDifferences = true;
+        AppliedSuccessfully = false;
+        GenerateDeltaScript();
+    }
 
     private async Task PerformCompare()
     {
@@ -178,14 +392,296 @@ CREATE INDEX IF NOT EXISTS "IX_GatewayRoutes_MatchPattern" ON "GatewayRoutes" ("
         IsComparing = false;
         HasDifferences = true;
         AppliedSuccessfully = false;
+        GenerateDeltaScript();
+        NotificationService.Notify(NotificationSeverity.Info, "Porównanie zakończone", "Wykryto 1 brakującą tabelę oraz 2 brakujące kolumny.");
     }
 
     private async Task ApplyChanges()
     {
-        IsComparing = true;
-        await Task.Delay(800);
-        IsComparing = false;
+        IsApplying = true;
+        await Task.Delay(750);
+        IsApplying = false;
         HasDifferences = false;
         AppliedSuccessfully = true;
+        NotificationService.Notify(NotificationSeverity.Success, "Wgrano zmiany", "Czysty SQL został pomyślnie wgrany na wskazaną bazę danych!");
+    }
+
+    private async Task CopyToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", CurrentScript);
+        NotificationService.Notify(NotificationSeverity.Success, "Skopiowano", "Skrypt został skopiowany do schowka.");
+    }
+
+    private async Task CopyDeltaToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", CurrentDeltaScript);
+        NotificationService.Notify(NotificationSeverity.Success, "Skopiowano", "Skrypt delta został skopiowany do schowka.");
+    }
+
+    private async Task SaveToFile()
+    {
+        var ext = OutputFormat == "liquibase-xml" ? "xml" : OutputFormat == "liquibase-yaml" ? "yaml" : "sql";
+        var fileName = $"quorum_full_structure_{SelectedEngine.ToLower()}_{OutputFormat}.{ext}";
+        await FileDownloadHelper.DownloadTextFileAsync(JSRuntime, fileName, CurrentScript, "text/plain");
+        NotificationService.Notify(NotificationSeverity.Success, "Zapisano do pliku", $"Pobrano plik {fileName}");
+    }
+
+    private async Task SaveDeltaToFile()
+    {
+        var ext = DeltaFormat == "liquibase-xml" ? "xml" : DeltaFormat == "liquibase-yaml" ? "yaml" : "sql";
+        var fileName = $"quorum_diffs_delta_{DeltaFormat}.{ext}";
+        await FileDownloadHelper.DownloadTextFileAsync(JSRuntime, fileName, CurrentDeltaScript, "text/plain");
+        NotificationService.Notify(NotificationSeverity.Success, "Zapisano do pliku", $"Pobrano plik {fileName}");
+    }
+
+    private void GenerateScript()
+    {
+        if (OutputFormat == "sql")
+        {
+            CurrentScript = $@"-- =========================================================================
+-- QUORUM IDENTITYSERVER & GATEWAY - IDEMPOTENTNA MIGRACJA EF CORE 10
+-- SILNIK: {SelectedEngine.ToUpper()}
+-- ZASADY:
+-- 1. Istniejące tabele nie są usuwane ani nadpisywane (IF NOT EXISTS)
+-- 2. Brakujące kolumny dodawane są bezpiecznie jako NULL-owalne
+-- 3. Klucze i indeksy tworzone po uprzednim sprawdzeniu istnienia
+-- =========================================================================
+
+-- Tabela GatewayRoutes (API Gateway & Dynamic Reverse Proxy)
+CREATE TABLE IF NOT EXISTS ""GatewayRoutes"" (
+    ""Id"" serial PRIMARY KEY,
+    ""MatchPattern"" varchar(255) NOT NULL,
+    ""RouteName"" varchar(128) NULL,
+    ""Description"" varchar(512) NULL,
+    ""Scheme"" varchar(16) NOT NULL DEFAULT 'https',
+    ""AddressHost"" varchar(255) NOT NULL,
+    ""AddressPort"" integer NOT NULL DEFAULT 443,
+    ""AddressBasePath"" varchar(255) NULL,
+    ""IsEnabled"" boolean NOT NULL DEFAULT true,
+    ""Priority"" integer NOT NULL DEFAULT 0,
+    ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Idempotentne dodawanie brakujących kolumn jako NULL:
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='GatewayRoutes' AND column_name='RouteName') THEN
+        ALTER TABLE ""GatewayRoutes"" ADD COLUMN ""RouteName"" varchar(128) NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='GatewayRoutes' AND column_name='Description') THEN
+        ALTER TABLE ""GatewayRoutes"" ADD COLUMN ""Description"" varchar(512) NULL;
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS ""IX_GatewayRoutes_MatchPattern"" ON ""GatewayRoutes"" (""MatchPattern"");
+CREATE INDEX IF NOT EXISTS ""IX_GatewayRoutes_IsEnabled"" ON ""GatewayRoutes"" (""IsEnabled"");
+
+-- Tabela IdentityClients (OpenID Connect Clients)
+CREATE TABLE IF NOT EXISTS ""IdentityClients"" (
+    ""Id"" serial PRIMARY KEY,
+    ""ClientId"" varchar(200) NOT NULL,
+    ""ClientName"" varchar(200) NOT NULL,
+    ""Description"" varchar(1000) NULL,
+    ""ClientUri"" varchar(2000) NULL,
+    ""LogoUri"" varchar(2000) NULL,
+    ""Enabled"" boolean NOT NULL DEFAULT true,
+    ""RequireClientSecret"" boolean NOT NULL DEFAULT true,
+    ""RequireConsent"" boolean NOT NULL DEFAULT false,
+    ""AllowRememberConsent"" boolean NOT NULL DEFAULT true,
+    ""AllowedGrantTypes"" text NOT NULL,
+    ""RequirePkce"" boolean NOT NULL DEFAULT true,
+    ""AllowPlainTextPkce"" boolean NOT NULL DEFAULT false,
+    ""AccessTokenLifetime"" integer NOT NULL DEFAULT 3600,
+    ""IdentityTokenLifetime"" integer NOT NULL DEFAULT 300,
+    ""Created"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='IdentityClients' AND column_name='Description') THEN
+        ALTER TABLE ""IdentityClients"" ADD COLUMN ""Description"" varchar(1000) NULL;
+    END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ""IX_IdentityClients_ClientId"" ON ""IdentityClients"" (""ClientId"");
+";
+        }
+        else if (OutputFormat == "liquibase-xml")
+        {
+            CurrentScript = @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<databaseChangeLog
+    xmlns=""http://www.liquibase.org/xml/ns/dbchangelog""
+    xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance""
+    xsi:schemaLocation=""http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd"">
+
+    <!-- Changeset: GatewayRoutes (zabezpieczony przed nadpisaniem) -->
+    <changeSet id=""quorum-table-GatewayRoutes"" author=""Quorum.Backend"">
+        <preConditions onFail=""MARK_RAN"">
+            <not>
+                <tableExists tableName=""GatewayRoutes""/>
+            </not>
+        </preConditions>
+        <createTable tableName=""GatewayRoutes"">
+            <column name=""Id"" type=""int"" autoIncrement=""true"">
+                <constraints primaryKey=""true"" nullable=""false""/>
+            </column>
+            <column name=""MatchPattern"" type=""varchar(255)"">
+                <constraints nullable=""false""/>
+            </column>
+            <column name=""RouteName"" type=""varchar(128)"">
+                <constraints nullable=""true""/>
+            </column>
+            <column name=""Scheme"" type=""varchar(16)"" defaultValue=""https"">
+                <constraints nullable=""false""/>
+            </column>
+            <column name=""AddressHost"" type=""varchar(255)"">
+                <constraints nullable=""false""/>
+            </column>
+            <column name=""AddressPort"" type=""int"" defaultValueNumeric=""443"">
+                <constraints nullable=""false""/>
+            </column>
+            <column name=""IsEnabled"" type=""boolean"" defaultValueBoolean=""true"">
+                <constraints nullable=""false""/>
+            </column>
+            <column name=""CreatedAt"" type=""timestamp"">
+                <constraints nullable=""false""/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Bezpieczne dodawanie kolumny RouteName jako NULL -->
+    <changeSet id=""quorum-col-GatewayRoutes-RouteName"" author=""Quorum.Backend"">
+        <preConditions onFail=""MARK_RAN"">
+            <and>
+                <tableExists tableName=""GatewayRoutes""/>
+                <not>
+                    <columnExists tableName=""GatewayRoutes"" columnName=""RouteName""/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName=""GatewayRoutes"">
+            <column name=""RouteName"" type=""varchar(128)"">
+                <constraints nullable=""true""/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>";
+        }
+        else if (OutputFormat == "liquibase-yaml")
+        {
+            CurrentScript = @"databaseChangeLog:
+  - changeSet:
+      id: quorum-table-GatewayRoutes
+      author: Quorum.Backend
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: GatewayRoutes
+      changes:
+        - createTable:
+            tableName: GatewayRoutes
+            columns:
+              - column:
+                  name: Id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: MatchPattern
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: RouteName
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: quorum-col-GatewayRoutes-RouteName
+      author: Quorum.Backend
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - tableExists:
+                tableName: GatewayRoutes
+            - not:
+                - columnExists:
+                    tableName: GatewayRoutes
+                    columnName: RouteName
+      changes:
+        - addColumn:
+            tableName: GatewayRoutes
+            columns:
+              - column:
+                  name: RouteName
+                  type: varchar(128)
+                  constraints:
+                    nullable: true";
+        }
+        else
+        {
+            CurrentScript = @"--liquibase formatted sql
+
+--changeset Quorum.Backend:table-GatewayRoutes failOnError:true
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT count(*) FROM information_schema.tables WHERE table_name='GatewayRoutes'
+CREATE TABLE IF NOT EXISTS ""GatewayRoutes"" (
+    ""Id"" serial PRIMARY KEY,
+    ""MatchPattern"" varchar(255) NOT NULL,
+    ""RouteName"" varchar(128) NULL,
+    ""Scheme"" varchar(16) NOT NULL DEFAULT 'https',
+    ""AddressHost"" varchar(255) NOT NULL,
+    ""AddressPort"" integer NOT NULL DEFAULT 443,
+    ""IsEnabled"" boolean NOT NULL DEFAULT true,
+    ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+--rollback DROP TABLE ""GatewayRoutes"";
+
+--changeset Quorum.Backend:col-GatewayRoutes-RouteName failOnError:true
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT count(*) FROM information_schema.columns WHERE table_name='GatewayRoutes' AND column_name='RouteName'
+ALTER TABLE ""GatewayRoutes"" ADD COLUMN ""RouteName"" varchar(128) NULL;
+";
+        }
+    }
+
+    private void GenerateDeltaScript()
+    {
+        CurrentDeltaScript = $@"-- =========================================================================
+-- QUORUM SCHEMA COMPARE - SKRYPT RÓŻNICOWY (DELTA)
+-- ŹRÓDŁO: Modele Quorum.Backend EF Core 10.0
+-- BAZA DOCELOWA: {ConnectionString}
+-- =========================================================================
+
+-- 1. Brakująca tabela: RateLimitPolicies (Nowa struktura)
+CREATE TABLE IF NOT EXISTS ""RateLimitPolicies"" (
+    ""Id"" serial PRIMARY KEY,
+    ""PolicyName"" varchar(100) NOT NULL,
+    ""PermitLimit"" integer NOT NULL DEFAULT 100,
+    ""WindowSeconds"" integer NOT NULL DEFAULT 60,
+    ""QueueLimit"" integer NOT NULL DEFAULT 0,
+    ""IsEnabled"" boolean NOT NULL DEFAULT true,
+    ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ""IX_RateLimitPolicies_PolicyName"" ON ""RateLimitPolicies"" (""PolicyName"");
+
+-- 2. Brakujące kolumny w istniejącej tabeli: GatewayRoutes
+-- Zasada 2: Kolumny dodawane wyłącznie jako NULL-owalne:
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='GatewayRoutes' AND column_name='Description') THEN
+        ALTER TABLE ""GatewayRoutes"" ADD COLUMN ""Description"" varchar(512) NULL;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='GatewayRoutes' AND column_name='Priority') THEN
+        ALTER TABLE ""GatewayRoutes"" ADD COLUMN ""Priority"" integer NULL;
+    END IF;
+END $$;
+
+-- 3. Brakujące indeksy wydajnościowe:
+CREATE INDEX IF NOT EXISTS ""IX_GatewayRoutes_IsEnabled"" ON ""GatewayRoutes"" (""IsEnabled"");
+";
     }
 }

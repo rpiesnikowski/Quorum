@@ -417,6 +417,90 @@ Struktura katalogów:
             Zasada 3: Changesety Liquibase z <code className="bg-slate-950 px-1 py-0.5 rounded border border-slate-800 text-sky-300">preConditions onFail="MARK_RAN"</code>
           </div>
         </div>
+
+        {/* SZYBKI PASEK GŁÓWNYCH AKCJI GUI MIGRACJI (PRZYCISKI PANELU) */}
+        <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              Pasek Narzędziowy Panelu Migracji:
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              id="top-fetch-source-btn"
+              onClick={handleRefreshSourceTables}
+              disabled={isRefreshingSource}
+              className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+              title="Pobierz i załaduj pełny komplet 18 modeli ze źródła Quorum.Backend"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingSource ? 'animate-spin' : ''}`} />
+              {isRefreshingSource ? 'Pobieranie...' : 'Pobierz tabele ze źródła'}
+            </button>
+
+            <button
+              id="top-generate-btn"
+              onClick={() => {
+                setActiveMode('generator');
+                handleGenerateStructures();
+              }}
+              disabled={isGenerating}
+              className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+              title="Generuj całość struktur z bazy (Idempotentny SQL / Liquibase)"
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+              {isGenerating ? 'Generowanie...' : 'Generuj całość struktur z bazy'}
+            </button>
+
+            <button
+              id="top-save-file-btn"
+              onClick={activeMode === 'generator' ? handleDownloadVariant1File : handleDownloadDeltaFile}
+              className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Zapisz aktualny wygenerowany skrypt do pliku (.sql / .xml / .yaml)"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-400" />
+              Zapisz do pliku
+            </button>
+
+            <button
+              id="top-copy-btn"
+              onClick={() => handleCopy(activeMode === 'generator' ? generatedScript : deltaScript)}
+              className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Kopiuj skrypt do schowka"
+            >
+              {copiedCode || copiedDelta ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              {copiedCode || copiedDelta ? 'Skopiowano!' : 'Kopiuj do schowka'}
+            </button>
+
+            <button
+              id="top-compare-btn"
+              onClick={() => {
+                setActiveMode('compare');
+                handleRunSchemaCompare();
+              }}
+              disabled={isComparing}
+              className="px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+              title="Porównaj schemat ze wskazaną bazą w Connection String (Wariant 2)"
+            >
+              <ArrowLeftRight className={`w-3.5 h-3.5 ${isComparing ? 'animate-spin' : ''}`} />
+              Porównaj schemat
+            </button>
+
+            <button
+              id="top-apply-btn"
+              onClick={() => {
+                setActiveMode('compare');
+                handleOpenApplyModal();
+              }}
+              disabled={!compareResult || compareResult.summary.missingTablesCount + compareResult.summary.missingColumnsCount === 0}
+              className="px-3.5 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Wgraj brakujące tabele i kolumny na bazę danych (Czysty SQL)"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              Wgraj zmiany
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* PANEL ŹRÓDŁA: QUORUM.BACKEND (POBIERANIE CAŁOŚCI TABEL ZE ŹRÓDŁA) */}
