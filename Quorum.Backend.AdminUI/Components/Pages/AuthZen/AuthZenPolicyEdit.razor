@@ -203,7 +203,7 @@
                             </div>
 
                             <RadzenFormField Text="Wyrażenie Warunkowe (Condition Expression)" Class="w-100">
-                                <RadzenTextArea @bind-Value="model.ConditionExpression" Name="ConditionExpression" Rows="5" Class="w-100 font-monospace" Placeholder='np. context.environment == "production" lub subject.email.endsWith("@company.com")' />
+                                <RadzenTextArea @bind-Value="model.ConditionExpression" Name="ConditionExpression" Rows="5" Class="w-100 font-monospace" Placeholder='@("np. context.environment == \"production\" lub subject.email.endsWith(\"@company.com\")")' />
                             </RadzenFormField>
                         </RadzenStack>
                     </RadzenTabsItem>

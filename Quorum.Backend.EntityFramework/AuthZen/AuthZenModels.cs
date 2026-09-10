@@ -94,6 +94,10 @@ public class AuthZenEvaluationResponseContext
     [JsonPropertyName("reason")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Reason { get; set; }
+    
+    [JsonPropertyName("decision")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Decision { get; set; }
 
     [JsonPropertyName("policy_id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

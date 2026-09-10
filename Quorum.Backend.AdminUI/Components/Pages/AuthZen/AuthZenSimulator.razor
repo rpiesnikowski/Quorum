@@ -158,10 +158,10 @@
                             <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2">
                                 <RadzenIcon Icon="rule" Style="color: var(--rz-info);" /> Szczegóły decyzji PDP
                             </RadzenText>
-                            @if (evalResult.Context != null && evalResult.Context.Count > 0)
+                            @if (evalResult.Context != null && evalResult.Context != null)
                             {
                                 <ul class="list-unstyled mb-0" style="font-size: 0.85rem;">
-                                    @foreach (var kv in evalResult.Context)
+                                    @foreach (var kv in evalResult.Context.AttributesEvaluated)
                                     {
                                         <li><strong>@kv.Key:</strong> <code>@kv.Value</code></li>
                                     }
