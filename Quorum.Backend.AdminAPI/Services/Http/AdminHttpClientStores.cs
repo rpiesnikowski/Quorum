@@ -247,3 +247,77 @@ public class AdminHttpGatewayStore : IAdminGatewayStore
         return new GatewayTestResult { MatchFound = false };
     }
 }
+
+public class AdminHttpAuthZenPolicyStore : IAdminAuthZenPolicyStore
+{
+    private readonly HttpClient _http;
+    private readonly string _baseUrl;
+
+    public AdminHttpAuthZenPolicyStore(HttpClient http, string baseUrl = "api/admin")
+    {
+        _http = http;
+        _baseUrl = baseUrl.TrimEnd('/');
+    }
+
+    public async Task<PagedResult<AuthZenPolicyAdminModel>> GetPoliciesAsync(string? search = null, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
+    {
+        var query = $"{_baseUrl}/authzen/policies?page={page}&pageSize={pageSize}";
+        if (!string.IsNullOrWhiteSpace(search)) query += $"&search={Uri.EscapeDataString(search)}";
+
+        var response = await _http.GetFromJsonAsync<PagedResult<AuthZenPolicyAdminModel>>(query, cancellationToken);
+        return response ?? new PagedResult<AuthZenPolicyAdminModel>();
+    }
+
+    public async Task<AuthZenPolicyAdminModel?> GetPolicyByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<AuthZenPolicyAdminModel>($"{_baseUrl}/authzen/policies/{id}", cancellationToken);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<(bool Success, string? Error)> CreatePolicyAsync(AuthZenPolicyAdminModel model, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PostAsJsonAsync($"{_baseUrl}/authzen/policies", model, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            var created = await response.Content.ReadFromJsonAsync<AuthZenPolicyAdminModel>(cancellationToken: cancellationToken);
+            if (created != null) model.Id = created.Id;
+            return (true, null);
+        }
+
+        var error = await response.Content.ReadAsStringAsync(cancellationToken);
+        return (false, string.IsNullOrEmpty(error) ? response.ReasonPhrase : error);
+    }
+
+    public async Task<(bool Success, string? Error)> UpdatePolicyAsync(AuthZenPolicyAdminModel model, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PutAsJsonAsync($"{_baseUrl}/authzen/policies/{model.Id}", model, cancellationToken);
+        if (response.IsSuccessStatusCode) return (true, null);
+
+        var error = await response.Content.ReadAsStringAsync(cancellationToken);
+        return (false, string.IsNullOrEmpty(error) ? response.ReasonPhrase : error);
+    }
+
+    public async Task<(bool Success, string? Error)> DeletePolicyAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.DeleteAsync($"{_baseUrl}/authzen/policies/{id}", cancellationToken);
+        if (response.IsSuccessStatusCode) return (true, null);
+
+        var error = await response.Content.ReadAsStringAsync(cancellationToken);
+        return (false, string.IsNullOrEmpty(error) ? response.ReasonPhrase : error);
+    }
+
+    public async Task<(bool Success, string? Error)> TogglePolicyStatusAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PostAsync($"{_baseUrl}/authzen/policies/{id}/toggle", null, cancellationToken);
+        if (response.IsSuccessStatusCode) return (true, null);
+
+        var error = await response.Content.ReadAsStringAsync(cancellationToken);
+        return (false, string.IsNullOrEmpty(error) ? response.ReasonPhrase : error);
+    }
+}

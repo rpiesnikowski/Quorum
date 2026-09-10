@@ -1,0 +1,145 @@
+@page "/admin/authzen/policies"
+@layout AdminLayout
+
+<PageTitle>Polityki Autoryzacji (AuthZEN PAP) | Quorum Admin UI</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="7">
+            <div class="d-flex align-items-center gap-2">
+                <RadzenIcon Icon="policy" Style="font-size: 2.2rem; color: var(--rz-success);" />
+                <div>
+                    <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0">Polityki Autoryzacji (AuthZEN PAP)</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                        Policy Administration Point: definicje reguł i polityk autoryzacyjnych podlegających ewaluacji przez silnik decyzyjny PDP.
+                    </RadzenText>
+                </div>
+            </div>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="5" Class="d-flex justify-content-md-end gap-2 flex-wrap">
+            <RadzenButton Icon="fact_check" Text="Symulator PDP" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => NavigationManager.NavigateTo("admin/authzen/simulator"))" />
+            <RadzenButton Icon="add" Text="Nowa Polityka" ButtonStyle="ButtonStyle.Primary" Click="@(() => NavigationManager.NavigateTo("admin/authzen/policies/create"))" />
+            <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-3">
+        <RadzenRow AlignItems="AlignItems.Center" Gap="1rem" Class="mb-3">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenTextBox Placeholder="Szukaj po nazwie polityki, zasobie, akcji, rolach..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" Class="d-flex justify-content-md-end gap-2">
+                <RadzenButton Icon="filter_alt_off" Text="Wyczyść filtry" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Click="@ResetFiltersAsync" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenDataGrid @ref="grid"
+                        Data="@policies"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.SimpleWithMenu"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="10"
+                        PageSizeOptions="@(new int[] { 5, 10, 25, 50, 100 })"
+                        ShowPagingSummary="true"
+                        PagingSummaryFormat="Strona {0} z {1} (łącznie {2} pozycji)"
+                        AllowColumnResize="true"
+                        IsLoading="@isLoading"
+                        TItem="AuthZenPolicyAdminModel"
+                        EmptyText="Brak polityk autoryzacyjnych AuthZEN spełniających wybrane kryteria.">
+            <Columns>
+                <RadzenDataGridColumn TItem="AuthZenPolicyAdminModel" Property="Priority" Title="Priorytet" Width="100px" TextAlign="TextAlign.Center">
+                    <Template Context="p">
+                        <span class="badge bg-secondary text-white">@p.Priority</span>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenPolicyAdminModel" Property="Name" Title="Nazwa & Opis" Width="240px">
+                    <Template Context="p">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="fw-bold">@p.Name</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(p.Description))
+                        {
+                            <div class="text-muted" style="font-size: 0.78rem;">@p.Description</div>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenPolicyAdminModel" Property="Effect" Title="Decyzja" Width="110px" TextAlign="TextAlign.Center">
+                    <Template Context="p">
+                        @if (p.Effect.Equals("Permit", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Permit (Zezwól)" IsPill="true" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="Deny (Odmów)" IsPill="true" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenPolicyAdminModel" Property="ResourcePattern" Title="Zasób & Akcja" Width="200px">
+                    <Template Context="p">
+                        <div><code class="fw-bold text-primary">@p.ResourcePattern</code></div>
+                        <div class="d-flex gap-1 mt-1">
+                            <span class="badge bg-light text-dark border" style="font-size: 0.72rem;">Typ: @p.ResourceType</span>
+                            <span class="badge bg-info text-white" style="font-size: 0.72rem;">@p.Action</span>
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenPolicyAdminModel" Property="SubjectRoles" Title="Wymagania Podmiotu" Width="220px">
+                    <Template Context="p">
+                        <div class="d-flex flex-column gap-1" style="font-size: 0.8rem;">
+                            @if (!string.IsNullOrWhiteSpace(p.SubjectRoles))
+                            {
+                                <div><i class="bi bi-people-fill text-secondary"></i> Role: <strong>@p.SubjectRoles</strong></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(p.SubjectRequiredClaims))
+                            {
+                                <div><i class="bi bi-tag-fill text-muted"></i> Claims: <code>@p.SubjectRequiredClaims</code></div>
+                            }
+                            @if (p.RequireAuthenticated)
+                            {
+                                <div><span class="badge bg-light text-primary border" style="font-size: 0.68rem;">Wymaga uwierzytelnienia</span></div>
+                            }
+                            @if (string.IsNullOrWhiteSpace(p.SubjectRoles) && string.IsNullOrWhiteSpace(p.SubjectRequiredClaims) && !p.RequireAuthenticated)
+                            {
+                                <span class="text-muted" style="font-size: 0.75rem;">Każdy podmiot (*)</span>
+                            }
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenPolicyAdminModel" Property="IsEnabled" Title="Status" Width="100px" TextAlign="TextAlign.Center">
+                    <Template Context="p">
+                        <RadzenSwitch Value="@p.IsEnabled" 
+                                      Change="@((val) => ToggleStatusAsync(p))" 
+                                      title="@(p.IsEnabled ? "Aktywna (kliknij, aby wyłączyć)" : "Wyłączona (kliknij, aby włączyć)")" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenPolicyAdminModel" Title="Akcje" Width="140px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
+                    <Template Context="p">
+                        <div class="d-flex justify-content-center gap-1">
+                            <RadzenButton Icon="edit" 
+                                          Size="ButtonSize.Small" 
+                                          ButtonStyle="ButtonStyle.Light" 
+                                          Variant="Variant.Flat" 
+                                          Click="@(() => NavigationManager.NavigateTo($"admin/authzen/policies/{p.Id}/edit"))" 
+                                          title="Edytuj politykę" />
+                            <RadzenButton Icon="delete" 
+                                          Size="ButtonSize.Small" 
+                                          ButtonStyle="ButtonStyle.Danger" 
+                                          Variant="Variant.Light" 
+                                          Click="@(() => ConfirmDeleteAsync(p))" 
+                                          title="Usuń politykę" />
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</RadzenStack>

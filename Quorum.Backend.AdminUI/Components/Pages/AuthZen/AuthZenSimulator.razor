@@ -1,0 +1,192 @@
+@page "/admin/authzen/simulator"
+@layout AdminLayout
+
+<PageTitle>Symulator Decyzji AuthZEN (PDP & PIP) | Quorum Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <div class="d-flex align-items-center gap-2">
+                <RadzenIcon Icon="fact_check" Style="font-size: 2.2rem; color: var(--rz-primary);" />
+                <div>
+                    <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0">Symulator Decyzji AuthZEN (PDP & PIP)</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                        Testuj na żywo ewaluację zapytań autoryzacyjnych w silniku decyzyjnym PDP z automatycznym zasilaniem atrybutów z PIP (AspNetCoreIdentity).
+                    </RadzenText>
+                </div>
+            </div>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="policy" Text="Zarządzaj Politykami (PAP)" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => NavigationManager.NavigateTo("admin/authzen/policies"))" />
+            <RadzenButton Icon="arrow_back" Text="Powrót" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/authzen/policies"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenStack Gap="1.25rem">
+            <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-0">Parametry Zapytania AuthZEN (Evaluation Request)</RadzenText>
+
+            <RadzenRow Gap="1rem">
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenFormField Text="Wybierz użytkownika z bazy Identity" Class="w-100">
+                        <RadzenDropDown @bind-Value="selectedUserId" Data="@availableUsers" 
+                                        TextProperty="DisplayName" ValueProperty="Id" 
+                                        Change="@OnUserSelectionChanged" AllowClear="true" 
+                                        Placeholder="-- Wybierz użytkownika --" Class="w-100" />
+                    </RadzenFormField>
+                    <span class="text-muted small">Wybór załaduje ID użytkownika do zapytania i odpyta PIP.</span>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenFormField Text="Identyfikator Podmiotu (Subject ID)" Class="w-100">
+                        <RadzenTextBox @bind-Value="evalRequest.Subject.Id" Class="w-100" Placeholder="np. user-guid lub nazwa użytkownika" />
+                    </RadzenFormField>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenFormField Text="Typ Podmiotu (Subject Type)" Class="w-100">
+                        <RadzenTextBox @bind-Value="evalRequest.Subject.Type" Class="w-100" Placeholder="user" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+
+            <RadzenRow Gap="1rem">
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenFormField Text="Akcja (Action Name)" Class="w-100">
+                        <RadzenTextBox @bind-Value="evalRequest.Action.Name" Class="w-100" Placeholder="read, write, execute, GET, POST" />
+                    </RadzenFormField>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenFormField Text="Typ Zasobu (Resource Type)" Class="w-100">
+                        <RadzenTextBox @bind-Value="evalRequest.Resource.Type" Class="w-100" Placeholder="route, api, document" />
+                    </RadzenFormField>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenFormField Text="Identyfikator Zasobu (Resource ID)" Class="w-100">
+                        <RadzenTextBox @bind-Value="evalRequest.Resource.Id" Class="w-100" Placeholder="/api/v1/orders lub /weatherforecast" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+
+            <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+                <span class="text-muted small fw-bold me-1">Szablony testowe:</span>
+                <RadzenButton Text="Odczyt API (read)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyReadPreset" />
+                <RadzenButton Text="Zapis / Modyfikacja (write)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyWritePreset" />
+                <RadzenButton Text="Panel Admina (GET /admin)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyAdminPreset" />
+                <RadzenButton Text="Bramka API (GET /api/v1/data)" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@ApplyGatewayPreset" />
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                <RadzenButton Text="Wyczyść" ButtonStyle="ButtonStyle.Light" Click="@ResetRequest" />
+                <RadzenButton Text="Wykonaj Ewaluację AuthZEN (PDP)" Icon="gavel" ButtonStyle="ButtonStyle.Primary" Click="@EvaluateAsync" IsBusy="@isEvaluating" />
+            </div>
+        </RadzenStack>
+    </RadzenCard>
+
+    @if (evalResult != null)
+    {
+        <RadzenCard Class="rz-p-4">
+            <RadzenStack Gap="1rem">
+                @* Baner Decyzji *@
+                <div class="p-3 rounded border @(evalResult.Decision ? "bg-success-subtle border-success" : "bg-danger-subtle border-danger")">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <RadzenIcon Icon="@(evalResult.Decision ? "check_circle" : "cancel")" 
+                                        Style="@(evalResult.Decision ? "font-size: 2.5rem; color: var(--rz-success);" : "font-size: 2.5rem; color: var(--rz-danger);")" />
+                            <div>
+                                <RadzenText TextStyle="TextStyle.H5" Class="fw-bold mb-0">
+                                    @(evalResult.Decision ? "DECYZJA: ZEZWOLONO (PERMIT)" : "DECYZJA: ODMÓWIONO (DENY)")
+                                </RadzenText>
+                                <span class="text-muted small">
+                                    @(evalResult.Decision 
+                                        ? "Zapytanie spełniło reguły autoryzacji. PEP przepuści żądanie." 
+                                        : "Brak uprawnień lub żądanie naruszyło politykę. PEP zablokuje żądanie kodem 403.")
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge bg-dark text-white px-3 py-2">Czas ewaluacji: @(executionTimeMs) ms</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* Informacje z PIP i ewaluacji *@
+                <RadzenRow Gap="1rem">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <div class="p-3 bg-light rounded border h-100">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2">
+                                <RadzenIcon Icon="badge" Style="color: var(--rz-primary);" /> Dane podmiotu pobrane przez PIP
+                            </RadzenText>
+                            @if (pipData != null)
+                            {
+                                <ul class="list-unstyled mb-0" style="font-size: 0.85rem;">
+                                    <li><strong>Użytkownik:</strong> @(pipData.UserName ?? "-")</li>
+                                    <li><strong>Email:</strong> @(pipData.Email ?? "-")</li>
+                                    <li>
+                                        <strong>Role (Identity):</strong>
+                                        @if (pipData.Roles.Count > 0)
+                                        {
+                                            @foreach (var r in pipData.Roles)
+                                            {
+                                                <span class="badge bg-primary me-1">@r</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Brak ról</span>
+                                        }
+                                    </li>
+                                    <li class="mt-1">
+                                        <strong>Konto aktywne:</strong>
+                                        <span class="badge @(pipData.IsActive ? "bg-success" : "bg-danger")">
+                                            @(pipData.IsActive ? "Tak" : "Nie (Zablokowane)")
+                                        </span>
+                                    </li>
+                                </ul>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Brak danych podmiotu w PIP lub podmiot niezweryfikowany w bazie Identity.</span>
+                            }
+                        </div>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <div class="p-3 bg-light rounded border h-100">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2">
+                                <RadzenIcon Icon="rule" Style="color: var(--rz-info);" /> Szczegóły decyzji PDP
+                            </RadzenText>
+                            @if (evalResult.Context != null && evalResult.Context.Count > 0)
+                            {
+                                <ul class="list-unstyled mb-0" style="font-size: 0.85rem;">
+                                    @foreach (var kv in evalResult.Context)
+                                    {
+                                        <li><strong>@kv.Key:</strong> <code>@kv.Value</code></li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Decyzja domyślna silnika decyzyjnego (Brak pasujących reguł zezwalających).</span>
+                            }
+                        </div>
+                    </RadzenColumn>
+                </RadzenRow>
+
+                @* Podgląd JSON *@
+                <RadzenTabs SelectedIndex="0">
+                    <Tabs>
+                        <RadzenTabsItem Text="AuthZEN Response (JSON)">
+                            <pre class="bg-dark text-white p-3 rounded font-monospace small mb-0" style="max-height: 250px; overflow-y: auto;">@responseJson</pre>
+                        </RadzenTabsItem>
+                        <RadzenTabsItem Text="AuthZEN Request (JSON)">
+                            <pre class="bg-dark text-white p-3 rounded font-monospace small mb-0" style="max-height: 250px; overflow-y: auto;">@requestJson</pre>
+                        </RadzenTabsItem>
+                    </Tabs>
+                </RadzenTabs>
+            </RadzenStack>
+        </RadzenCard>
+    }
+</RadzenStack>

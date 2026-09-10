@@ -1,0 +1,219 @@
+@page "/admin/authzen/policies/create"
+@page "/admin/authzen/policies/{Id:int}/edit"
+@layout AdminLayout
+
+<PageTitle>@(IsNew ? "Nowa Polityka Autoryzacji" : $"Edycja Polityki: {model.Name}") | AuthZEN PAP</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <div class="d-flex align-items-center gap-2">
+                <RadzenIcon Icon="policy" Style="font-size: 2rem; color: var(--rz-success);" />
+                <div>
+                    <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0">
+                        @(IsNew ? "Nowa Polityka Autoryzacji AuthZEN" : $"Edycja Polityki: {model.Name}")
+                    </RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                        Punkt Administracji Politykami (PAP): Definiowanie reguł ABAC/RBAC sprawdzanych przez silnik decyzyjny PDP.
+                    </RadzenText>
+                </div>
+            </div>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2">
+            <RadzenButton Icon="arrow_back" Text="Powrót do listy" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/authzen/policies"))" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard Class="rz-p-4">
+        <RadzenTemplateForm TItem="AuthZenPolicyAdminModel" Data="@model" Submit="@HandleSubmitAsync">
+            <RadzenTabs SelectedIndex="0">
+                <Tabs>
+                    @* KARTA 1: Podstawowe informacje i Decyzja *@
+                    <RadzenTabsItem Text="1. Identyfikacja & Decyzja">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="8">
+                                    <RadzenFormField Text="Nazwa Polityki" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.Name" Name="Name" Class="w-100" Placeholder="np. RequireAdminForBillingApi" />
+                                    </RadzenFormField>
+                                    <RadzenRequiredValidator Component="Name" Text="Nazwa polityki jest wymagana." />
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <RadzenFormField Text="Priorytet Ewaluacji" Class="w-100">
+                                        <RadzenNumeric @bind-Value="model.Priority" Name="Priority" Class="w-100" Min="0" Max="100000" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Wyższa liczba = wyższy priorytet ewaluacji w PDP.</span>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12">
+                                    <RadzenFormField Text="Opis Polityki" Class="w-100">
+                                        <RadzenTextArea @bind-Value="model.Description" Name="Description" Rows="2" Class="w-100" Placeholder="Opis przeznaczenia polityki, np. Zezwala administratorom na dostęp do endpointów rozliczeniowych." />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="p-3 bg-light rounded border">
+                                        <RadzenText TextStyle="TextStyle.Subtitle2" Class="fw-bold mb-2">Decyzja Polityki (Effect)</RadzenText>
+                                        <RadzenSelectBar @bind-Value="model.Effect" TValue="string" Size="ButtonSize.Medium">
+                                            <Items>
+                                                <RadzenSelectBarItem Text="Permit (Zezwól)" Value="@("Permit")" />
+                                                <RadzenSelectBarItem Text="Deny (Odmów)" Value="@("Deny")" />
+                                            </Items>
+                                        </RadzenSelectBar>
+                                        <div class="mt-2 text-muted small">
+                                            @if (model.Effect == "Permit")
+                                            {
+                                                <span>Jeśli reguła zostanie spełniona, silnik PDP zwróci decyzję <strong>decision: true</strong>.</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Jeśli reguła zostanie spełniona, silnik PDP zwróci blokującą odmowę <strong>decision: false</strong>.</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border h-100">
+                                        <RadzenCheckBox @bind-Value="model.IsEnabled" Name="IsEnabled" />
+                                        <div>
+                                            <RadzenLabel Text="Polityka jest Aktywna (IsEnabled)" Component="IsEnabled" Class="fw-bold d-block" />
+                                            <span class="text-muted small">Tylko aktywne polityki są ładowane i brane pod uwagę przez silnik PDP podczas ewaluacji.</span>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    @* KARTA 2: Zasób i Akcja (Resource & Action) *@
+                    <RadzenTabsItem Text="2. Zasób & Akcja">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="4">
+                                    <RadzenFormField Text="Typ Zasobu (Resource Type)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.ResourceType" Name="ResourceType" Class="w-100" Placeholder="np. route, api, invoice, order (* = dowolny)" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Domyślnie 'route' lub '*' dla wszystkich typów.</span>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="8">
+                                    <RadzenFormField Text="Wzorzec Identyfikatora Zasobu (Resource Pattern)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.ResourcePattern" Name="ResourcePattern" Class="w-100 font-monospace" Placeholder="np. /api/v1/billing/*, /api/orders/{id}, lub *" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">
+                                        Wzorzec ścieżki lub identyfikatora. Obsługuje gwiazdki wildcard (<code>*</code>), szablony z parametrami lub regex.
+                                    </span>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Wymagana Akcja (Action)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.Action" Name="Action" Class="w-100" Placeholder="np. read, write, execute, GET, POST, DELETE (* = dowolna)" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Nazwa akcji żądanej przez podmiot. Użyj '*' aby reguła dotyczyła wszystkich akcji.</span>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="p-3 bg-light rounded border">
+                                        <span class="fw-bold small d-block mb-1">Szybkie ustawienia akcji:</span>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => model.Action = "*")">Wszystkie (*)</button>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => model.Action = "read")">Odczyt (read)</button>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => model.Action = "write")">Zapis (write)</button>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => model.Action = "execute")">Wykonanie (execute)</button>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => model.Action = "GET")">GET</button>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary btn-sm" @onclick="@(() => model.Action = "POST")">POST</button>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    @* KARTA 3: Wymagania Podmiotu (Subject / PIP) *@
+                    <RadzenTabsItem Text="3. Wymagania Podmiotu (PIP / RBAC)">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <div class="p-3 bg-light rounded border">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <RadzenIcon Icon="badge" Style="color: var(--rz-primary);" />
+                                    <span class="fw-bold">Integracja z Policy Information Point (PIP)</span>
+                                </div>
+                                <span class="text-muted small">
+                                    PIP automatycznie pobiera role, roszczenia (claims) oraz status aktywności użytkownika z bazy <strong>AspNetCoreIdentity</strong>.
+                                </span>
+                            </div>
+
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border h-100">
+                                        <RadzenCheckBox @bind-Value="model.RequireAuthenticated" Name="RequireAuthenticated" />
+                                        <div>
+                                            <RadzenLabel Text="Wymagaj Uwierzytelnienia" Component="RequireAuthenticated" Class="fw-bold d-block" />
+                                            <span class="text-muted small">Podmiot musi być pomyślnie uwierzytelniony (anonimowe żądania zostaną odrzucone).</span>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border h-100">
+                                        <RadzenCheckBox @bind-Value="model.RequireActiveUser" Name="RequireActiveUser" />
+                                        <div>
+                                            <RadzenLabel Text="Wymagaj Aktywnego Konta (Nie zablokowane)" Component="RequireActiveUser" Class="fw-bold d-block" />
+                                            <span class="text-muted small">Weryfikuje w Identity, czy użytkownik nie podlega blokadzie (Lockout).</span>
+                                        </div>
+                                    </div>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            <RadzenRow Gap="1rem">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Wymagane Role Podmiotu (RBAC)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.SubjectRoles" Name="SubjectRoles" Class="w-100" Placeholder="np. Admin, Manager, Operator" />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Wymagane role rozdzielone przecinkami. Użytkownik musi posiadać przynajmniej jedną z wymienionych ról.</span>
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Wymagane Roszczenia (Claims)" Class="w-100">
+                                        <RadzenTextBox @bind-Value="model.SubjectRequiredClaims" Name="SubjectRequiredClaims" Class="w-100" Placeholder='np. department=IT, clearance=topsecret lub JSON {"dept":"IT"}' />
+                                    </RadzenFormField>
+                                    <span class="text-muted small">Pary typ=wartość roszczeń lub format JSON. PIP weryfikuje ich obecność w profilu tożsamości.</span>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    @* KARTA 4: Zaawansowane Warunki Logiczne (ABAC) *@
+                    <RadzenTabsItem Text="4. Zaawansowane Warunki (ABAC)">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <div class="p-3 bg-light rounded border">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <RadzenIcon Icon="tune" Style="color: var(--rz-info);" />
+                                    <span class="fw-bold">Attribute-Based Access Control (ABAC)</span>
+                                </div>
+                                <span class="text-muted small">
+                                    Opcjonalne zaawansowane wyrażenie warunkowe oparte o kontekst zapytania (context), atrybuty podmiotu (subject) i zasobu (resource).
+                                </span>
+                            </div>
+
+                            <RadzenFormField Text="Wyrażenie Warunkowe (Condition Expression)" Class="w-100">
+                                <RadzenTextArea @bind-Value="model.ConditionExpression" Name="ConditionExpression" Rows="5" Class="w-100 font-monospace" Placeholder='np. context.environment == "production" lub subject.email.endsWith("@company.com")' />
+                            </RadzenFormField>
+                        </RadzenStack>
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
+
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => NavigationManager.NavigateTo("admin/authzen/policies"))" />
+                <RadzenButton ButtonType="ButtonType.Submit" Text="@(IsNew ? "Utwórz Politykę" : "Zapisz Zmiany")" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSubmitting" />
+            </div>
+        </RadzenTemplateForm>
+    </RadzenCard>
+</RadzenStack>

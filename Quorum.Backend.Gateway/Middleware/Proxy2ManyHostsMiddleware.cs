@@ -7,6 +7,7 @@ using Quorum.Backend.Gateway.Services;
 using Quorum.Backend.Gateway.Telemetry;
 using Microsoft.AspNetCore.Http.Extensions;
 using Quorum.Backend.EntityFramework.Models;
+using Quorum.Backend.EntityFramework.AuthZen;
 
 namespace Quorum.Backend.Gateway.Middleware;
 
@@ -26,7 +27,7 @@ public class Proxy2ManyHostsMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, IGatewayRouteCache routeCache)
+    public async Task InvokeAsync(HttpContext context, IGatewayRouteCache routeCache, IAuthZenPepClient pepClient)
     {
         var uri = context.Request.GetDisplayUrl();
         var method = context.Request.Method;
@@ -153,6 +154,97 @@ public class Proxy2ManyHostsMiddleware
                         }
                     }
                 }
+            }
+
+            // 3b. Weryfikacja PEP (Policy Enforcement Point) - standard AuthZEN
+            if (matchedRoute.EnablePep)
+            {
+                using var pepActivity = GatewayDiagnostics.ActivitySource.StartActivity("Proxy2ManyHosts:PEP:AuthZenEvaluation");
+
+                // Pobranie tożsamości użytkownika (sub, nameidentifier lub name)
+                var subjectId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                    ?? context.User.FindFirst("sub")?.Value
+                    ?? context.User.Identity?.Name
+                    ?? (context.User.Identity?.IsAuthenticated == true ? "authenticated_user" : "anonymous");
+
+                // Agregacja claims użytkownika z kontekstu tożsamości
+                var userClaims = new Dictionary<string, object?>();
+                foreach (var claim in context.User.Claims)
+                {
+                    if (!userClaims.ContainsKey(claim.Type))
+                    {
+                        userClaims[claim.Type] = claim.Value;
+                    }
+                }
+
+                var pepRequest = new AuthZenEvaluationRequest
+                {
+                    Subject = new AuthZenSubject
+                    {
+                        Type = "user",
+                        Id = subjectId,
+                        Properties = new Dictionary<string, object?>
+                        {
+                            ["is_authenticated"] = context.User.Identity?.IsAuthenticated == true,
+                            ["auth_type"] = context.User.Identity?.AuthenticationType,
+                            ["claims"] = userClaims
+                        }
+                    },
+                    Action = new AuthZenAction
+                    {
+                        Name = !string.IsNullOrWhiteSpace(matchedRoute.PepAction) ? matchedRoute.PepAction : method
+                    },
+                    Resource = new AuthZenResource
+                    {
+                        Type = !string.IsNullOrWhiteSpace(matchedRoute.PepResourceType) ? matchedRoute.PepResourceType : "route",
+                        Id = !string.IsNullOrWhiteSpace(matchedRoute.PepResourceId) ? matchedRoute.PepResourceId : requestPath,
+                        Properties = new Dictionary<string, object?>
+                        {
+                            ["route_id"] = matchedRoute.Id,
+                            ["route_name"] = matchedRoute.RouteName,
+                            ["match_pattern"] = matchedRoute.MatchPattern,
+                            ["upstream_host"] = matchedRoute.AddressHost
+                        }
+                    },
+                    Context = new Dictionary<string, object?>
+                    {
+                        ["client_ip"] = context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        ["host"] = context.Request.Host.Value,
+                        ["scheme"] = context.Request.Scheme,
+                        ["path"] = requestPath,
+                        ["trace_id"] = activity?.TraceId.ToString()
+                    }
+                };
+
+                var pepResult = await pepClient.EvaluateAsync(pepRequest, matchedRoute.PepPdpEndpoint, context.RequestAborted);
+
+                pepActivity?.SetTag("authzen.decision", pepResult.Decision);
+                pepActivity?.SetTag("authzen.reason", pepResult.Context?.Reason);
+                pepActivity?.SetTag("authzen.policy_id", pepResult.Context?.PolicyId);
+
+                if (!pepResult.Decision)
+                {
+                    activity?.SetTag(GatewayDiagnostics.Tags.HttpResponseStatusCode, (int)HttpStatusCode.Forbidden);
+                    activity?.SetStatus(ActivityStatusCode.Error, $"AuthZEN PEP Odmowa dostępu: {pepResult.Context?.Reason ?? "Odmowa przez silnik decyzyjny PDP"}");
+
+                    _logger.LogWarning("AuthZEN PEP: Odmowa dostępu do {Method} {Path} dla {Subject}. Powód: {Reason} | TraceId: {TraceId}",
+                        method, requestPath, subjectId, pepResult.Context?.Reason ?? "Brak uprawnień", activity?.TraceId.ToString());
+
+                    context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        error = "access_denied",
+                        decision = false,
+                        reason = pepResult.Context?.Reason ?? "Odmowa dostępu przez silnik decyzyjny PDP w standardzie AuthZEN.",
+                        policy_id = pepResult.Context?.PolicyId,
+                        trace_id = activity?.TraceId.ToString()
+                    });
+                    return;
+                }
+
+                _logger.LogInformation("AuthZEN PEP: Zezwolono na dostęp do {Method} {Path} dla {Subject}. Polityka: {Policy}",
+                    method, requestPath, subjectId, pepResult.Context?.PolicyId ?? "Permitted");
             }
 
             // 4. Konstruowanie docelowego URI z podstawieniem grup Regex / Szablonu

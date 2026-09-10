@@ -161,6 +161,41 @@ public class GatewayRoute
     /// </summary>
     public bool ForwardOriginalHost { get; set; } = true;
 
+    // --- Konfiguracja AuthZEN PEP (Policy Enforcement Point) ---
+
+    /// <summary>
+    /// Czy włączyć egzekwowanie polityki AuthZEN PEP dla tej trasy API Gateway.
+    /// Jeśli true, żądanie zostanie przechwycone i wstrzymane w celu weryfikacji w PDP.
+    /// </summary>
+    public bool EnablePep { get; set; } = false;
+
+    /// <summary>
+    /// Niestandardowa nazwa akcji przekazywana do PDP (np. "can_read", "orders.create").
+    /// Jeśli pusta, PEP użyje metody HTTP (GET, POST, etc.).
+    /// </summary>
+    [MaxLength(64)]
+    public string? PepAction { get; set; }
+
+    /// <summary>
+    /// Typ zasobu przekazywany do PDP (domyślnie "route").
+    /// </summary>
+    [MaxLength(64)]
+    public string? PepResourceType { get; set; } = "route";
+
+    /// <summary>
+    /// Niestandardowy identyfikator zasobu przekazywany do PDP (np. "orders-service", "billing-api").
+    /// Jeśli pusty, PEP użyje ścieżki żądania (context.Request.Path).
+    /// </summary>
+    [MaxLength(255)]
+    public string? PepResourceId { get; set; }
+
+    /// <summary>
+    /// Opcjonalny dedykowany adres URL silnika decyzyjnego PDP dla tej konkretnej trasy.
+    /// Jeśli pusty, PEP użyje globalnie skonfigurowanego endpointu PDP z opcji bramki.
+    /// </summary>
+    [MaxLength(512)]
+    public string? PepPdpEndpoint { get; set; }
+
     /// <summary>
     /// Data utworzenia rekordu
     /// </summary>

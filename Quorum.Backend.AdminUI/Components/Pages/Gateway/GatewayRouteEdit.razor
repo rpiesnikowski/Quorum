@@ -442,8 +442,80 @@
                         </RadzenStack>
                     </RadzenTabsItem>
 
-                    @* KARTA 4: Zaawansowane Parametry Proxy & Wydajność *@
-                    <RadzenTabsItem Text="4. Zaawansowane Parametry Proxy">
+                    @* KARTA 4: Weryfikacja AuthZEN (PEP - Policy Enforcement Point) *@
+                    <RadzenTabsItem Text="4. Autoryzacja AuthZEN (PEP)">
+                        <RadzenStack Gap="1.25rem" Class="mt-3">
+                            <div class="p-3 bg-light rounded border">
+                                <div class="d-flex align-items-center gap-3">
+                                    <RadzenIcon Icon="security" Style="font-size: 2rem; color: var(--rz-primary);" />
+                                    <div>
+                                        <RadzenText TextStyle="TextStyle.Subtitle1" Class="fw-bold mb-1">
+                                            AuthZEN PEP (Policy Enforcement Point)
+                                        </RadzenText>
+                                        <RadzenText TextStyle="TextStyle.Body2" Class="text-muted mb-0">
+                                            Włączenie weryfikacji PEP wstrzymuje wykonanie zapytania na bramce i przesyła w czasie rzeczywistym zapytanie ewaluacyjne do PDP (Policy Decision Point): <em>„Czy ten podmiot może wykonać tę akcję na tym zasobie?”</em>.
+                                        </RadzenText>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-3 p-3 rounded border @(model.EnablePep ? "bg-primary-subtle border-primary" : "bg-light")">
+                                <RadzenCheckBox @bind-Value="model.EnablePep" Name="EnablePep" />
+                                <div>
+                                    <RadzenLabel Text="Włącz weryfikację PEP (Policy Enforcement Point) dla tej trasy" Component="EnablePep" Class="fw-bold d-block" />
+                                    <span class="text-muted small">Bramka API przechwyci żądanie i sprawdzi uprawnienia w silniku decyzyjnym PDP przed przekazaniem do serwera docelowego.</span>
+                                </div>
+                            </div>
+
+                            @if (model.EnablePep)
+                            {
+                                <RadzenRow Gap="1rem">
+                                    <RadzenColumn Size="12" SizeMD="4">
+                                        <RadzenFormField Text="Akcja AuthZEN (Action)" Class="w-100">
+                                            <RadzenTextBox @bind-Value="model.PepAction" Name="PepAction" Class="w-100" Placeholder="np. read, write, execute, GET, POST (puste = metoda HTTP)" />
+                                        </RadzenFormField>
+                                        <span class="text-muted small">Nazwa akcji żądanej przez podmiot. Jeśli puste, użyta zostanie metoda HTTP żądania.</span>
+                                    </RadzenColumn>
+
+                                    <RadzenColumn Size="12" SizeMD="4">
+                                        <RadzenFormField Text="Typ Zasobu (Resource Type)" Class="w-100">
+                                            <RadzenTextBox @bind-Value="model.PepResourceType" Name="PepResourceType" Class="w-100" Placeholder="np. route, api, invoice, order" />
+                                        </RadzenFormField>
+                                        <span class="text-muted small">Typ logiczny zasobu (domyślnie 'route').</span>
+                                    </RadzenColumn>
+
+                                    <RadzenColumn Size="12" SizeMD="4">
+                                        <RadzenFormField Text="Identyfikator Zasobu (Resource ID)" Class="w-100">
+                                            <RadzenTextBox @bind-Value="model.PepResourceId" Name="PepResourceId" Class="w-100" Placeholder="np. custom_id lub puste (użyje ścieżki URL)" />
+                                        </RadzenFormField>
+                                        <span class="text-muted small">Identyfikator zasobu. Jeśli puste, użyta zostanie bieżąca ścieżka zapytania.</span>
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                <RadzenRow Gap="1rem">
+                                    <RadzenColumn Size="12">
+                                        <RadzenFormField Text="Dedykowany Endpoint PDP (Opcjonalny)" Class="w-100">
+                                            <RadzenTextBox @bind-Value="model.PepPdpEndpoint" Name="PepPdpEndpoint" Class="w-100" Placeholder="np. http://localhost:5000/authzen/evaluation/v1/evaluations (lub puste dla domyślnego)" />
+                                        </RadzenFormField>
+                                        <span class="text-muted small">Adres URL punktu decyzyjnego PDP. Pozostaw puste, aby używać globalnego endpointu skonfigurowanego w Gateway (Options: AuthZen:PdpEndpointUrl).</span>
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                <div class="p-3 rounded border bg-light">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <RadzenIcon Icon="verified_user" Style="color: var(--rz-success);" />
+                                        <span class="fw-bold small">Polityka Bezpieczeństwa: Fail-Closed</span>
+                                    </div>
+                                    <span class="text-muted small">
+                                        W przypadku niedostępności PDP, błędu sieciowego lub przekroczenia limitu czasu, PEP natychmiast odrzuca żądanie ze statusem <strong>403 Forbidden</strong>, zapewniając pełne bezpieczeństwo danych.
+                                    </span>
+                                </div>
+                            }
+                        </RadzenStack>
+                    </RadzenTabsItem>
+
+                    @* KARTA 5: Zaawansowane Parametry Proxy & Wydajność *@
+                    <RadzenTabsItem Text="5. Zaawansowane Parametry Proxy">
                         <RadzenStack Gap="1.25rem" Class="mt-3">
                             <RadzenRow Gap="1rem">
                                 <RadzenColumn Size="12" SizeMD="4">

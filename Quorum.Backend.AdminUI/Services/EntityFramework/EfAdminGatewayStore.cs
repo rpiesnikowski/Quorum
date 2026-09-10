@@ -102,6 +102,11 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             Priority = model.Priority,
             EnableCaching = model.EnableCaching,
             ForwardOriginalHost = model.ForwardOriginalHost,
+            EnablePep = model.EnablePep,
+            PepAction = model.PepAction,
+            PepResourceType = model.PepResourceType,
+            PepResourceId = model.PepResourceId,
+            PepPdpEndpoint = model.PepPdpEndpoint,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -178,6 +183,11 @@ public class EfAdminGatewayStore : IAdminGatewayStore
         entity.Priority = model.Priority;
         entity.EnableCaching = model.EnableCaching;
         entity.ForwardOriginalHost = model.ForwardOriginalHost;
+        entity.EnablePep = model.EnablePep;
+        entity.PepAction = model.PepAction;
+        entity.PepResourceType = model.PepResourceType;
+        entity.PepResourceId = model.PepResourceId;
+        entity.PepPdpEndpoint = model.PepPdpEndpoint;
         entity.UpdatedAt = DateTime.UtcNow;
 
         entity.Scopes.Clear();
@@ -843,6 +853,11 @@ public class EfAdminGatewayStore : IAdminGatewayStore
             Priority = r.Priority,
             EnableCaching = r.EnableCaching,
             ForwardOriginalHost = r.ForwardOriginalHost,
+            EnablePep = r.EnablePep,
+            PepAction = r.PepAction,
+            PepResourceType = r.PepResourceType,
+            PepResourceId = r.PepResourceId,
+            PepPdpEndpoint = r.PepPdpEndpoint,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt,
             AllowedHttpMethods = methods,
