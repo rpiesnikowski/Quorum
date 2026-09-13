@@ -15,9 +15,41 @@ namespace Quorum.FineGrainedAuth.AuthZen.Services.PDP;
 /// </summary>
 public class AuthZenPdpEngine : IAuthZenPolicyDecisionPoint
 {
-    private readonly IAuthZenDbContext _dbContext;
+    private readonly IAuthZenDbContext? _dbContext;
     private readonly IAuthZenPolicyInformationPoint _pip;
     private readonly ILogger<AuthZenPdpEngine> _logger;
+
+    private static readonly List<AuthZenPolicy> _fallbackDefaultPolicies = new()
+    {
+        new AuthZenPolicy
+        {
+            Id = 1,
+            Name = "Zezwolenie Odczytu API dla Użytkowników",
+            Description = "Domyślna polityka AuthZEN (In-Memory Fallback)",
+            SubjectType = "user",
+            SubjectRoles = "User,Admin",
+            Action = "GET",
+            ResourceType = "route",
+            ResourcePattern = "/api/*",
+            Effect = "Permit",
+            IsEnabled = true,
+            Priority = 10
+        },
+        new AuthZenPolicy
+        {
+            Id = 2,
+            Name = "Pełny Dostęp Administratora (SuperUser)",
+            Description = "Domyślna polityka AuthZEN dla roli Administratora (In-Memory Fallback)",
+            SubjectType = "role",
+            SubjectRoles = "Admin",
+            Action = "*",
+            ResourceType = "*",
+            ResourcePattern = "*",
+            Effect = "Permit",
+            IsEnabled = true,
+            Priority = 100
+        }
+    };
 
     public AuthZenPdpEngine(
         IAuthZenDbContext dbContext,
@@ -25,6 +57,15 @@ public class AuthZenPdpEngine : IAuthZenPolicyDecisionPoint
         ILogger<AuthZenPdpEngine> logger)
     {
         _dbContext = dbContext;
+        _pip = pip;
+        _logger = logger;
+    }
+
+    public AuthZenPdpEngine(
+        IAuthZenPolicyInformationPoint pip,
+        ILogger<AuthZenPdpEngine> logger)
+    {
+        _dbContext = null;
         _pip = pip;
         _logger = logger;
     }
@@ -48,12 +89,28 @@ public class AuthZenPdpEngine : IAuthZenPolicyDecisionPoint
         }
 
         // 2. Pobranie aktywnych polityk autoryzacyjnych posortowanych według priorytetu malejąco
-        var policies = await _dbContext.AuthZenPolicies
-            .AsNoTracking()
-            .Where(p => p.IsEnabled)
-            .OrderByDescending(p => p.Priority)
-            .ThenBy(p => p.Name)
-            .ToListAsync(cancellationToken);
+        List<AuthZenPolicy> policies;
+        if (_dbContext != null)
+        {
+            try
+            {
+                policies = await _dbContext.AuthZenPolicies
+                    .AsNoTracking()
+                    .Where(p => p.IsEnabled)
+                    .OrderByDescending(p => p.Priority)
+                    .ThenBy(p => p.Name)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[AuthZEN PDP] Błąd odczytu polityk z IAuthZenDbContext. Użycie reguł fallback w pamięci.");
+                policies = _fallbackDefaultPolicies.Where(p => p.IsEnabled).OrderByDescending(p => p.Priority).ToList();
+            }
+        }
+        else
+        {
+            policies = _fallbackDefaultPolicies.Where(p => p.IsEnabled).OrderByDescending(p => p.Priority).ToList();
+        }
 
         // 3. Sprawdzenie braku polityk (Fallback bezpieczny: domyślna odmowa)
         if (policies.Count == 0)

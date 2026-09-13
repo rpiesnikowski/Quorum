@@ -77,13 +77,22 @@ Quorum.FineGrainedAuth/
 ```csharp
 using Quorum.FineGrainedAuth.Extensions;
 
-// Register AuthZEN PDP, PIP, and PAP
+// 1. Opcjonalnie: Konfiguracja dedykowanej bazy danych dla reguł AuthZEN (domyślnie SQLite 'authzen_policies.db')
+// builder.Services.AddAuthZenDbContext(options => options.UseNpgsql(connectionString));
+// Lub współdzielenie istniejącego kontekstu:
+// builder.Services.AddAuthZenDbContext<ApplicationDbContext>();
+
+// 2. Rejestracja AuthZEN PDP, PIP oraz PAP (automatycznie rejestruje IAuthZenDbContext jeśli nie został podany)
 builder.Services.AddAuthZenPdp<ApplicationUser>();
 
-// Register OpenFGA Client & Adapter
-builder.Services.AddOpenFga();
+// 3. Rejestracja klienta i adaptera OpenFGA
+builder.Services.AddOpenFga(options =>
+{
+    options.ApiUrl = "http://localhost:8080";
+    options.StoreId = "01JK7M0P000000000000000000";
+});
 
-// Or register full fine-grained auth suite:
+// Lub rejestracja pełnego pakietu (AuthZEN + OpenFGA):
 builder.Services.AddFineGrainedAuth<ApplicationUser>();
 ```
 

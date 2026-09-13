@@ -18,12 +18,31 @@ public interface IAuthZenDbContext
 /// </summary>
 public class AuthZenDbContext : DbContext, IAuthZenDbContext
 {
+    public AuthZenDbContext()
+    {
+    }
+
     public AuthZenDbContext(DbContextOptions<AuthZenDbContext> options)
         : base(options)
     {
     }
 
+    public AuthZenDbContext(DbContextOptions options)
+        : base(options)
+    {
+    }
+
     public DbSet<AuthZenPolicy> AuthZenPolicies { get; set; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlite("Data Source=authzen_policies.db");
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -44,6 +63,38 @@ public class AuthZenDbContext : DbContext, IAuthZenDbContext
             entity.HasIndex(e => e.Name);
             entity.HasIndex(e => e.Priority);
             entity.HasIndex(e => e.IsEnabled);
+
+            // Dane początkowe (Seed)
+            entity.HasData(
+                new AuthZenPolicy
+                {
+                    Id = 1,
+                    Name = "Zezwolenie Odczytu API dla Użytkowników",
+                    Description = "Domyślna polityka AuthZEN zezwalająca uwierzytelnionym użytkownikom na operacje odczytu GET",
+                    SubjectType = "user",
+                    SubjectRoles = "User,Admin",
+                    Action = "GET",
+                    ResourceType = "route",
+                    ResourcePattern = "/api/*",
+                    Effect = "Permit",
+                    IsEnabled = true,
+                    Priority = 10
+                },
+                new AuthZenPolicy
+                {
+                    Id = 2,
+                    Name = "Pełny Dostęp Administratora (SuperUser)",
+                    Description = "Domyślna polityka AuthZEN nadająca roli Admin pełne uprawnienia do wszystkich zasobów i akcji",
+                    SubjectType = "role",
+                    SubjectRoles = "Admin",
+                    Action = "*",
+                    ResourceType = "*",
+                    ResourcePattern = "*",
+                    Effect = "Permit",
+                    IsEnabled = true,
+                    Priority = 100
+                }
+            );
         });
     }
 }
