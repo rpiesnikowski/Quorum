@@ -89,7 +89,6 @@ public static class AdminUiServiceCollectionExtensions
         services.TryAddScoped<IAdminIdentityResourceStore, EfAdminIdentityResourceStore>();
         services.TryAddScoped<IAdminFederationStore, EfAdminFederationStore>();
         services.TryAddScoped<IAdminGatewayStore, EfAdminGatewayStore>();
-        services.TryAddScoped<IAdminAuthZenPolicyStore, EfAdminAuthZenPolicyStore>();
         services.TryAddScoped<IAdminGrantStore, EfAdminGrantStore>();
         services.TryAddScoped<IAdminDashboardStore, EfAdminDashboardStore<TUser>>();
         services.TryAddScoped<IAdminImportExportService, EfAdminImportExportService<TUser>>();

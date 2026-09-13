@@ -1,6 +1,6 @@
-using Quorum.Backend.EntityFramework.AuthZen;
+using Quorum.FineGrainedAuth.AuthZen.Models;
 
-namespace Quorum.Backend.Gateway.Services;
+namespace Quorum.FineGrainedAuth.AuthZen.Services.PEP;
 
 /// <summary>
 /// Klient egzekwowania polityk PEP (Policy Enforcement Point) w standardzie AuthZEN.

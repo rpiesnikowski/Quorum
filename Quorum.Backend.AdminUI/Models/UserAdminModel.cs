@@ -43,6 +43,4 @@ public class UserAdminModel
     public string? NewPassword { get; set; }
 
     public string? ConfirmPassword { get; set; }
-    
-    public bool IsActive { get; set; }
 }

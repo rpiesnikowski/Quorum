@@ -3,12 +3,11 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Quorum.Backend.AdminAPI.Services.PIP;
-using Quorum.Backend.EntityFramework.AuthZen;
-using Quorum.Backend.EntityFramework.Data;
-using Quorum.Backend.EntityFramework.Models;
+using Quorum.FineGrainedAuth.AuthZen.Data;
+using Quorum.FineGrainedAuth.AuthZen.Models;
+using Quorum.FineGrainedAuth.AuthZen.Services.PIP;
 
-namespace Quorum.Backend.AdminAPI.Services.PDP;
+namespace Quorum.FineGrainedAuth.AuthZen.Services.PDP;
 
 /// <summary>
 /// Domyślny silnik decyzyjny PDP (Policy Decision Point) w standardzie AuthZEN 1.0.

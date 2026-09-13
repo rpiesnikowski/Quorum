@@ -1,6 +1,6 @@
-using Quorum.Backend.EntityFramework.AuthZen;
+using Quorum.FineGrainedAuth.AuthZen.Models;
 
-namespace Quorum.Backend.AdminAPI.Services.PDP;
+namespace Quorum.FineGrainedAuth.AuthZen.Services.PDP;
 
 /// <summary>
 /// PDP (Policy Decision Point): Silnik decyzyjny w architekturze AuthZEN / ABAC.

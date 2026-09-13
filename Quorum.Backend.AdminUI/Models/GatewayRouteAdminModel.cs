@@ -242,37 +242,6 @@ public class GatewayRouteAdminModel
     /// </summary>
     public string BodyTransformType { get; set; } = "Fluid";
 
-    // --- Konfiguracja AuthZEN PEP (Policy Enforcement Point) ---
-
-    /// <summary>
-    /// Czy włączona jest weryfikacja polityk AuthZEN PEP dla tej trasy
-    /// </summary>
-    public bool EnablePep { get; set; } = false;
-
-    /// <summary>
-    /// Niestandardowa akcja AuthZEN (np. "read", "orders.create", lub domyślnie metoda HTTP)
-    /// </summary>
-    [MaxLength(64)]
-    public string? PepAction { get; set; }
-
-    /// <summary>
-    /// Typ zasobu AuthZEN (domyślnie "route")
-    /// </summary>
-    [MaxLength(64)]
-    public string? PepResourceType { get; set; } = "route";
-
-    /// <summary>
-    /// Identyfikator zasobu AuthZEN (np. "orders-service", domyślnie ścieżka żądania)
-    /// </summary>
-    [MaxLength(255)]
-    public string? PepResourceId { get; set; }
-
-    /// <summary>
-    /// Dedykowany endpoint PDP dla tej trasy (opcjonalny override)
-    /// </summary>
-    [MaxLength(512)]
-    public string? PepPdpEndpoint { get; set; }
-
     /// <summary>
     /// Data utworzenia rekordu
     /// </summary>
@@ -284,10 +253,6 @@ public class GatewayRouteAdminModel
     public DateTime? UpdatedAt { get; set; }
 
     // --- Podsumowania UI ---
-    public string PepSummary => EnablePep 
-        ? $"AuthZEN PEP Włączony ({(!string.IsNullOrEmpty(PepAction) ? PepAction : "Auto-HTTP")})" 
-        : "Wyłączony";
-
     public string ScopesSummary => AllowAnonymous 
         ? "Anonimowy (Publiczny)" 
         : (RequiredScopes != null && RequiredScopes.Count > 0 ? string.Join(", ", RequiredScopes) : "Wymagany Token JWT (Bez Scopes)");

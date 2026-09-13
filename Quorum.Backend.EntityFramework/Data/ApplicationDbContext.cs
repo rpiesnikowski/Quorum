@@ -4,7 +4,7 @@ using Quorum.Backend.EntityFramework.Models;
 
 namespace Quorum.Backend.EntityFramework.Data;
 
-public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederationDbContext, IGatewayDbContext, IAuthZenDbContext
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederationDbContext, IGatewayDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -26,31 +26,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IFederat
     /// </summary>
     public DbSet<GatewayRouteScope> GatewayRouteScopes { get; set; } = null!;
 
-    /// <summary>
-    /// Tabela polityk autoryzacyjnych AuthZEN dla silnika decyzyjnego PDP i panelu PAP.
-    /// </summary>
-    public DbSet<AuthZenPolicy> AuthZenPolicies { get; set; } = null!;
-
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-
-        builder.Entity<AuthZenPolicy>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(128);
-            entity.Property(e => e.Effect).IsRequired().HasMaxLength(16).HasDefaultValue("Permit");
-            entity.Property(e => e.Action).IsRequired().HasMaxLength(128).HasDefaultValue("*");
-            entity.Property(e => e.ResourceType).HasMaxLength(64).HasDefaultValue("route");
-            entity.Property(e => e.ResourcePattern).IsRequired().HasMaxLength(255).HasDefaultValue("*");
-            entity.Property(e => e.SubjectType).HasMaxLength(64).HasDefaultValue("user");
-            entity.Property(e => e.IsEnabled).HasDefaultValue(true);
-            entity.Property(e => e.Priority).HasDefaultValue(0);
-
-            entity.HasIndex(e => e.Name);
-            entity.HasIndex(e => e.Priority);
-            entity.HasIndex(e => e.IsEnabled);
-        });
 
         builder.Entity<OidcFederationProvider>(entity =>
         {

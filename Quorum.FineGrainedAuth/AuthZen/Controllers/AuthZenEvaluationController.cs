@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using Quorum.Backend.AdminAPI.Services.PDP;
-using Quorum.Backend.AdminAPI.Services.PIP;
-using Quorum.Backend.EntityFramework.AuthZen;
+using Microsoft.Extensions.Logging;
+using Quorum.FineGrainedAuth.AuthZen.Models;
+using Quorum.FineGrainedAuth.AuthZen.Services.PDP;
+using Quorum.FineGrainedAuth.AuthZen.Services.PIP;
 
-namespace Quorum.Backend.AdminAPI.Controllers;
+namespace Quorum.FineGrainedAuth.AuthZen.Controllers;
 
 /// <summary>
 /// Kontroler REST API dla silnika decyzyjnego PDP (Policy Decision Point)

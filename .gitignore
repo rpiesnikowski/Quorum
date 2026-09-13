@@ -13,6 +13,8 @@ coverage/
 [Ll]ogs/
 out/
 build/
+.dotnet/
+dotnet-install.sh
 
 ## Pakiety NuGet
 *.nupkg

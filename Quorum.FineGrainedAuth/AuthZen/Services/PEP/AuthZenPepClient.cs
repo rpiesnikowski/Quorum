@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Quorum.Backend.EntityFramework.AuthZen;
+using Quorum.FineGrainedAuth.AuthZen.Models;
 
-namespace Quorum.Backend.Gateway.Services;
+namespace Quorum.FineGrainedAuth.AuthZen.Services.PEP;
 
 /// <summary>
 /// Domyślna implementacja klienta AuthZEN PEP komunikująca się z PDP przez protokół REST API.

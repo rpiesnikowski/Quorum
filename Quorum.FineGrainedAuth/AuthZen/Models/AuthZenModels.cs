@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Quorum.Backend.EntityFramework.AuthZen;
+namespace Quorum.FineGrainedAuth.AuthZen.Models;
 
 /// <summary>
 /// Model podmiotu (Subject) w specyfikacji AuthZEN 1.0 (OpenID Foundation).

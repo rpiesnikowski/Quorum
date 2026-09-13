@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Quorum.Backend.AdminUI.Models;
+namespace Quorum.FineGrainedAuth.AuthZen.Models;
 
 /// <summary>
 /// Model administracyjny dla polityki autoryzacyjnej AuthZEN PAP (Policy Administration Point).

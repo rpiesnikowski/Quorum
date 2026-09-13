@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Quorum.FineGrainedAuth</RootNamespace>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Quorum.FineGrainedAuth</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Robert Pieśnikowski</Authors>
+    <Product>Quorum Fine-Grained Authorization (AuthZEN &amp; OpenFGA)</Product>
+    <Title>Quorum Fine-Grained Authorization - AuthZEN &amp; OpenFGA</Title>
+    <Description>Niezależny moduł Fine-Grained Authorization (FGA) implementujący specyfikację AuthZEN (OpenID Foundation) oraz framework OpenFGA (Google Zanzibar model). Zapewnia silniki decyzyjne PDP, źródła atrybutów PIP, adaptery relacyjne ReBAC oraz klientów PEP.</Description>
+    <PackageTags>authzen;openfga;fga;zanzibar;authorization;abac;rbac;rebac;pdp;pip;pep;dotnet10</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/rpiesnikowski/Quorum</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rpiesnikowski/Quorum</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="UI\**" />
+    <Content Remove="UI\**" />
+    <None Include="UI\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

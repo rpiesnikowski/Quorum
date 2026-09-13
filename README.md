@@ -26,15 +26,15 @@ The project comprises a cohesive ecosystem of modules built on **.NET 10**:
                               │
                               ▼
                   ┌────────────────────────┐
-                  │ Quorum.Backend.Gateway │ ◄── [OIDC Scopes + AuthZEN PEP]
+                  │ Quorum.Backend.Gateway │ ◄── [OIDC Scopes & Reverse Proxy]
                   └─────┬────────────┬─────┘
                         │            │
          ┌──────────────┘            └──────────────┐
          ▼                                          ▼
 ┌─────────────────────────┐              ┌───────────────────────────┐
 │ Quorum.Backend          │              │ Quorum.Backend.AdminAPI   │
-│ (OIDC / Identity Server)│              │  - PDP & PIP (AuthZEN)    │
-└─────────────────────────┘              │  - Quorum Governance      │
+│ (OIDC / Identity Server)│              │  - Quorum Multi-Party     │
+└─────────────────────────┘              │  - Governance & Admin     │
          ▲                               └─────────────▲─────────────┘
          │                                             │
          └──────────────────────┬──────────────────────┘
@@ -43,6 +43,14 @@ The project comprises a cohesive ecosystem of modules built on **.NET 10**:
                   │ Quorum.Backend.AdminUI │
                   │ (Full Blazor GUI)      │
                   └────────────────────────┘
+
+    ─────────────────────────────────────────────────────────────
+    Decoupled Fine-Grained Authorization (Dedicated Project):
+                  ┌──────────────────────────────┐
+                  │   Quorum.FineGrainedAuth     │
+                  │ - AuthZEN 1.0 (PDP/PIP/PEP)  │
+                  │ - OpenFGA (Google Zanzibar)  │
+                  └──────────────────────────────┘
 ```
 
 ### 1. Identity Server (`Quorum.Backend`)
@@ -55,17 +63,18 @@ The OIDC/OAuth2 foundation based on the widely-adopted Open Identity Server ecos
 A full-featured administrative interface (Blazor / Radzen Components) dedicated to managing the identity ecosystem:
 - **OIDC Configuration**: Clients, API Scopes, and Identity Resources,
 - **Users & Permissions**: User registration, role assignments, identity federations,
-- **Grant & Quorum Management**: Oversight and multi-party approval workflows for sensitive grants,
-- **AuthZEN Policy Editor & Simulator**: Graphical policy builder and an interactive simulation tool for authorization requests.
+- **Grant & Quorum Management**: Oversight and multi-party approval workflows for sensitive grants.
 
 ### 3. Intelligent Gateway (`Quorum.Backend.Gateway`)
 A high-performance reverse proxy and enforcement node:
 - **Traffic Routing & Inspection**: Transparent request proxying to downstream backend services,
-- **Scope Enforcement (OIDC Scopes)**: Route-level token validation and privilege checks,
-- **AuthZEN Standard Implementation (OpenID Foundation)**:
-  - Functions as a **PEP (Policy Enforcement Point)**,
-  - Dispatches standardized evaluation queries to the **PDP (Policy Decision Point)** conforming to the [AuthZEN Working Group](https://openid.net/wg/authzen/) specification,
-  - Enables dynamic, fine-grained Attribute-Based and Policy-Based Access Control (ABAC/PBAC) enriched with PIP (Policy Information Point) context.
+- **Scope Enforcement (OIDC Scopes)**: Route-level token validation and privilege checks.
+
+### 4. Decoupled Fine-Grained Authorization (`Quorum.FineGrainedAuth`)
+All fine-grained authorization (FGA) logic has been extracted into a standalone, modular project:
+- **AuthZEN 1.0 (OpenID Foundation)**: PDP decision engine (`POST /access/v1/evaluation`), PIP identity attribute provider, PAP policy store, and fail-closed PEP client.
+- **OpenFGA (Google Zanzibar ReBAC model)**: Graph-based relationship tuples (`user`, `relation`, `object`), check/read/write/expand operations, and contextual tuple evaluation.
+- **AuthZEN-to-OpenFGA Adapter**: Interoperability bridge connecting AuthZEN evaluation requests directly with OpenFGA relationship models.
 
 ---
 

@@ -24,16 +24,6 @@ builder.Services.AddScoped<IGatewayDbContext>(sp => sp.GetRequiredService<Applic
 builder.Services.AddSingleton<IGatewayRouteCache, GatewayRouteCache>();
 builder.Services.AddHostedService<GatewaySignalRClientService>();
 
-// 4. Rejestracja klienta AuthZEN PEP (Policy Enforcement Point)
-builder.Services.AddHttpClient<IAuthZenPepClient, AuthZenPepClient>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(5);
-})
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-});
-
 builder.Services.AddHttpClient("GatewayProxyClient")
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {

@@ -1,24 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Quorum.Backend.AdminUI.Models;
-using Quorum.Backend.AdminUI.Services.Interfaces;
-using Quorum.Backend.EntityFramework.Data;
-using Quorum.Backend.EntityFramework.Models;
+using Quorum.FineGrainedAuth.AuthZen.Data;
+using Quorum.FineGrainedAuth.AuthZen.Models;
 
-namespace Quorum.Backend.AdminUI.Services.EntityFramework;
+namespace Quorum.FineGrainedAuth.AuthZen.Stores;
 
-/// <summary>
-/// Implementacja magazynu Entity Framework Core dla panelu PAP (Policy Administration Point) standardu AuthZEN.
-/// Umożliwia administratorom i deweloperom definiowanie, edytowanie, usuwanie i publikowanie reguł autoryzacyjnych.
-/// </summary>
-public class EfAdminAuthZenPolicyStore : IAdminAuthZenPolicyStore
+public class EfAuthZenPolicyStore : IAuthZenPolicyStore
 {
-    private readonly ApplicationDbContext _context;
-    private readonly ILogger<EfAdminAuthZenPolicyStore> _logger;
+    private readonly IAuthZenDbContext _context;
+    private readonly ILogger<EfAuthZenPolicyStore> _logger;
 
-    public EfAdminAuthZenPolicyStore(
-        ApplicationDbContext context,
-        ILogger<EfAdminAuthZenPolicyStore> logger)
+    public EfAuthZenPolicyStore(
+        IAuthZenDbContext context,
+        ILogger<EfAuthZenPolicyStore> logger)
     {
         _context = context;
         _logger = logger;
@@ -64,39 +58,35 @@ public class EfAdminAuthZenPolicyStore : IAdminAuthZenPolicyStore
 
     public async Task<AuthZenPolicyAdminModel?> GetPolicyByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AuthZenPolicies
-            .AsNoTracking()
+        var entity = await _context.AuthZenPolicies.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
-        return entity != null ? MapToModel(entity) : null;
+        return entity == null ? null : MapToModel(entity);
     }
 
     public async Task<(bool Success, string? Error)> CreatePolicyAsync(AuthZenPolicyAdminModel model, CancellationToken cancellationToken = default)
     {
-        var existing = await _context.AuthZenPolicies
-            .AnyAsync(p => p.Name.ToLower() == model.Name.ToLower(), cancellationToken);
-
-        if (existing)
+        if (await _context.AuthZenPolicies.AnyAsync(p => p.Name == model.Name, cancellationToken))
         {
             return (false, $"Polityka o nazwie '{model.Name}' już istnieje.");
         }
 
         var entity = new AuthZenPolicy
         {
-            Name = model.Name.Trim(),
-            Description = model.Description?.Trim(),
+            Name = model.Name,
+            Description = model.Description,
             IsEnabled = model.IsEnabled,
             Priority = model.Priority,
-            Effect = model.Effect.Trim(),
-            SubjectType = string.IsNullOrWhiteSpace(model.SubjectType) ? "user" : model.SubjectType.Trim(),
-            SubjectRoles = model.SubjectRoles?.Trim(),
-            SubjectRequiredClaims = model.SubjectRequiredClaims?.Trim(),
+            Effect = model.Effect,
+            SubjectType = model.SubjectType,
+            SubjectRoles = model.SubjectRoles,
+            SubjectRequiredClaims = model.SubjectRequiredClaims,
             RequireActiveUser = model.RequireActiveUser,
             RequireAuthenticated = model.RequireAuthenticated,
-            Action = string.IsNullOrWhiteSpace(model.Action) ? "*" : model.Action.Trim(),
-            ResourceType = string.IsNullOrWhiteSpace(model.ResourceType) ? "route" : model.ResourceType.Trim(),
-            ResourcePattern = string.IsNullOrWhiteSpace(model.ResourcePattern) ? "*" : model.ResourcePattern.Trim(),
-            ConditionExpression = model.ConditionExpression?.Trim(),
+            Action = model.Action,
+            ResourceType = model.ResourceType,
+            ResourcePattern = model.ResourcePattern,
+            ConditionExpression = model.ConditionExpression,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -104,9 +94,7 @@ public class EfAdminAuthZenPolicyStore : IAdminAuthZenPolicyStore
         await _context.SaveChangesAsync(cancellationToken);
 
         model.Id = entity.Id;
-        _logger.LogInformation("[AuthZEN PAP] Utworzono nową politykę autoryzacyjną: '{Name}' (ID: {Id}, Efekt: {Effect})",
-            entity.Name, entity.Id, entity.Effect);
-
+        _logger.LogInformation("[AuthZEN PAP] Utworzono nową politykę autoryzacyjną: '{Name}' (ID: {Id})", entity.Name, entity.Id);
         return (true, null);
     }
 
@@ -120,33 +108,29 @@ public class EfAdminAuthZenPolicyStore : IAdminAuthZenPolicyStore
             return (false, $"Polityka o ID {model.Id} nie została znaleziona.");
         }
 
-        var nameExists = await _context.AuthZenPolicies
-            .AnyAsync(p => p.Name.ToLower() == model.Name.ToLower() && p.Id != model.Id, cancellationToken);
-
-        if (nameExists)
+        if (await _context.AuthZenPolicies.AnyAsync(p => p.Name == model.Name && p.Id != model.Id, cancellationToken))
         {
             return (false, $"Inna polityka o nazwie '{model.Name}' już istnieje.");
         }
 
-        entity.Name = model.Name.Trim();
-        entity.Description = model.Description?.Trim();
+        entity.Name = model.Name;
+        entity.Description = model.Description;
         entity.IsEnabled = model.IsEnabled;
         entity.Priority = model.Priority;
-        entity.Effect = model.Effect.Trim();
-        entity.SubjectType = string.IsNullOrWhiteSpace(model.SubjectType) ? "user" : model.SubjectType.Trim();
-        entity.SubjectRoles = model.SubjectRoles?.Trim();
-        entity.SubjectRequiredClaims = model.SubjectRequiredClaims?.Trim();
+        entity.Effect = model.Effect;
+        entity.SubjectType = model.SubjectType;
+        entity.SubjectRoles = model.SubjectRoles;
+        entity.SubjectRequiredClaims = model.SubjectRequiredClaims;
         entity.RequireActiveUser = model.RequireActiveUser;
         entity.RequireAuthenticated = model.RequireAuthenticated;
-        entity.Action = string.IsNullOrWhiteSpace(model.Action) ? "*" : model.Action.Trim();
-        entity.ResourceType = string.IsNullOrWhiteSpace(model.ResourceType) ? "route" : model.ResourceType.Trim();
-        entity.ResourcePattern = string.IsNullOrWhiteSpace(model.ResourcePattern) ? "*" : model.ResourcePattern.Trim();
-        entity.ConditionExpression = model.ConditionExpression?.Trim();
+        entity.Action = model.Action;
+        entity.ResourceType = model.ResourceType;
+        entity.ResourcePattern = model.ResourcePattern;
+        entity.ConditionExpression = model.ConditionExpression;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("[AuthZEN PAP] Zaktualizowano politykę autoryzacyjną: '{Name}' (ID: {Id})", entity.Name, entity.Id);
-
         return (true, null);
     }
 

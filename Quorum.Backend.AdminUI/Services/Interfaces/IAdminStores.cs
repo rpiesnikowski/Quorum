@@ -79,17 +79,3 @@ public interface IAdminDashboardStore
 {
     Task<DashboardStatsModel> GetStatsAsync(CancellationToken cancellationToken = default);
 }
-
-/// <summary>
-/// Interfejs panelu PAP (Policy Administration Point) do zarządzania regułami autoryzacji AuthZEN.
-/// </summary>
-public interface IAdminAuthZenPolicyStore
-{
-    Task<PagedResult<AuthZenPolicyAdminModel>> GetPoliciesAsync(string? search = null, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default);
-    Task<AuthZenPolicyAdminModel?> GetPolicyByIdAsync(int id, CancellationToken cancellationToken = default);
-    Task<(bool Success, string? Error)> CreatePolicyAsync(AuthZenPolicyAdminModel model, CancellationToken cancellationToken = default);
-    Task<(bool Success, string? Error)> UpdatePolicyAsync(AuthZenPolicyAdminModel model, CancellationToken cancellationToken = default);
-    Task<(bool Success, string? Error)> DeletePolicyAsync(int id, CancellationToken cancellationToken = default);
-    Task<(bool Success, string? Error)> TogglePolicyStatusAsync(int id, CancellationToken cancellationToken = default);
-}
-

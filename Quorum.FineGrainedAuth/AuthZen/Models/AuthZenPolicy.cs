@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Quorum.Backend.EntityFramework.Models;
+namespace Quorum.FineGrainedAuth.AuthZen.Models;
 
 /// <summary>
 /// Reprezentuje regułę / politykę autoryzacyjną AuthZEN zarządzaną w PAP (Policy Administration Point).

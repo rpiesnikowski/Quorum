@@ -23,18 +23,17 @@ import { PROJECT_FILES, ProjectFile } from './data/projectFiles';
 import { OidcFlowTester } from './components/OidcFlowTester/OidcFlowTester';
 import { TelemetryDashboard } from './components/Telemetry/TelemetryDashboard';
 import { SqlMigrationsTab } from './components/Migrations/SqlMigrationsTab';
-import { AuthZenSimulatorTab } from './components/AdminUI/AuthZenSimulatorTab';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState<ProjectFile>(PROJECT_FILES[0]);
-  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'migrations' | 'architecture' | 'oidc-tester' | 'telemetry' | 'authzen-simulator' | 'guide'>(() => {
+  const [activeTab, setActiveTab] = useState<'explorer' | 'database' | 'migrations' | 'architecture' | 'oidc-tester' | 'telemetry' | 'guide'>(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '');
-      if (['explorer', 'database', 'migrations', 'architecture', 'oidc-tester', 'telemetry', 'authzen-simulator', 'guide'].includes(hash)) {
+      if (['explorer', 'database', 'migrations', 'architecture', 'oidc-tester', 'telemetry', 'guide'].includes(hash)) {
         return hash as any;
       }
     }
-    return 'authzen-simulator';
+    return 'explorer';
   });
   const [copied, setCopied] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
@@ -230,21 +229,6 @@ export default function App() {
               <span>Telemetria & Metryki</span>
               <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
                 OpenTelemetry
-              </span>
-            </button>
-            <button
-              id="tab-authzen-btn"
-              onClick={() => setActiveTab('authzen-simulator')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
-                activeTab === 'authzen-simulator'
-                  ? 'bg-purple-600/15 text-purple-400 border border-purple-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4 text-purple-400" />
-              <span>AdminUI & AuthZEN PDP</span>
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
-                Simulator
               </span>
             </button>
             <button
@@ -511,11 +495,6 @@ export default function App() {
         {/* Tab: OpenTelemetry Dashboard */}
         {activeTab === 'telemetry' && (
           <TelemetryDashboard />
-        )}
-
-        {/* Tab: AuthZEN Policy Simulator (AdminUI) */}
-        {activeTab === 'authzen-simulator' && (
-          <AuthZenSimulatorTab />
         )}
 
         {/* Tab 4: Step-by-Step Local Launch Guide */}

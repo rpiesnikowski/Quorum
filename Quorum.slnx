@@ -6,5 +6,6 @@
   <Project Path="Quorum.Backend.Gateway/Quorum.Backend.Gateway.csproj" />
   <Project Path="Quorum.Backend/Quorum.Backend.csproj" />
   <Project Path="Quorum.Backend.Tests/Quorum.Backend.Tests.csproj" />
+  <Project Path="Quorum.FineGrainedAuth/Quorum.FineGrainedAuth.csproj" />
   <Project Path="Quorum.ServiceDefaults/Quorum.ServiceDefaults.csproj" />
 </Solution>

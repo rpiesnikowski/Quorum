@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Quorum.Backend.AdminUI.Models;
-using Quorum.Backend.AdminUI.Services.Interfaces;
+using Quorum.FineGrainedAuth.AuthZen.Models;
+using Quorum.FineGrainedAuth.AuthZen.Stores;
 
-namespace Quorum.Backend.AdminAPI.Controllers;
+namespace Quorum.FineGrainedAuth.AuthZen.Controllers;
 
 /// <summary>
 /// Kontroler REST API dla panelu PAP (Policy Administration Point) w standardzie AuthZEN.
@@ -13,9 +13,9 @@ namespace Quorum.Backend.AdminAPI.Controllers;
 [Produces("application/json")]
 public class AdminAuthZenPoliciesController : ControllerBase
 {
-    private readonly IAdminAuthZenPolicyStore _policyStore;
+    private readonly IAuthZenPolicyStore _policyStore;
 
-    public AdminAuthZenPoliciesController(IAdminAuthZenPolicyStore policyStore)
+    public AdminAuthZenPoliciesController(IAuthZenPolicyStore policyStore)
     {
         _policyStore = policyStore;
     }

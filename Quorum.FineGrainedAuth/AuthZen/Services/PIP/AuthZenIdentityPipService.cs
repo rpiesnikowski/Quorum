@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using Quorum.Backend.EntityFramework.AuthZen;
-using Quorum.Backend.EntityFramework.Models;
+using Quorum.FineGrainedAuth.AuthZen.Models;
 
-namespace Quorum.Backend.AdminAPI.Services.PIP;
+namespace Quorum.FineGrainedAuth.AuthZen.Services.PIP;
 
 /// <summary>
 /// Implementacja PIP (Policy Information Point) oparta o AspNetCoreIdentity i bazę danych użytkowników.

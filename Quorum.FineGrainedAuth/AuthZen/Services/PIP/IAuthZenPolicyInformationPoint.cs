@@ -1,6 +1,6 @@
-using Quorum.Backend.EntityFramework.AuthZen;
+using Quorum.FineGrainedAuth.AuthZen.Models;
 
-namespace Quorum.Backend.AdminAPI.Services.PIP;
+namespace Quorum.FineGrainedAuth.AuthZen.Services.PIP;
 
 /// <summary>
 /// PIP (Policy Information Point): Punkt informacyjny o polityce w architekturze AuthZEN / ABAC.

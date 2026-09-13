@@ -1,6 +1,6 @@
 {
   "name": "Quorum .NET 10 Identity Solution",
-  "description": "Kompletna solucja Quorum z projektem Quorum.Backend (.NET 10), implementacją standardu AuthZEN (Gateway PEP, silnik decyzyjny PDP, PIP na ASP.NET Core Identity oraz panel PAP w AdminUI), biblioteką RCL Quorum.Backend.AdminUI dla Open.IdentityServer i testami integracyjnymi.",
+  "description": "Kompletna solucja Quorum z projektem Quorum.Backend (.NET 10), konsensusem kworum dla uprawnień i ról, biblioteką RCL Quorum.Backend.AdminUI dla Open.IdentityServer, bramką API Gateway oraz dedykowanym projektem Fine-Grained Authorization (Quorum.FineGrainedAuth dla AuthZEN i OpenFGA).",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
