@@ -27,4 +27,34 @@ public interface IOpenFgaClient
     /// Rozwija strukturę relacji dla zadanego obiektu i relacji (drzewo decyzyjne).
     /// </summary>
     Task<FgaExpandResponse> ExpandAsync(string relation, string obj, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sprawdza status dostępności i połączenia z serwerem OpenFGA REST API (0.0.0.0:8080).
+    /// </summary>
+    Task<FgaServerStatus> GetServerStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Pobiera listę magazynów (Stores) z OpenFGA REST API (GET /stores).
+    /// </summary>
+    Task<IReadOnlyList<FgaStore>> ListStoresAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tworzy nowy magazyn w OpenFGA (POST /stores).
+    /// </summary>
+    Task<FgaStore> CreateStoreAsync(string name, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Zapewnia istnienie aktywnego Store w OpenFGA i zwraca jego identyfikator (StoreId).
+    /// </summary>
+    Task<string> EnsureStoreAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Zwraca aktualnie skonfigurowany StoreId.
+    /// </summary>
+    string GetStoreId();
+
+    /// <summary>
+    /// Zmienia aktualny StoreId.
+    /// </summary>
+    void SetStoreId(string storeId);
 }

@@ -20,8 +20,8 @@
 2. **OpenFGA (Fine-Grained Authorization / Google Zanzibar)**
    - **Relationship-Based Access Control (ReBAC)**: Fine-grained permissions represented as tuples `(user) is [relation] of (object)`.
    - **Tuple Graph Engine**: Direct relationships, transitive inheritance (`owner`, `admin`), contextual tuples, and wildcard resolution.
-   - **Operations**: `check`, `write`, `read`, `expand`.
-   - **AuthZEN-to-OpenFGA Adapter**: Bi-directional bridge translating incoming AuthZEN evaluation requests directly into OpenFGA relationship checks.
+   - **REST API Integration**: Direct communication with local OpenFGA instances (`http://0.0.0.0:8080` / `http://localhost:8080`) supporting `POST /stores/{id}/write`, `POST /stores/{id}/read`, `POST /stores/{id}/check`, and store auto-provisioning.
+   - **AuthZEN-to-OpenFGA Adapter & CRUD**: Create and edit authorization rules using AuthZEN syntax (Subject, Action, Resource, Effect), while the adapter automatically transforms them into Zanzibar tuples and writes them directly to the OpenFGA REST API.
 
 ---
 
@@ -49,15 +49,23 @@ Quorum.FineGrainedAuth/
 │       └── EfAuthZenPolicyStore.cs
 ├── OpenFGA/
 │   ├── Adapters/
-│   │   └── AuthZenToOpenFgaAdapter.cs         # AuthZEN <-> OpenFGA translation
+│   │   └── AuthZenToOpenFgaAdapter.cs         # AuthZEN <-> OpenFGA translation & REST sync
+│   ├── Controllers/
+│   │   └── OpenFgaRulesController.cs          # Full CRUD API for rules & OpenFGA REST sync
 │   ├── Models/
-│   │   └── OpenFgaModels.cs                   # TupleKey, CheckRequest, CheckResponse
+│   │   ├── OpenFgaModels.cs                   # TupleKey, CheckRequest, DTOs, Store models
+│   │   └── OpenFgaOptions.cs                  # ServerUrl, StoreId, AutoCreate configuration
 │   └── Services/
-│       ├── IOpenFgaClient.cs
-│       └── OpenFgaClient.cs                   # In-memory graph + HTTP client
+│       ├── IOpenFgaClient.cs                  # Client interface for REST & In-Memory
+│       ├── OpenFgaClient.cs                   # Direct HTTP REST client for 0.0.0.0:8080
+│       ├── IAuthZenOpenFgaStore.cs            # CRUD store interface
+│       └── AuthZenOpenFgaStore.cs             # Implementation with live adapter sync
 ├── Extensions/
 │   └── FineGrainedAuthServiceCollectionExtensions.cs # DI bootstrap methods
 └── UI/                                        # Blazor & React simulator components
+    └── Components/
+        ├── OpenFgaRuleManager.razor           # Interactive CRUD UI in Radzen Blazor
+        └── OpenFgaRuleManager.razor.cs
 ```
 
 ---

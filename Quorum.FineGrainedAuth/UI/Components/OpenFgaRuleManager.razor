@@ -1,0 +1,288 @@
+@page "/admin/openfga/rules"
+@layout AdminLayout
+
+<PageTitle>Kreator reguł OpenFGA z AuthZEN | Quorum Admin</PageTitle>
+
+<RadzenStack Gap="1.5rem">
+    <RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="8">
+            <div class="d-flex align-items-center gap-2">
+                <RadzenIcon Icon="account_tree" Style="font-size: 2.2rem; color: var(--rz-primary);" />
+                <div>
+                    <RadzenText TextStyle="TextStyle.H4" Class="fw-bold mb-0">Zarządzanie regułami OpenFGA (AuthZEN Adapter)</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body2" Class="text-muted">
+                        Twórz obiekty uprawnień w standardzie AuthZEN – adapter automatycznie tłumaczy je na krotki Zanzibar i zapisuje do API REST OpenFGA (0.0.0.0:8080).
+                    </RadzenText>
+                </div>
+            </div>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4" Class="d-flex justify-content-md-end gap-2 flex-wrap">
+            <RadzenButton Icon="sync" Text="Synchronizuj z OpenFGA" ButtonStyle="ButtonStyle.Success" Click="@SyncAllAsync" IsBusy="@isSyncing" />
+            <RadzenButton Icon="add" Text="Nowa Reguła (AuthZEN)" ButtonStyle="ButtonStyle.Primary" Click="@OpenCreateDialog" />
+            <RadzenButton Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@LoadDataAsync" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <!-- Status serwera OpenFGA -->
+    <RadzenCard Class="rz-p-3">
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge @(serverStatus.IsConnected ? "bg-success" : "bg-warning") text-white p-2">
+                        <RadzenIcon Icon="@(serverStatus.IsConnected ? "check_circle" : "warning")" Class="me-1" />
+                        @(serverStatus.IsConnected ? "OpenFGA REST: Połączono" : "Tryb lokalny / Oczekiwanie na OpenFGA")
+                    </span>
+                    <small class="text-muted">@serverStatus.ServerUrl</small>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4">
+                <div class="d-flex align-items-center gap-1">
+                    <RadzenIcon Icon="store" Class="text-muted" />
+                    <strong>Store ID:</strong>
+                    <span class="text-monospace">@(serverStatus.StoreId ?? "domyślny")</span>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4" Class="text-md-end">
+                <small class="text-muted">Opóźnienie: @(serverStatus.LatencyMs.ToString("F1")) ms | Aktywne krotki: @rules.Count(r => r.IsEnabled && r.Effect == "Permit")</small>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+
+    <!-- Lista Reguł -->
+    <RadzenCard Class="rz-p-3">
+        <RadzenRow AlignItems="AlignItems.Center" Gap="1rem" Class="mb-3">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenTextBox Placeholder="Szukaj po nazwie reguły, podmiocie, akcji, zasobie..." @bind-Value="searchTerm" Class="w-100" @oninput="@OnSearchInput" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" Class="d-flex justify-content-md-end gap-2">
+                <RadzenButton Icon="playlist_add_check" Text="Przetestuj dostęp (Check)" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@(() => showCheckModal = true)" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenDataGrid @ref="grid"
+                        Data="@rules"
+                        AllowFiltering="true"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        PageSize="10"
+                        IsLoading="@isLoading"
+                        TItem="AuthZenRuleDto"
+                        EmptyText="Brak zdefiniowanych reguł. Kliknij 'Nowa Reguła (AuthZEN)', aby dodać pierwszą relację.">
+            <Columns>
+                <RadzenDataGridColumn TItem="AuthZenRuleDto" Property="Name" Title="Nazwa reguły AuthZEN" Width="220px">
+                    <Template Context="r">
+                        <div class="fw-bold">@r.Name</div>
+                        <small class="text-muted">@r.Description</small>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenRuleDto" Property="FgaUser" Title="Podmiot AuthZEN / User" Width="180px">
+                    <Template Context="r">
+                        <span class="badge bg-light text-dark border">
+                            <RadzenIcon Icon="person" Style="font-size: 0.9rem;" Class="me-1" />
+                            @r.FgaUser
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenRuleDto" Property="FgaRelation" Title="Akcja / Relacja" Width="140px">
+                    <Template Context="r">
+                        <span class="badge bg-primary text-white">@r.FgaRelation</span>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenRuleDto" Property="FgaObject" Title="Zasób / Object" Width="200px">
+                    <Template Context="r">
+                        <span class="badge bg-light text-dark border">
+                            <RadzenIcon Icon="category" Style="font-size: 0.9rem;" Class="me-1" />
+                            @r.FgaObject
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenRuleDto" Property="Effect" Title="Efekt" Width="100px" TextAlign="TextAlign.Center">
+                    <Template Context="r">
+                        <span class="badge @(r.Effect == "Permit" ? "bg-success" : "bg-danger") text-white">@r.Effect</span>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenRuleDto" Property="SyncStatus" Title="Status OpenFGA REST" Width="150px" TextAlign="TextAlign.Center">
+                    <Template Context="r">
+                        @if (r.SyncStatus == "InSync")
+                        {
+                            <span class="badge bg-success text-white">
+                                <RadzenIcon Icon="cloud_done" Style="font-size: 0.85rem;" Class="me-1" />
+                                Zsynchronizowano
+                            </span>
+                        }
+                        else if (r.SyncStatus == "Error")
+                        {
+                            <span class="badge bg-danger text-white" title="@r.LastSyncError">
+                                <RadzenIcon Icon="error" Style="font-size: 0.85rem;" Class="me-1" />
+                                Błąd
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">
+                                <RadzenIcon Icon="schedule" Style="font-size: 0.85rem;" Class="me-1" />
+                                Oczekuje
+                            </span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="AuthZenRuleDto" Title="Akcje" Width="180px" TextAlign="TextAlign.End" Sortable="false" Filterable="false">
+                    <Template Context="r">
+                        <div class="d-flex justify-content-end gap-1">
+                            <RadzenButton Icon="sync" ButtonStyle="ButtonStyle.Success" Variant="Variant.Light" Size="ButtonSize.Small" Click="@(() => SyncRuleAsync(r))" title="Zapisz do OpenFGA" />
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Light" Size="ButtonSize.Small" Click="@(() => OpenEditDialog(r))" title="Edytuj" />
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Light" Size="ButtonSize.Small" Click="@(() => DeleteRuleAsync(r))" title="Usuń" />
+                        </div>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</RadzenStack>
+
+@if (showEditModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <RadzenIcon Icon="edit_note" Class="me-2" />
+                        @(isEditing ? "Edycja reguły AuthZEN (OpenFGA)" : "Nowa reguła w obiekcie AuthZEN")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="@(() => showEditModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <RadzenStack Gap="1rem">
+                        <RadzenRow>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text="Nazwa reguły" Class="w-100">
+                                    <RadzenTextBox @bind-Value="currentRule.Name" Class="w-100" />
+                                </RadzenFormField>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text="Opis" Class="w-100">
+                                    <RadzenTextBox @bind-Value="currentRule.Description" Class="w-100" />
+                                </RadzenFormField>
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                        <!-- Parametry AuthZEN -->
+                        <div class="p-3 border rounded bg-light">
+                            <div class="fw-bold mb-2 text-primary">
+                                <RadzenIcon Icon="tune" Class="me-1" />
+                                Parametry obiektów AuthZEN (Subject, Action, Resource)
+                            </div>
+                            <RadzenRow Gap="0.5rem">
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenFormField Text="Subject Type" Class="w-100">
+                                        <RadzenDropDown @bind-Value="currentRule.SubjectType" Data="@subjectTypes" Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenFormField Text="Subject ID" Class="w-100">
+                                        <RadzenTextBox @bind-Value="currentRule.SubjectId" Placeholder="np. anne, admin" Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenFormField Text="Action / Relation" Class="w-100">
+                                        <RadzenDropDown @bind-Value="currentRule.Action" Data="@actions" AllowCustom="true" Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenFormField Text="Resource Type" Class="w-100">
+                                        <RadzenDropDown @bind-Value="currentRule.ResourceType" Data="@resourceTypes" Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+                            <RadzenRow Gap="0.5rem" Class="mt-2">
+                                <RadzenColumn Size="12" SizeMD="6">
+                                    <RadzenFormField Text="Resource ID / Pattern" Class="w-100">
+                                        <RadzenTextBox @bind-Value="currentRule.ResourceId" Placeholder="np. roadmap_2026, api/orders" Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3">
+                                    <RadzenFormField Text="Efekt" Class="w-100">
+                                        <RadzenDropDown @bind-Value="currentRule.Effect" Data="@(new[] { "Permit", "Deny" })" Class="w-100" />
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                                <RadzenColumn Size="12" SizeMD="3" Class="d-flex align-items-center">
+                                    <RadzenCheckBox @bind-Value="currentRule.IsEnabled" Name="isEnabledCheck" />
+                                    <RadzenLabel Text="Aktywna" Component="isEnabledCheck" Class="ms-2" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </div>
+
+                        <!-- Podgląd mapowania przez Adapter do OpenFGA -->
+                        <div class="p-3 border rounded" style="background: #1e1e1e; color: #d4d4d4;">
+                            <div class="fw-bold mb-1 text-success">
+                                <RadzenIcon Icon="transform" Class="me-1" />
+                                Podgląd mapowania przez AuthZenToOpenFgaAdapter ➔ OpenFGA REST API:
+                            </div>
+                            <div class="font-monospace small">
+                                <div><strong>Krotka Zanzibar:</strong> (@currentRule.FgaUser) # [@currentRule.FgaRelation] @@ (@currentRule.FgaObject)</div>
+                                <div class="mt-1 text-info">
+                                    <strong>POST /stores/@(serverStatus.StoreId ?? "{store_id}")/write:</strong>
+                                    <code>{"writes": {"tuple_keys": [{"user": "@currentRule.FgaUser", "relation": "@currentRule.FgaRelation", "object": "@currentRule.FgaObject"}]}}</code>
+                                </div>
+                            </div>
+                        </div>
+                    </RadzenStack>
+                </div>
+                <div class="modal-footer">
+                    <RadzenButton Text="Anuluj" ButtonStyle="ButtonStyle.Light" Click="@(() => showEditModal = false)" />
+                    <RadzenButton Text="Zapisz do OpenFGA REST API" Icon="cloud_upload" ButtonStyle="ButtonStyle.Primary" Click="@SaveRuleAsync" IsBusy="@isSaving" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showCheckModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-md modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <RadzenIcon Icon="verified_user" Class="me-2 text-primary" />
+                        Tester ewaluacji OpenFGA Check
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="@(() => showCheckModal = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <RadzenStack Gap="1rem">
+                        <RadzenFormField Text="User (np. user:anne, role:admin)" Class="w-100">
+                            <RadzenTextBox @bind-Value="checkUser" Class="w-100" />
+                        </RadzenFormField>
+                        <RadzenFormField Text="Relation (np. reader, writer, owner)" Class="w-100">
+                            <RadzenTextBox @bind-Value="checkRelation" Class="w-100" />
+                        </RadzenFormField>
+                        <RadzenFormField Text="Object (np. document:roadmap_2026)" Class="w-100">
+                            <RadzenTextBox @bind-Value="checkObject" Class="w-100" />
+                        </RadzenFormField>
+
+                        <RadzenButton Text="Sprawdź uprawnienie (POST /check)" Icon="play_arrow" ButtonStyle="ButtonStyle.Primary" Click="@PerformCheckAsync" IsBusy="@isChecking" Class="w-100" />
+
+                        @if (checkResult != null)
+                        {
+                            <div class="p-3 border rounded @(checkResult.Allowed ? "bg-success text-white" : "bg-danger text-white")">
+                                <div class="fw-bold">
+                                    <RadzenIcon Icon="@(checkResult.Allowed ? "check" : "block")" Class="me-1" />
+                                    Decyzja OpenFGA: @(checkResult.Allowed ? "DOZWOLONE (Allowed: true)" : "ODMOWA (Allowed: false)")
+                                </div>
+                                <div class="small mt-1">@checkResult.Resolution</div>
+                            </div>
+                        }
+                    </RadzenStack>
+                </div>
+            </div>
+        </div>
+    </div>
+}

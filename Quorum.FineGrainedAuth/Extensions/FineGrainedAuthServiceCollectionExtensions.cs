@@ -39,12 +39,21 @@ public static class FineGrainedAuthServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Rejestruje klienta OpenFGA (Google Zanzibar model) oraz adapter AuthZEN-do-OpenFGA.
+    /// Rejestruje klienta OpenFGA (Google Zanzibar model), adapter AuthZEN-do-OpenFGA oraz magazyn reguł CRUD.
     /// </summary>
-    public static IServiceCollection AddOpenFga(this IServiceCollection services, Action<HttpClient>? configureHttp = null)
+    public static IServiceCollection AddOpenFga(
+        this IServiceCollection services,
+        Action<OpenFgaOptions>? configureOptions = null,
+        Action<HttpClient>? configureHttp = null)
     {
+        if (configureOptions != null)
+        {
+            services.Configure(configureOptions);
+        }
+
         services.AddSingleton<IOpenFgaClient, OpenFgaClient>();
         services.AddScoped<AuthZenToOpenFgaAdapter>();
+        services.AddSingleton<IAuthZenOpenFgaStore, AuthZenOpenFgaStore>();
         return services;
     }
 

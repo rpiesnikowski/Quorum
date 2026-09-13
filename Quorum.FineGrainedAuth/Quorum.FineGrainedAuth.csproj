@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageId>Quorum.FineGrainedAuth</PackageId>
     <Version>1.0.0</Version>
     <Authors>Robert Pieśnikowski</Authors>

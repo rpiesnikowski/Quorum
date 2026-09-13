@@ -108,11 +108,183 @@ public class FgaNode
 public class FgaStore
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("name")]
-    public string Name { get; set; } = "DefaultStore";
+    public string Name { get; set; } = "quorum-identity";
 
     [JsonPropertyName("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? CreatedAt { get; set; }
+
+    [JsonPropertyName("updated_at")]
+    public DateTime? UpdatedAt { get; set; }
 }
+
+public class FgaListStoresResponse
+{
+    [JsonPropertyName("stores")]
+    public List<FgaStore> Stores { get; set; } = new();
+
+    [JsonPropertyName("continuation_token")]
+    public string? ContinuationToken { get; set; }
+}
+
+public class FgaCreateStoreRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "quorum-identity";
+}
+
+/// <summary>
+/// Żądanie odczytu relacji (POST /stores/{store_id}/read).
+/// </summary>
+public class FgaReadRequest
+{
+    [JsonPropertyName("tuple_key")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public FgaTupleKey? TupleKey { get; set; }
+
+    [JsonPropertyName("page_size")]
+    public int? PageSize { get; set; }
+
+    [JsonPropertyName("continuation_token")]
+    public string? ContinuationToken { get; set; }
+}
+
+public class FgaReadResponse
+{
+    [JsonPropertyName("tuples")]
+    public List<FgaReadTupleItem> Tuples { get; set; } = new();
+
+    [JsonPropertyName("continuation_token")]
+    public string? ContinuationToken { get; set; }
+}
+
+public class FgaReadTupleItem
+{
+    [JsonPropertyName("key")]
+    public FgaTupleKey Key { get; set; } = new();
+
+    [JsonPropertyName("timestamp")]
+    public DateTime? Timestamp { get; set; }
+}
+
+/// <summary>
+/// Status połączenia i statystyki serwera OpenFGA.
+/// </summary>
+public class FgaServerStatus
+{
+    public string ServerUrl { get; set; } = "http://localhost:8080";
+    public bool IsConnected { get; set; }
+    public string? StoreId { get; set; }
+    public string? StoreName { get; set; }
+    public int TotalTuplesCount { get; set; }
+    public double LatencyMs { get; set; }
+    public string? ErrorMessage { get; set; }
+    public DateTime LastCheckedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// DTO dla reguły zdefiniowanej za pomocą AuthZEN i mapowanej na OpenFGA.
+/// </summary>
+public class AuthZenRuleDto
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>
+    /// Czytelna nazwa reguły (np. "Edycja dokumentów Roadmap przez Annę")
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Opis biznesowy
+    /// </summary>
+    public string? Description { get; set; }
+
+    // --- Składniki AuthZEN ---
+
+    /// <summary>
+    /// Typ podmiotu w AuthZEN: "user", "role", "group", "service"
+    /// </summary>
+    public string SubjectType { get; set; } = "user";
+
+    /// <summary>
+    /// Identyfikator podmiotu w AuthZEN: np. "anne", "admin", "finance"
+    /// </summary>
+    public string SubjectId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Akcja w AuthZEN / Relacja w OpenFGA (np. "reader", "writer", "owner", "admin", "GET", "POST")
+    /// </summary>
+    public string Action { get; set; } = "reader";
+
+    /// <summary>
+    /// Typ zasobu w AuthZEN: np. "document", "route", "repo", "order"
+    /// </summary>
+    public string ResourceType { get; set; } = "document";
+
+    /// <summary>
+    /// Identyfikator zasobu w AuthZEN: np. "roadmap_2026", "api/orders"
+    /// </summary>
+    public string ResourceId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Efekt w AuthZEN: "Permit" (zapis krotki relacji w OpenFGA) lub "Deny" (usunięcie krotki w OpenFGA)
+    /// </summary>
+    public string Effect { get; set; } = "Permit";
+
+    /// <summary>
+    /// Czy reguła jest aktywna
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Opcjonalny warunek OpenFGA / AuthZEN (np. "in_office_hours")
+    /// </summary>
+    public string? ConditionName { get; set; }
+
+    // --- Właściwości wyliczeniowe dla OpenFGA Zanzibar ---
+
+    /// <summary>
+    /// Wygenerowany user dla OpenFGA: "{SubjectType}:{SubjectId}"
+    /// </summary>
+    public string FgaUser => $"{SubjectType.ToLowerInvariant()}:{SubjectId}";
+
+    /// <summary>
+    /// Wygenerowana relacja dla OpenFGA
+    /// </summary>
+    public string FgaRelation => Action.ToLowerInvariant().Replace(" ", "_");
+
+    /// <summary>
+    /// Wygenerowany object dla OpenFGA: "{ResourceType}:{ResourceId}"
+    /// </summary>
+    public string FgaObject => $"{ResourceType.ToLowerInvariant()}:{ResourceId}";
+
+    /// <summary>
+    /// Status synchronizacji z serwerem OpenFGA: "InSync", "Pending", "Error"
+    /// </summary>
+    public string SyncStatus { get; set; } = "Pending";
+
+    /// <summary>
+    /// Komunikat błędu synchronizacji (jeśli wystąpił)
+    /// </summary>
+    public string? LastSyncError { get; set; }
+
+    /// <summary>
+    /// Data ostatniej synchronizacji z API REST OpenFGA
+    /// </summary>
+    public DateTime? LastSyncedAt { get; set; }
+}
+
+/// <summary>
+/// Wynik synchronizacji pojedynczej lub wielu reguł do OpenFGA.
+/// </summary>
+public class AuthZenRuleSyncResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public int SyncedCount { get; set; }
+    public FgaTupleKey? TupleKey { get; set; }
+    public string? StoreId { get; set; }
+}
+
