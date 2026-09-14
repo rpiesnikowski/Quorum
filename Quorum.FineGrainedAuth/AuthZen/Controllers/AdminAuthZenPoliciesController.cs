@@ -10,7 +10,6 @@ namespace Quorum.FineGrainedAuth.AuthZen.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/authzen/policies")]
-[Route("admin/authzen/policies")]
 [Produces("application/json")]
 public class AdminAuthZenPoliciesController : ControllerBase
 {
