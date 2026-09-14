@@ -30,6 +30,7 @@ public class UserAdminModel
     public int AccessFailedCount { get; set; }
 
     public bool IsLockedOut => LockoutEnd.HasValue && LockoutEnd.Value > DateTimeOffset.UtcNow;
+    public bool IsActive => !IsLockedOut;
 
     public List<string> Roles { get; set; } = new();
 
