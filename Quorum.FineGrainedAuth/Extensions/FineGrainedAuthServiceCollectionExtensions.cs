@@ -137,7 +137,7 @@ public static class FineGrainedAuthServiceCollectionExtensions
         }
 
         services.AddSingleton<IOpenFgaClient, OpenFgaClient>();
-        services.AddScoped<AuthZenToOpenFgaAdapter>();
+        services.AddSingleton<AuthZenToOpenFgaAdapter>();
         services.AddSingleton<IAuthZenOpenFgaStore, AuthZenOpenFgaStore>();
         return services;
     }

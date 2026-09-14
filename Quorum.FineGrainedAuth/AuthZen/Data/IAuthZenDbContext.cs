@@ -27,11 +27,6 @@ public class AuthZenDbContext : DbContext, IAuthZenDbContext
     {
     }
 
-    public AuthZenDbContext(DbContextOptions options)
-        : base(options)
-    {
-    }
-
     public DbSet<AuthZenPolicy> AuthZenPolicies { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
