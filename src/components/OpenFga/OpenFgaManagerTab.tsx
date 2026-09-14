@@ -56,6 +56,34 @@ const INITIAL_RULES: AuthZenRule[] = [
   },
   {
     id: 'rule-002',
+    name: 'Członkostwo Jana w Roli Administratora',
+    description: 'Użytkownik John jest członkiem (member) roli admin',
+    subjectType: 'user',
+    subjectId: 'john',
+    action: 'member',
+    resourceType: 'role',
+    resourceId: 'admin',
+    effect: 'Permit',
+    isEnabled: true,
+    syncStatus: 'InSync',
+    lastSyncedAt: '2026-09-13T16:00:00Z'
+  },
+  {
+    id: 'rule-003',
+    name: 'Członkostwo Zofii w Roli Administratora',
+    description: 'Użytkownik Sophia jest członkiem (member) roli admin',
+    subjectType: 'user',
+    subjectId: 'sophia',
+    action: 'member',
+    resourceType: 'role',
+    resourceId: 'admin',
+    effect: 'Permit',
+    isEnabled: true,
+    syncStatus: 'InSync',
+    lastSyncedAt: '2026-09-13T16:00:00Z'
+  },
+  {
+    id: 'rule-004',
     name: 'Uprawnienia Właściciela dla Administratora',
     description: 'Rola Admin posiada pełne uprawnienia właściciela (owner) repozytorium Quorum',
     subjectType: 'role',
@@ -69,7 +97,35 @@ const INITIAL_RULES: AuthZenRule[] = [
     lastSyncedAt: '2026-09-13T16:00:00Z'
   },
   {
-    id: 'rule-003',
+    id: 'rule-005',
+    name: 'Uprawnienia Administracyjne do Telemetrii',
+    description: 'Rola Admin posiada uprawnienia admin do API telemetrii i audytu',
+    subjectType: 'role',
+    subjectId: 'admin',
+    action: 'admin',
+    resourceType: 'api',
+    resourceId: 'audit_telemetry',
+    effect: 'Permit',
+    isEnabled: true,
+    syncStatus: 'InSync',
+    lastSyncedAt: '2026-09-13T16:00:00Z'
+  },
+  {
+    id: 'rule-006',
+    name: 'Przypisanie Boba do Grupy Finanse',
+    description: 'Użytkownik Bob jest członkiem (member) grupy finance',
+    subjectType: 'user',
+    subjectId: 'bob',
+    action: 'member',
+    resourceType: 'group',
+    resourceId: 'finance',
+    effect: 'Permit',
+    isEnabled: true,
+    syncStatus: 'InSync',
+    lastSyncedAt: '2026-09-13T16:00:00Z'
+  },
+  {
+    id: 'rule-007',
     name: 'Zapis Zamówień przez Dział Finansowy',
     description: 'Grupa Finanse posiada uprawnienia zapisu (writer) w module faktur i zamówień',
     subjectType: 'group',
@@ -83,7 +139,49 @@ const INITIAL_RULES: AuthZenRule[] = [
     lastSyncedAt: '2026-09-13T16:00:00Z'
   },
   {
-    id: 'rule-004',
+    id: 'rule-008',
+    name: 'Przypisanie Łukasza do Roli Programisty',
+    description: 'Użytkownik Lucas jest członkiem (member) roli developer',
+    subjectType: 'user',
+    subjectId: 'lucas',
+    action: 'member',
+    resourceType: 'role',
+    resourceId: 'developer',
+    effect: 'Permit',
+    isEnabled: true,
+    syncStatus: 'InSync',
+    lastSyncedAt: '2026-09-13T16:00:00Z'
+  },
+  {
+    id: 'rule-009',
+    name: 'Uprawnienia Współtwórcy dla Developerów',
+    description: 'Rola Developer posiada uprawnienia współtwórcy (contributor) w repozytorium',
+    subjectType: 'role',
+    subjectId: 'developer',
+    action: 'contributor',
+    resourceType: 'repo',
+    resourceId: 'quorum-core',
+    effect: 'Permit',
+    isEnabled: true,
+    syncStatus: 'InSync',
+    lastSyncedAt: '2026-09-13T16:00:00Z'
+  },
+  {
+    id: 'rule-010',
+    name: 'Edycja Dokumentacji przez Developerów',
+    description: 'Rola Developer posiada uprawnienia edytora (editor) dokumentu Roadmap 2026',
+    subjectType: 'role',
+    subjectId: 'developer',
+    action: 'editor',
+    resourceType: 'document',
+    resourceId: 'roadmap_2026',
+    effect: 'Permit',
+    isEnabled: true,
+    syncStatus: 'InSync',
+    lastSyncedAt: '2026-09-13T16:00:00Z'
+  },
+  {
+    id: 'rule-011',
     name: 'Wgląd Audytora Bezpieczeństwa',
     description: 'Audytor posiada wgląd (viewer) do logów telemetrycznych systemu',
     subjectType: 'user',
@@ -91,6 +189,20 @@ const INITIAL_RULES: AuthZenRule[] = [
     action: 'viewer',
     resourceType: 'api',
     resourceId: 'audit_telemetry',
+    effect: 'Permit',
+    isEnabled: true,
+    syncStatus: 'InSync',
+    lastSyncedAt: '2026-09-13T16:00:00Z'
+  },
+  {
+    id: 'rule-012',
+    name: 'Wywołanie Zamówień przez Reverse Proxy',
+    description: 'Mikrousługa gateway_proxy wywołuje (invoker) trasę api-orders',
+    subjectType: 'service',
+    subjectId: 'gateway_proxy',
+    action: 'invoker',
+    resourceType: 'route',
+    resourceId: 'api-orders',
     effect: 'Permit',
     isEnabled: true,
     syncStatus: 'InSync',
@@ -766,6 +878,48 @@ export const OpenFgaManagerTab: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Szybkie szablony ReBAC */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Szablon:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormSubjectType('user');
+                      setFormAction('member');
+                      setFormResourceType('role');
+                      setFormResourceId('admin');
+                    }}
+                    className="px-2 py-0.5 rounded bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 text-[11px] font-medium transition cursor-pointer"
+                  >
+                    Użytkownik ➔ Rola (#member)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormSubjectType('role');
+                      setFormSubjectId('admin');
+                      setFormAction('owner');
+                      setFormResourceType('repo');
+                      setFormResourceId('quorum-core');
+                    }}
+                    className="px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 text-[11px] font-medium transition cursor-pointer"
+                  >
+                    Rola ➔ Zasób (#owner)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormSubjectType('user');
+                      setFormAction('reader');
+                      setFormResourceType('document');
+                      setFormResourceId('roadmap_2026');
+                    }}
+                    className="px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 text-[11px] font-medium transition cursor-pointer"
+                  >
+                    Użytkownik ➔ Zasób (#reader)
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">
@@ -773,11 +927,23 @@ export const OpenFgaManagerTab: React.FC = () => {
                     </label>
                     <input
                       type="text"
+                      list="action-suggestions"
                       value={formAction}
                       onChange={e => setFormAction(e.target.value)}
-                      placeholder="reader, writer, owner, viewer"
+                      placeholder="member, reader, writer, owner"
                       className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-900 dark:text-white"
                     />
+                    <datalist id="action-suggestions">
+                      <option value="member" />
+                      <option value="reader" />
+                      <option value="writer" />
+                      <option value="owner" />
+                      <option value="editor" />
+                      <option value="viewer" />
+                      <option value="admin" />
+                      <option value="contributor" />
+                      <option value="invoker" />
+                    </datalist>
                   </div>
 
                   <div>
@@ -786,11 +952,21 @@ export const OpenFgaManagerTab: React.FC = () => {
                     </label>
                     <input
                       type="text"
+                      list="resourcetype-suggestions"
                       value={formResourceType}
                       onChange={e => setFormResourceType(e.target.value)}
-                      placeholder="document, route, repo, api"
+                      placeholder="role, group, document, repo"
                       className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-900 dark:text-white"
                     />
+                    <datalist id="resourcetype-suggestions">
+                      <option value="role" />
+                      <option value="group" />
+                      <option value="document" />
+                      <option value="repo" />
+                      <option value="route" />
+                      <option value="api" />
+                      <option value="database" />
+                    </datalist>
                   </div>
 
                   <div>
