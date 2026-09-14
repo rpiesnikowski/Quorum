@@ -94,7 +94,13 @@ builder.Services.AddOpenFga(options =>
 
 // Lub rejestracja pełnego pakietu (AuthZEN + OpenFGA):
 builder.Services.AddFineGrainedAuth<ApplicationUser>();
+
+// 4. Upewnij się, że kontrolery są zmapowane w potoku HTTP aplikacji:
+// app.MapControllers();
 ```
+
+> **Wskazówka dotycząca routingu `/admin/authzen/policies`**:
+> Kontroler `AdminAuthZenPoliciesController` obsługuje zarówno ścieżkę **`/admin/authzen/policies`**, jak i **`/api/admin/authzen/policies`**. W nadrzędnej aplikacji `Program.cs` wymagane jest wywołanie `app.MapControllers()`. Rejestracja kontrolera w `ApplicationPartManager` jest wykonywana automatycznie przez `AddAuthZenPdp<TUser>()` / `AddFineGrainedAuth<TUser>()`.
 
 ### 2. Check Authorization via AuthZEN PEP
 

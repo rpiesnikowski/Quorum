@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Quorum.FineGrainedAuth.AuthZen.Controllers;
 using Quorum.FineGrainedAuth.AuthZen.Data;
 using Quorum.FineGrainedAuth.AuthZen.Services.PDP;
 using Quorum.FineGrainedAuth.AuthZen.Services.PIP;
@@ -73,7 +74,22 @@ public static class FineGrainedAuthServiceCollectionExtensions
         services.AddScoped<IAuthZenPolicyInformationPoint, AuthZenIdentityPipService<TUser>>();
         services.AddScoped<IAuthZenPolicyDecisionPoint, AuthZenPdpEngine>();
         services.AddScoped<IAuthZenPolicyStore, EfAuthZenPolicyStore>();
+
+        // 3. Automatycznie zarejestruj kontrolery AuthZEN w ApplicationPartManager
+        services.AddControllers()
+            .AddApplicationPart(typeof(AdminAuthZenPoliciesController).Assembly);
+
         return services;
+    }
+
+    /// <summary>
+    /// Rejestruje kontrolery AuthZEN (Admin PAP /admin/authzen/policies oraz silnik ewaluacji PDP)
+    /// w konfiguracji MVC nadrzędnego projektu, zapewniając ich wykrycie przez routing ASP.NET Core.
+    /// </summary>
+    public static IMvcBuilder AddAuthZenControllers(this IServiceCollection services)
+    {
+        return services.AddControllers()
+            .AddApplicationPart(typeof(AdminAuthZenPoliciesController).Assembly);
     }
 
     /// <summary>
