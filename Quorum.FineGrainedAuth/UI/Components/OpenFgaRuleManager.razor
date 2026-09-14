@@ -136,9 +136,9 @@
                 <RadzenDataGridColumn TItem="AuthZenRuleDto" Title="Akcje" Width="180px" TextAlign="TextAlign.End" Sortable="false" Filterable="false">
                     <Template Context="r">
                         <div class="d-flex justify-content-end gap-1">
-                            <RadzenButton Icon="sync" ButtonStyle="ButtonStyle.Success" Variant="Variant.Light" Size="ButtonSize.Small" Click="@(() => SyncRuleAsync(r))" title="Zapisz do OpenFGA" />
-                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Light" Size="ButtonSize.Small" Click="@(() => OpenEditDialog(r))" title="Edytuj" />
-                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Light" Size="ButtonSize.Small" Click="@(() => DeleteRuleAsync(r))" title="Usuń" />
+                            <RadzenButton Icon="sync" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => SyncRuleAsync(r))" title="Zapisz do OpenFGA" />
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => OpenEditDialog(r))" title="Edytuj" />
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(() => DeleteRuleAsync(r))" title="Usuń" />
                         </div>
                     </Template>
                 </RadzenDataGridColumn>

@@ -137,7 +137,7 @@ builder.Services.AddQuorumAdminApi(options =>
 builder.Services.AddFineGrainedAuth<ApplicationUser>(options =>
 {
     options.OpenFga.ApiUrl = builder.Configuration["OpenFGA:ApiUrl"] ?? "http://localhost:8080";
-    options.OpenFga.StoreId = builder.Configuration["OpenFGA:StoreId"];
+    options.OpenFga.StoreId = builder.Configuration["OpenFGA:StoreId"] ?? string.Empty;
 });
 
 // 8b. Konfiguracja SignalR z opcjonalnym Redis Backplane dla klastra wielu replik i powiadomień Gateway

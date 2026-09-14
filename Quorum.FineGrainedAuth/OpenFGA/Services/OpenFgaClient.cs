@@ -38,6 +38,10 @@ public class OpenFgaClient : IOpenFgaClient
         }
 
         _httpClient.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
+        if (!string.IsNullOrWhiteSpace(_options.ApiToken) && _httpClient.DefaultRequestHeaders.Authorization == null)
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _options.ApiToken);
+        }
         _resolvedStoreId = string.IsNullOrWhiteSpace(_options.StoreId) ? null : _options.StoreId;
     }
 

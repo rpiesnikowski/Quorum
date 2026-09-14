@@ -2,7 +2,10 @@
 
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Program).Assembly" 
-            AdditionalAssemblies="new[] { typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly }">
+            AdditionalAssemblies="new[] { 
+                typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly,
+                typeof(Quorum.FineGrainedAuth.UI.Components.OpenFgaRuleManager).Assembly
+            }">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
                 <NotAuthorized>
