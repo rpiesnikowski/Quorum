@@ -72,37 +72,43 @@ Quorum.FineGrainedAuth/
 
 ## 🚀 Getting Started
 
-### 1. Register in Dependency Injection
+### 1. Register in Dependency Injection and Blazor Routing
+
+W pliku `Program.cs` projektu hosta (`Quorum.Backend`):
 
 ```csharp
 using Quorum.FineGrainedAuth.Extensions;
 
-// 1. Opcjonalnie: Konfiguracja dedykowanej bazy danych dla reguł AuthZEN (domyślnie SQLite 'authzen_policies.db')
-// builder.Services.AddAuthZenDbContext(options => options.UseNpgsql(connectionString));
-// Lub współdzielenie istniejącego kontekstu:
-// builder.Services.AddAuthZenDbContext<ApplicationDbContext>();
-
-// 2. Rejestracja AuthZEN PDP, PIP oraz PAP (automatycznie rejestruje IAuthZenDbContext jeśli nie został podany)
-builder.Services.AddAuthZenPdp<ApplicationUser>();
-
-// 3. Rejestracja klienta i adaptera OpenFGA
-builder.Services.AddOpenFga(options =>
+// 1. Rejestracja serwisów AuthZEN PDP, PIP, PAP oraz OpenFGA:
+builder.Services.AddFineGrainedAuth<ApplicationUser>(options =>
 {
-    options.ApiUrl = "http://localhost:8080";
-    options.StoreId = "01JK7M0P000000000000000000";
+    options.OpenFga.ApiUrl = "http://localhost:8080"; // Adres Twojego lokalnego serwera OpenFGA
+    // options.OpenFga.StoreId = "TWÓJ_STORE_ID";     // Opcjonalnie (jeśli pusty, pobierany/tworzony automatycznie)
 });
 
-// Lub rejestracja pełnego pakietu (AuthZEN + OpenFGA):
-builder.Services.AddFineGrainedAuth<ApplicationUser>();
+// 2. Kluczowa rejestracja stron Blazor GUI z assembly Quorum.FineGrainedAuth:
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(
+        typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly,
+        typeof(Quorum.FineGrainedAuth.UI.Components.AuthZenPoliciesList).Assembly // <- Wymagane, aby Blazor rozpoznał trasy GUI!
+    );
 
-// 4. Upewnij się, że kontrolery są zmapowane w potoku HTTP aplikacji:
-// app.MapControllers();
+// 3. Mapowanie kontrolerów REST API:
+app.MapControllers();
 ```
 
-> **Wskazówka dotycząca routingu `/admin/authzen/policies`**:
-> Kontroler `AdminAuthZenPoliciesController` obsługuje zarówno ścieżkę **`/admin/authzen/policies`**, jak i **`/api/admin/authzen/policies`**. W nadrzędnej aplikacji `Program.cs` wymagane jest wywołanie `app.MapControllers()`. Rejestracja kontrolera w `ApplicationPartManager` jest wykonywana automatycznie przez `AddAuthZenPdp<TUser>()` / `AddFineGrainedAuth<TUser>()`.
+### 2. Dostępne trasy GUI w panelu administracyjnym
 
-### 2. Check Authorization via AuthZEN PEP
+Po rejestracji komponenty GUI są dostępne bezpośrednio pod trasami:
+* **`/admin/authzen/policies`** – Główny widok CRUD polityk AuthZEN (Radzen DataGrid, filtry, akcje edycji i usuwania)
+* **`/admin/authzen/policies/create`** – Formularz tworzenia nowej reguły
+* **`/admin/authzen/policies/{id}/edit`** – Formularz edycji reguły
+* **`/admin/openfga/rules`** – Menadżer reguł OpenFGA z automatyczną synchronizacją REST z serwerem OpenFGA (`http://0.0.0.0:8080`)
+* **`/admin/authzen/simulator`** – Interaktywny symulator ewaluacji PDP + PIP w czasie rzeczywistym
+* **`/api/admin/authzen/policies`** – REST API dla automatyzacji i zewnętrznych narzędzi
+
+### 3. Check Authorization via AuthZEN PEP
 
 ```csharp
 var pepRequest = new AuthZenEvaluationRequest

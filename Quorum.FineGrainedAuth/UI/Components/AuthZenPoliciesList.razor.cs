@@ -1,15 +1,15 @@
 using Microsoft.AspNetCore.Components;
-using Quorum.Backend.AdminUI.Models;
-using Quorum.Backend.AdminUI.Services.Interfaces;
+using Quorum.FineGrainedAuth.AuthZen.Models;
+using Quorum.FineGrainedAuth.AuthZen.Stores;
 using Radzen;
 using Radzen.Blazor;
 
-namespace Quorum.Backend.AdminUI.Components.Pages.AuthZen;
+namespace Quorum.FineGrainedAuth.UI.Components;
 
 public partial class AuthZenPoliciesList : ComponentBase
 {
     [Inject]
-    public IAdminAuthZenPolicyStore PolicyStore { get; set; } = default!;
+    public IAuthZenPolicyStore PolicyStore { get; set; } = default!;
 
     [Inject]
     public DialogService DialogService { get; set; } = default!;

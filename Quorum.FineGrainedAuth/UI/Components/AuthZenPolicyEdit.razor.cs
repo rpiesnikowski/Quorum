@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Components;
-using Quorum.Backend.AdminUI.Models;
-using Quorum.Backend.AdminUI.Services.Interfaces;
+using Quorum.FineGrainedAuth.AuthZen.Models;
+using Quorum.FineGrainedAuth.AuthZen.Stores;
 using Radzen;
 
-namespace Quorum.Backend.AdminUI.Components.Pages.AuthZen;
+namespace Quorum.FineGrainedAuth.UI.Components;
 
 public partial class AuthZenPolicyEdit : ComponentBase
 {
@@ -11,7 +11,7 @@ public partial class AuthZenPolicyEdit : ComponentBase
     public int? Id { get; set; }
 
     [Inject]
-    public IAdminAuthZenPolicyStore PolicyStore { get; set; } = default!;
+    public IAuthZenPolicyStore PolicyStore { get; set; } = default!;
 
     [Inject]
     public NavigationManager NavigationManager { get; set; } = default!;

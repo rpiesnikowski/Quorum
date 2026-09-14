@@ -4,10 +4,10 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using Quorum.Backend.AdminUI.Models;
 using Quorum.Backend.AdminUI.Services.Interfaces;
-using Quorum.Backend.EntityFramework.AuthZen;
+using Quorum.FineGrainedAuth.AuthZen.Models;
 using Radzen;
 
-namespace Quorum.Backend.AdminUI.Components.Pages.AuthZen;
+namespace Quorum.FineGrainedAuth.UI.Components;
 
 public partial class AuthZenSimulator : ComponentBase
 {

@@ -8,6 +8,7 @@ const targetDirectories = [
   'Quorum.Backend.AdminAPI',
   'Quorum.Backend.EntityFramework',
   'Quorum.Backend.Gateway',
+  'Quorum.FineGrainedAuth',
   'Quorum.ServiceDefaults',
   'Quorum.AppHost'
 ];

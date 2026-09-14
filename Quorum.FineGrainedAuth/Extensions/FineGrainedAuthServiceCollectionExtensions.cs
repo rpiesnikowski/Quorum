@@ -7,10 +7,28 @@ using Quorum.FineGrainedAuth.AuthZen.Services.PDP;
 using Quorum.FineGrainedAuth.AuthZen.Services.PIP;
 using Quorum.FineGrainedAuth.AuthZen.Services.PEP;
 using Quorum.FineGrainedAuth.AuthZen.Stores;
-using Quorum.FineGrainedAuth.OpenFGA.Services;
 using Quorum.FineGrainedAuth.OpenFGA.Adapters;
+using Quorum.FineGrainedAuth.OpenFGA.Models;
+using Quorum.FineGrainedAuth.OpenFGA.Services;
 
 namespace Quorum.FineGrainedAuth.Extensions;
+
+/// <summary>
+/// Opcje konfiguracyjne dla pakietu Fine-Grained Authorization (AuthZEN &amp; OpenFGA).
+/// </summary>
+public class FineGrainedAuthOptions
+{
+    /// <summary>
+    /// Konfiguracja klienta i połączenia z OpenFGA (port 8080).
+    /// </summary>
+    public OpenFgaOptions OpenFga { get; set; } = new();
+
+    /// <summary>
+    /// Opcjonalna konfiguracja bazy danych dla zasad AuthZEN PAP.
+    /// Jeśli null, automatycznie używane jest domyślne SQLite ('authzen_policies.db') lub istniejący kontekst.
+    /// </summary>
+    public Action<DbContextOptionsBuilder>? DbContext { get; set; }
+}
 
 public static class FineGrainedAuthServiceCollectionExtensions
 {
@@ -136,6 +154,29 @@ public static class FineGrainedAuthServiceCollectionExtensions
         services.AddAuthZenPdp<TUser>(configureDbContext);
         services.AddAuthZenPep();
         services.AddOpenFga(configureOpenFga);
+        return services;
+    }
+
+    /// <summary>
+    /// Rejestruje kompletny pakiet Fine-Grained Authorization z obiektem konfiguracyjnym opcji.
+    /// </summary>
+    public static IServiceCollection AddFineGrainedAuth<TUser>(
+        this IServiceCollection services,
+        Action<FineGrainedAuthOptions> configure)
+        where TUser : IdentityUser, new()
+    {
+        var options = new FineGrainedAuthOptions();
+        configure(options);
+
+        services.AddAuthZenPdp<TUser>(options.DbContext);
+        services.AddAuthZenPep();
+        services.AddOpenFga(opt =>
+        {
+            opt.ApiUrl = options.OpenFga.ApiUrl;
+            opt.StoreId = options.OpenFga.StoreId;
+            opt.DefaultAuthorizationModelId = options.OpenFga.DefaultAuthorizationModelId;
+            opt.ApiToken = options.OpenFga.ApiToken;
+        });
         return services;
     }
 }

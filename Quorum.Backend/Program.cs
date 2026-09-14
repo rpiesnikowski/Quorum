@@ -15,6 +15,8 @@ using Quorum.Backend.EntityFramework;
 using Quorum.Backend.EntityFramework.Data;
 using Quorum.Backend.EntityFramework.Models;
 using Quorum.Backend.Services;
+using Quorum.FineGrainedAuth.Extensions;
+using Quorum.FineGrainedAuth.UI.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseStaticWebAssets();
@@ -129,6 +131,13 @@ builder.Services.AddQuorumAdminApi(options =>
 {
     options.RoutePrefix = "api/admin";
     options.RequiredRole = "Admin";
+});
+
+// 8c. Konfiguracja Quorum Fine-Grained Authorization (AuthZEN PDP/PIP/PAP & OpenFGA ReBAC)
+builder.Services.AddFineGrainedAuth<ApplicationUser>(options =>
+{
+    options.OpenFga.ApiUrl = builder.Configuration["OpenFGA:ApiUrl"] ?? "http://localhost:8080";
+    options.OpenFga.StoreId = builder.Configuration["OpenFGA:StoreId"];
 });
 
 // 8b. Konfiguracja SignalR z opcjonalnym Redis Backplane dla klastra wielu replik i powiadomień Gateway
@@ -325,17 +334,21 @@ app.MapGet("/Account/ExternalLoginCallback", async (
     return Results.LocalRedirect("/account/login?error=Nie+udalo+sie+zalogowac+przez+SSO");
 });
 
-// 12. Mapowanie komponentów Blazor (z automatycznym wykrywaniem stron i komponentów z Quorum.Backend.AdminUI)
+// 12. Mapowanie komponentów Blazor (z automatycznym wykrywaniem stron i komponentów z Quorum.Backend.AdminUI oraz Quorum.FineGrainedAuth)
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(
-        typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly
+        typeof(Quorum.Backend.AdminUI.Components.Layout.AdminLayout).Assembly,
+        typeof(AuthZenPoliciesList).Assembly
     );
 
-// 13. Mapowanie endpointów Quorum Admin REST API
+// 13. Mapowanie kontrolerów REST API (w tym AuthZEN PAP / PDP i OpenFGA)
+app.MapControllers();
+
+// 14. Mapowanie endpointów Quorum Admin REST API
 app.MapQuorumAdminApi();
 
-// 14. Mapowanie SignalR Hub dla powiadomień API Gateway
+// 15. Mapowanie SignalR Hub dla powiadomień API Gateway
 app.MapHub<Quorum.Backend.Hubs.GatewayConfigHub>("/hubs/gateway-config");
 
 // Mapowanie endpointów diagnostycznych i health checks Aspire

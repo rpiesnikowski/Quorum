@@ -24,6 +24,7 @@
     <ProjectReference Include="..\Quorum.Backend.AdminUI\Quorum.Backend.AdminUI.csproj" />
     <ProjectReference Include="..\Quorum.Backend.EntityFramework\Quorum.Backend.EntityFramework.csproj" />
     <ProjectReference Include="..\Quorum.ServiceDefaults\Quorum.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Quorum.FineGrainedAuth\Quorum.FineGrainedAuth.csproj" />
   </ItemGroup>
 
 </Project>
